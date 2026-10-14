@@ -9,12 +9,9 @@ import {
   type SegmentGroup,
   withSegmentValue,
 } from './segment';
+import { assertMinuteStep, END_OF_DAY_HOUR, LAST_HOUR, MINUTES_PER_HOUR, TIME_PART_DIGITS } from './time-constants';
 
 const COMPACT_TIME_LENGTH = 4;
-export const END_OF_DAY_HOUR = 24;
-export const LAST_HOUR = 23;
-export const MINUTES_PER_HOUR = 60;
-export const TIME_PART_DIGITS = 2;
 
 export interface TimeFieldContext {
   readonly minuteStep: number;
@@ -39,6 +36,7 @@ type TimeFieldScope = {
 export interface TimeFieldState extends SegmentGroup<TimeSegmentKind> {}
 
 export const createTimeFieldState = (initial: TimeString | null, context: TimeFieldContext): TimeFieldState => {
+  assertMinuteStep(context.minuteStep);
   const parsed = initial === null ? null : parseTime(initial, { isEndOfDayAllowed: context.isEndOfDayAllowed });
   const time = parsed?.isOk ? parsed.value : null;
   return {

@@ -59,4 +59,53 @@ describe('column', () => {
 
     expect(selectedColumnValue(replaced)).toBeNull();
   });
+
+  it('selects nothing for an empty or fully disabled list', () => {
+    const empty = createColumnState<number>([], 1);
+    const disabled = createColumnState(options([1, 2], [1, 2]), 1);
+
+    expect(empty.selectedIndex).toBe(-1);
+    expect(disabled.selectedIndex).toBe(-1);
+    expect(selectedColumnValue(disabled)).toBeNull();
+    expect(reduceColumn(disabled, { amount: 1, type: 'option.step' }, undefined)).toBe(disabled);
+  });
+
+  it('picks the enabled option nearest the preferred value when replacing from a fully disabled list', () => {
+    const state = createColumnState(options([1, 2, 3, 4], [1, 2, 3, 4]), 1);
+
+    const replaced = reduceColumn(
+      state,
+      { options: options([1, 2, 3, 4], [1, 2]), preferredValue: 2, type: 'options.replace' },
+      undefined,
+    );
+
+    expect(selectedColumnValue(replaced)).toBe(3);
+  });
+
+  it('keeps the state reference when replaced with the same options and index', () => {
+    const state = createColumnState(options([1, 2, 3]), 2);
+
+    const replaced = reduceColumn(
+      state,
+      { options: state.options, preferredValue: 2, type: 'options.replace' },
+      undefined,
+    );
+
+    expect(replaced).toBe(state);
+  });
+
+  it('matches values with a custom equality when replacing options', () => {
+    const reduceByDay = columnReducer<{ readonly day: number }>((first, second) => first.day === second.day);
+    const items = (days: readonly number[]): ColumnOption<{ readonly day: number }>[] =>
+      days.map((day) => ({ isDisabled: false, label: String(day), value: { day } }));
+    const state = createColumnState(items([1, 2, 3]), { day: 2 }, (first, second) => first.day === second.day);
+
+    const replaced = reduceByDay(
+      state,
+      { options: items([2, 3]), preferredValue: { day: 2 }, type: 'options.replace' },
+      undefined,
+    );
+
+    expect(selectedColumnValue(replaced)).toEqual({ day: 2 });
+  });
 });

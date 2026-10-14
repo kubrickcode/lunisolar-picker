@@ -1,11 +1,14 @@
 import type { Reducer } from '../create-store';
 
+const NO_SELECTION = -1;
+
 export interface ColumnOption<Value> {
   readonly isDisabled: boolean;
   readonly label: string;
   readonly value: Value;
 }
 
+// Constraint: selectedIndex는 항목이 없거나 전부 비활성이면 -1(선택 없음)이고, 그 외에는 항상 활성 항목을 가리킴
 export interface ColumnState<Value> {
   readonly options: readonly ColumnOption<Value>[];
   readonly selectedIndex: number;
@@ -90,7 +93,7 @@ const nearestEnabledIndex = <Value>(options: readonly ColumnOption<Value>[], pre
     if (options[clampedIndex - distance]?.isDisabled === false) return clampedIndex - distance;
     if (options[clampedIndex + distance]?.isDisabled === false) return clampedIndex + distance;
   }
-  return clampedIndex;
+  return NO_SELECTION;
 };
 
 const replaceOptions = <Value>({
@@ -100,8 +103,6 @@ const replaceOptions = <Value>({
   state,
 }: ReplaceOptionsOptions<Value>): ColumnState<Value> => {
   const preferredIndex = options.findIndex((option) => isEqual(option.value, preferredValue));
-  return {
-    options,
-    selectedIndex: nearestEnabledIndex(options, preferredIndex === -1 ? state.selectedIndex : preferredIndex),
-  };
+  const selectedIndex = nearestEnabledIndex(options, preferredIndex === -1 ? state.selectedIndex : preferredIndex);
+  return options === state.options && selectedIndex === state.selectedIndex ? state : { options, selectedIndex };
 };

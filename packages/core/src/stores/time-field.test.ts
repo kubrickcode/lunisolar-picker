@@ -1,3 +1,4 @@
+import { LunisolarPickerError } from '@lunisolar-picker/calendar';
 import { describe, expect, it } from 'vitest';
 import { reduceEvents } from '../testing/reduce-events';
 import { timeString } from '../testing/time-string';
@@ -108,5 +109,9 @@ describe('time field', () => {
     const state = createTimeFieldState(timeString('07:05'), FIVE_MINUTES);
 
     expect(timeFieldReducer(state, { type: 'value.sync', time: timeString('07:05') }, FIVE_MINUTES)).toBe(state);
+  });
+
+  it('rejects a minuteStep that does not divide an hour', () => {
+    expect(() => createTimeFieldState(null, { isEndOfDayAllowed: false, minuteStep: 7 })).toThrow(LunisolarPickerError);
   });
 });

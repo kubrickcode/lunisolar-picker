@@ -1,4 +1,4 @@
-import { gregory } from '@lunisolar-picker/calendar';
+import { gregory, LunisolarPickerError } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { describe, expect, it } from 'vitest';
 import { resolveConstraints } from '../constraints/resolve-constraints';
@@ -66,5 +66,34 @@ describe('wheel columns', () => {
     expect(columns.years).toEqual([]);
     expect(columns.months.every((option) => option.isDisabled)).toBe(true);
     expect(columns.days.every((option) => option.isDisabled)).toBe(true);
+  });
+
+  it('omits the leap month in a non-leap year', () => {
+    const columns = buildWheelDateColumns(dangi, { day: 1, monthCode: 'M01', year: 2024 }, resolveConstraints({}), ko);
+
+    expect(columns.months).toHaveLength(12);
+    expect(columns.months.some((option) => option.value === 'M06L')).toBe(false);
+  });
+
+  it('lists 29 or 30 days depending on the month length', () => {
+    const february = buildWheelDateColumns(
+      gregory,
+      { day: 1, monthCode: 'M02', year: 2025 },
+      resolveConstraints({}),
+      ko,
+    );
+    const leapFebruary = buildWheelDateColumns(
+      gregory,
+      { day: 1, monthCode: 'M02', year: 2024 },
+      resolveConstraints({}),
+      ko,
+    );
+
+    expect(february.days).toHaveLength(28);
+    expect(leapFebruary.days).toHaveLength(29);
+  });
+
+  it.each([0, 7, 2.5, 61, Number.NaN])('rejects minuteStep %s', (minuteStep) => {
+    expect(() => buildTimeColumns({ isEndOfDayAllowed: false, minuteStep })).toThrow(LunisolarPickerError);
   });
 });

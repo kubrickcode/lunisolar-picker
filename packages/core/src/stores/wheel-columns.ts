@@ -11,7 +11,8 @@ import {
 import type { LocaleData } from '../locales/locale-data';
 import type { VisibleMonth } from '../types';
 import type { ColumnOption } from './column';
-import { END_OF_DAY_HOUR, LAST_HOUR, MINUTES_PER_HOUR, TIME_PART_DIGITS, type TimeFieldContext } from './time-field';
+import { assertMinuteStep, END_OF_DAY_HOUR, LAST_HOUR, MINUTES_PER_HOUR, TIME_PART_DIGITS } from './time-constants';
+import type { TimeFieldContext } from './time-field';
 
 export interface WheelDateColumns {
   readonly days: readonly ColumnOption<number>[];
@@ -56,6 +57,7 @@ export const buildWheelDateColumns = (
 };
 
 export const buildTimeColumns = (context: TimeFieldContext): WheelTimeColumns => {
+  assertMinuteStep(context.minuteStep);
   const lastHour = context.isEndOfDayAllowed ? END_OF_DAY_HOUR : LAST_HOUR;
   const minuteCount = Math.ceil(MINUTES_PER_HOUR / context.minuteStep);
   return {
