@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { DATA_ATTRIBUTES, PART_ATTRIBUTE, PART_NAMES } from '@lunisolar-picker/react/contract';
 import { describe, expect, it } from 'vitest';
 
-const ALLOWED_EXTRA_ATTRIBUTES = [PART_ATTRIBUTE, 'data-theme'];
 const ALLOWED_CLASS_NAMES = ['dark'];
+const ALLOWED_EXTRA_ATTRIBUTES = [PART_ATTRIBUTE, 'data-theme'];
 const ATTRIBUTE_SELECTOR_PATTERN = /\[(data-[a-z-]+)/g;
 const CLASS_SELECTOR_PATTERN = /\.([a-zA-Z_][\w-]*)/g;
 const FORBIDDEN_SELECTOR_PATTERN = /\[\s*(aria-[a-z-]+|role)\b/g;
@@ -22,17 +22,25 @@ const readThemeSources = async (): Promise<string> => {
   return sources.join('\n');
 };
 
-const isSingleLayerBlock = (css: string): boolean => {
-  const trimmed = css.trim();
-  if (!trimmed.startsWith(LAYER_OPENING)) return false;
-  // Intentionally sequential - 여는 중괄호부터 깊이를 세며 첫 번째 짝이 맞는 위치를 찾음
+const findFirstBlockEnd = (css: string): number => {
+  // Intentionally sequential - 여는 중괄호부터 깊이를 세며 첫 번째 짝이 맞는 닫는 위치를 찾음
   let depth = 0;
-  for (const [index, character] of Array.from(trimmed).entries()) {
+  for (const [index, character] of Array.from(css).entries()) {
     if (character === '{') depth += 1;
     if (character === '}') depth -= 1;
-    if (character === '}' && depth === 0) return index === trimmed.length - 1;
+    if (character === '}' && depth === 0) return index;
   }
-  return false;
+  return -1;
+};
+
+// Constraint: M4가 같은 이름의 layer 블록을 mono.css 끝에 이어 붙이므로 블록이 여러 개여도 되지만, 블록 밖 규칙은 허용하지 않음
+const isOnlyLayerBlocks = (css: string): boolean => {
+  const trimmed = css.trim();
+  if (!trimmed.startsWith(LAYER_OPENING)) return false;
+  const blockEnd = findFirstBlockEnd(trimmed);
+  if (blockEnd === -1) return false;
+  const rest = trimmed.slice(blockEnd + 1).trim();
+  return rest === '' || isOnlyLayerBlocks(rest);
 };
 
 describe('theme selector contract', () => {
@@ -70,10 +78,17 @@ describe('theme selector contract', () => {
     expect(forbidden).toEqual([]);
   });
 
-  it('wraps every rule in exactly one lunisolar-picker cascade layer', async () => {
+  it('keeps every rule inside lunisolar-picker cascade layer blocks', async () => {
     const sources = await Promise.all(THEME_FILES.map(readCss));
 
-    expect(sources.map(isSingleLayerBlock)).toEqual([true, true]);
+    expect(sources.map(isOnlyLayerBlocks)).toEqual([true, true]);
+  });
+
+  it('accepts appended layer blocks but rejects a rule between them', () => {
+    const block = `${LAYER_OPENING} [data-lsp-part="wheel"] { color: red; } }`;
+
+    expect(isOnlyLayerBlocks(`${block}\n${block}`)).toBe(true);
+    expect(isOnlyLayerBlocks(`${block}\n[data-lsp-part="wheel"] { color: red; }\n${block}`)).toBe(false);
   });
 
   it('avoids CSS features below the browser baseline', async () => {

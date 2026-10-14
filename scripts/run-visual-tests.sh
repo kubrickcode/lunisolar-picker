@@ -16,7 +16,7 @@ docker info >/dev/null 2>&1 || {
 # node_modules를 볼륨으로 분리하는 이유: macOS용 네이티브 바이너리(esbuild 등)가 Linux 컨테이너에 섞이지 않게 함
 docker run --rm --ipc=host \
   -v "${REPOSITORY_ROOT}:/work" -w /work \
-  -v lsp-visual-pnpm-store:/pnpm-store -e npm_config_store_dir=/pnpm-store \
+  -v lsp-visual-pnpm-store:/pnpm-store -e pnpm_config_store_dir=/pnpm-store \
   -v lsp-visual-root-modules:/work/node_modules \
   -v lsp-visual-calendar-modules:/work/packages/calendar/node_modules \
   -v lsp-visual-core-modules:/work/packages/core/node_modules \
