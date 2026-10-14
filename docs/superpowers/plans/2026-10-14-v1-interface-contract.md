@@ -397,8 +397,8 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 
 | 공개 | 내용 |
 |---|---|
-| `DateField.{Root, Segment({ index }), Separator, HiddenInput, LeapMonthToggle}`, `useDateField`, `useDateFieldContext` | Root에 children이 없으면 로케일 순서로 세그먼트·구분자·윤달 토글·hidden input을 그림. `entryCalendar`·`defaultEntryCalendar`·`onEntryCalendarChange`, `separator` |
-| `DateRangeField.{Root, Start, End, Separator}`, `useDateRangeField` | 시작일을 다 채우면 종료일로 이동, `startName`·`endName`, `RangeConstraints` |
+| `DateField.{Root, Segment({ index }), Separator, HiddenInput, LeapMonthToggle}`, `useDateField`, `useDateFieldContext` | Root에 children이 없으면 로케일 순서로 세그먼트·구분자·윤달 토글·hidden input을 그림. `entryCalendar`·`defaultEntryCalendar`·`onEntryCalendarChange`, `separator`. 역법 규칙: 값이 있으면 값의 역법이 이긴다. `entryCalendar`·`defaultEntryCalendar`는 빈 필드에만 적용된다. 마운트와 부모의 값 동기화는 콜백을 보내지 않는다(사용자 조작만 보고). 단 값이 있는 상태에서 부모가 `entryCalendar` prop을 바꾸면 명시적 요청으로 보고, 값을 새 역법으로 다시 표기해 `onValueChange`를 보낸다. 부모가 다른 역법의 값을 넣으면 필드는 그 역법으로 바뀌지만 `onEntryCalendarChange`는 부르지 않으므로, 제어형 `entryCalendar`와 어긋날 수 있다. `L`(한글 모드의 `ㅣ` 포함, 물리 키 KeyL)로 윤달을 전환하고, Ctrl·Cmd·Alt 조합 키는 브라우저에 넘긴다 |
+| `DateRangeField.{Root, Start, End, Separator}`, `useDateRangeField` | 시작일을 다 채우면 종료일로 이동, `startName`·`endName`, `RangeConstraints`. 역법 규칙은 DateField와 같다(범위 값의 start 역법이 이김) |
 | `TimeField.{Root, Segment({ index }), Separator, HiddenInput}`, `useTimeField` | `minuteStep`, `isEndOfDayAllowed` |
 | `Wheel.{Root, Column, Item, Highlight}`, `useWheel` | `Wheel.Column`은 `useWheel` props(`options`, `value`, `onValueChange`, `isEqual?`, `label`, `disabled?`)와 `renderItem?`을 받음 |
 | `useWheelDate(props): WheelDateApi` | `{ fields; columns: WheelDateColumns; value; entryCalendarId; labels: { year; month; day }; selectYear; selectMonth; selectDay; setEntryCalendar }` |
