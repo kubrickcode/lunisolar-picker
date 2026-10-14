@@ -147,6 +147,11 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
     [],
   );
 
+  // Goal: 숫자 입력 확정을 기다리는 사이 열이 비활성화되면 그 값을 확정하지 않음
+  useEffect(() => {
+    if (isDisabled) clearTimeout(typeaheadTimerRef.current);
+  }, [isDisabled]);
+
   // Goal: 위치가 그려진 창 중심에서 RECENTER_DISTANCE 넘게 벗어날 때만 다시 그림(항목 10개당 최대 한 번)
   // Constraint: 한 프레임에 수백 항목을 건너는 관성·Home/End에서도 그 프레임에 보이는 항목이 DOM에 있도록 바로 그림
   const recenterRenderWindow = useCallback((position: number) => {

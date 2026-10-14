@@ -10,6 +10,8 @@ import { useWheel } from './use-wheel';
 import { WHEEL_POSITION_PROPERTY } from './use-wheel-motion';
 
 const SAMPLE_FRAMES = 40;
+// Constraint: 숫자 입력 확정 지연(300ms)에 먼 연도로 가는 정착 애니메이션까지 끝나야 확정 여부를 알 수 있음
+const TYPEAHEAD_WAIT_MILLISECONDS = 1500;
 
 type WheelProbeProps = {
   readonly initialValue: number;
@@ -277,6 +279,29 @@ describe('Wheel', () => {
         for (const key of ['1', '9', ' ', '5', '0']) pressKey(column, key);
 
         await expect.poll(() => onValueChange.mock.calls).toEqual([[1950]]);
+      });
+
+      it('drops a pending typed year when the column becomes disabled before it commits', async () => {
+        const onValueChange = vi.fn();
+        const renderColumn = (isDisabled: boolean) => (
+          <Wheel.Root aria-label="Year">
+            <Wheel.Column
+              label="Year"
+              options={years}
+              value={1990}
+              disabled={isDisabled}
+              onValueChange={onValueChange}
+            />
+          </Wheel.Root>
+        );
+        const screen = await render(renderColumn(false));
+        const column = screen.getByRole('spinbutton', { name: 'Year' }).element();
+
+        for (const key of ['1', '9', '5', '0']) pressKey(column, key);
+        await screen.rerender(renderColumn(true));
+        await new Promise((resolve) => setTimeout(resolve, TYPEAHEAD_WAIT_MILLISECONDS));
+
+        expect(onValueChange.mock.calls).toEqual([]);
       });
 
       it('ignores typed text that matches no option', async () => {
