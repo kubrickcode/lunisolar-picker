@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
-import { describe, expect, it } from 'vitest';
+import { createRef, type ReactElement } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderElement } from './render-element';
@@ -43,5 +43,36 @@ describe('renderElement', () => {
     );
 
     await expect.element(screen.getByText('Open')).toHaveAttribute('data-open', 'false');
+  });
+
+  it('hands the node to both the part ref and the render element ref', async () => {
+    const partRef = createRef<HTMLButtonElement>();
+    const elementRef = createRef<HTMLAnchorElement>();
+    const Linked = (): ReactElement =>
+      // biome-ignore lint/a11y/useAnchorContent: 내용은 부품 props의 children이 병합되어 채워짐
+      renderElement('button', <a href="#chip" ref={elementRef} />, { ref: partRef, children: 'Open' }, {});
+
+    const screen = await render(<Linked />);
+
+    const link = screen.getByRole('link', { name: 'Open' }).element();
+    expect(partRef.current).toBe(link);
+    expect(elementRef.current).toBe(link);
+  });
+
+  it('runs the render element handler first and the part handler after', async () => {
+    const partHandler = vi.fn();
+    const elementHandler = vi.fn();
+    const Clickable = (): ReactElement =>
+      renderElement(
+        'button',
+        <button type="button" onClick={elementHandler} />,
+        { onClick: partHandler, children: 'Go' },
+        {},
+      );
+
+    const screen = await render(<Clickable />);
+    await screen.getByRole('button', { name: 'Go' }).click();
+
+    expect(elementHandler.mock.invocationCallOrder[0]).toBeLessThan(partHandler.mock.invocationCallOrder[0] ?? 0);
   });
 });

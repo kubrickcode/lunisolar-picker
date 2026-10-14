@@ -64,6 +64,17 @@ module.exports = {
       },
     },
     {
+      name: 'react-src-allowed-dependencies',
+      comment: 'react 패키지 배포 코드는 react 계열, floating-ui, core, calendar만 쓴다 (스펙 3.2)',
+      severity: 'error',
+      from: { path: '^packages/react/src', pathNot: '\\.test\\.tsx?$|^packages/react/src/(testing|visual)/' },
+      to: {
+        dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown'],
+        pathNot:
+          'node_modules/(react|react-dom|@floating-ui/react-dom|@lunisolar-picker/(core|calendar))(/|$)|^packages/(core|calendar)/',
+      },
+    },
+    {
       name: 'react-src-no-node-builtins',
       severity: 'error',
       from: { path: '^packages/react/src' },

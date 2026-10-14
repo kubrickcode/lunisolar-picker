@@ -56,13 +56,13 @@ export const PART_NAMES = [
 
 export type DataAttribute = (typeof DATA_ATTRIBUTES)[number];
 
+export type DataAttributeProps = { readonly 'data-lsp-part'?: PartName } & Partial<Record<DataAttribute, string>>;
+
 export type PartName = (typeof PART_NAMES)[number];
 
 type StateFlagName = DataAttribute extends `data-${infer Name}` ? Name : never;
 
 export type StateFlags = Partial<Record<StateFlagName, boolean | string | number | null | undefined>>;
-
-export type DataAttributeProps = { readonly 'data-lsp-part'?: PartName } & Partial<Record<DataAttribute, string>>;
 
 export const stateAttributes = (flags: StateFlags): DataAttributeProps => {
   const entries = Object.entries(flags).flatMap(([name, flag]): [string, string][] => {

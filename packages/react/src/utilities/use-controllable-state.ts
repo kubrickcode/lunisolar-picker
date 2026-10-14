@@ -14,7 +14,11 @@ export const useControllableState = <Value>(
   const setValue = useCallback(
     (next: Value) => {
       if (Object.is(next, currentRef.current)) return;
-      if (!isControlled) setUncontrolled(next);
+      if (!isControlled) {
+        // 의도적 변경: 같은 배치의 다음 호출이 최신 값과 비교하도록 렌더 전에 ref를 갱신함
+        currentRef.current = next;
+        setUncontrolled(next);
+      }
       onChangeRef.current?.(next);
     },
     [isControlled, currentRef, onChangeRef],

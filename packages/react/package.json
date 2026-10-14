@@ -38,7 +38,7 @@
     "@lunisolar-picker/core": "workspace:*"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "rm -rf dist && tsdown",
     "test": "vitest run",
     "test:visual": "vitest run --config vitest.visual.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json",

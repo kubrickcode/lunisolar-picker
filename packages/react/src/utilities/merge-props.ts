@@ -1,10 +1,10 @@
 import type { Ref, RefCallback } from 'react';
 
+const EVENT_HANDLER_PATTERN = /^on[A-Z]/;
+
 type EventHandler = (event: EventLike) => void;
 type EventLike = { readonly isDefaultPrevented?: () => boolean; readonly defaultPrevented?: boolean } | undefined;
 type PropsRecord = Record<string, unknown>;
-
-const EVENT_HANDLER_PATTERN = /^on[A-Z]/;
 
 export const mergeProps = <Base extends object, Override extends object>(
   base: Base,
