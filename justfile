@@ -8,6 +8,7 @@ install:
 check: typecheck lint deps
 
 typecheck:
+    pnpm exec tsc --noEmit -p tsconfig.scripts.json
     pnpm -r run typecheck
 
 lint:
@@ -17,7 +18,19 @@ fix:
     pnpm exec biome check --write .
 
 deps:
-    pnpm exec depcruise packages --config .dependency-cruiser.cjs
+    pnpm exec depcruise packages scripts --config .dependency-cruiser.cjs
 
 test:
     pnpm -r run test
+
+build:
+    pnpm -r run build
+
+package-check: build
+    pnpm -r run package-check
+
+size: build
+    pnpm exec tsx scripts/check-bundle-size.ts
+
+compare-intl:
+    pnpm --filter @lunisolar-picker/calendar run compare:intl
