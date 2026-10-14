@@ -7,7 +7,7 @@ export type {
 } from './constraints/resolve-constraints';
 export { resolveConstraints } from './constraints/resolve-constraints';
 export { isEpochDayInBlockedRange, validateEpochDay, validateEpochRange } from './constraints/validate';
-export type { ValidationOptions } from './constraints/validate-strings';
+export type { StringValidity, ValidationOptions } from './constraints/validate-strings';
 export { validateDate, validateRange } from './constraints/validate-strings';
 export type { PickerContext } from './context';
 export { findCalendar } from './context';

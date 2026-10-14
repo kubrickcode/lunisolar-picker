@@ -41,6 +41,13 @@ describe('resolveConstraints', () => {
     expect(resolved.ignoredInputs).toEqual([{ field: 'min', input: '2026/10/01', reason: 'invalid-date' }]);
   });
 
+  it('records an unreadable max the same way', () => {
+    const resolved = resolveConstraints({ max: 'soon' });
+
+    expect(resolved.maxEpochDay).toBe(gregory.supportedRange.max);
+    expect(resolved.ignoredInputs).toEqual([{ field: 'max', input: 'soon', reason: 'invalid-date' }]);
+  });
+
   it('passes canonical Gregorian strings to the disabled-date predicate', () => {
     const isDateDisabled = vi.fn((date: string) => date === '2026-10-15');
     const resolved = resolveConstraints({ isDateDisabled });

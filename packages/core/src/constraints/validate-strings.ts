@@ -1,8 +1,17 @@
 import { type CalendarSystem, type EpochDay, gregory, parseDate } from '@lunisolar-picker/calendar';
 import { findCalendar } from '../context';
 import { invalidBecause, type Validity } from '../types';
-import { type DateConstraints, type RangeConstraints, resolveConstraints } from './resolve-constraints';
+import {
+  type DateConstraints,
+  type IgnoredConstraintInput,
+  type RangeConstraints,
+  resolveConstraints,
+} from './resolve-constraints';
 import { validateEpochDay, validateEpochRange } from './validate';
+
+export interface StringValidity extends Validity {
+  readonly ignoredInputs: readonly IgnoredConstraintInput[];
+}
 
 export interface ValidationOptions {
   readonly calendars?: readonly CalendarSystem[];
@@ -13,31 +22,32 @@ export const validateDate = (
   value: string,
   constraints: DateConstraints = {},
   options: ValidationOptions = {},
-): Validity => {
+): StringValidity => {
   const knownCalendars = withGregorian(options.calendars);
   const parsed = parseDate(value, { calendars: knownCalendars });
-  if (!parsed.isOk) return invalidBecause([parsed.error]);
+  if (!parsed.isOk) return { ...invalidBecause([parsed.error]), ignoredInputs: [] };
   const resolved = resolveConstraints(constraints, findCalendar(knownCalendars, parsed.value.calendar), knownCalendars);
-  return validateEpochDay(parsed.value.epochDay, resolved);
+  return { ...validateEpochDay(parsed.value.epochDay, resolved), ignoredInputs: resolved.ignoredInputs };
 };
 
 export const validateRange = (
   range: { readonly start: string; readonly end: string | null },
   constraints: RangeConstraints = {},
   options: ValidationOptions = {},
-): Validity => {
+): StringValidity => {
   const knownCalendars = withGregorian(options.calendars);
   const start = parseDate(range.start, { calendars: knownCalendars });
   const end = range.end === null ? null : parseDate(range.end, { calendars: knownCalendars });
-  if (!start.isOk) return invalidBecause([start.error]);
-  if (end !== null && !end.isOk) return invalidBecause([end.error]);
+  if (!start.isOk) return { ...invalidBecause([start.error]), ignoredInputs: [] };
+  if (end !== null && !end.isOk) return { ...invalidBecause([end.error]), ignoredInputs: [] };
   const resolved = resolveConstraints(constraints, findCalendar(knownCalendars, start.value.calendar), knownCalendars);
   const endEpochDay: EpochDay | null = end === null ? null : end.value.epochDay;
   const isReversed = endEpochDay !== null && endEpochDay < start.value.epochDay;
-  return validateEpochRange(
+  const validity = validateEpochRange(
     isReversed ? { start: endEpochDay, end: start.value.epochDay } : { start: start.value.epochDay, end: endEpochDay },
     resolved,
   );
+  return { ...validity, ignoredInputs: resolved.ignoredInputs };
 };
 
 const withGregorian = (calendars: readonly CalendarSystem[] | undefined): readonly CalendarSystem[] => [

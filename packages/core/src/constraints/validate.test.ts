@@ -51,6 +51,11 @@ describe('validateEpochRange', () => {
     expect(validateEpochRange({ start: october(13), end: null }, openEnded).isValid).toBe(true);
   });
 
+  it('treats a reversed range the same as the forward one', () => {
+    expect(validateEpochRange({ start: october(16), end: october(13) }, limited).reasons).toEqual(['range-too-long']);
+    expect(validateEpochRange({ start: october(15), end: october(13) }, limited).isValid).toBe(true);
+  });
+
   it('reports disabled days inside the range separately from disabled endpoints', () => {
     const resolved = resolveConstraints({ isDateDisabled: (date) => date === '2026-10-14' || date === '2026-10-17' });
 

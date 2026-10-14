@@ -20,4 +20,25 @@ describe('string helpers for presets', () => {
         .isValid,
     ).toBe(true);
   });
+
+  it('reports an unreadable max on a date without applying it', () => {
+    const result = validateDate('2026-10-14', { max: 'garbage' });
+
+    expect(result.isValid).toBe(true);
+    expect(result.ignoredInputs).toEqual([{ field: 'max', input: 'garbage', reason: 'invalid-date' }]);
+  });
+
+  it('reports an unreadable max on a range without applying it', () => {
+    const result = validateRange({ start: '2026-10-13', end: '2026-10-14' }, { max: 'garbage' });
+
+    expect(result.isValid).toBe(true);
+    expect(result.ignoredInputs).toEqual([{ field: 'max', input: 'garbage', reason: 'invalid-date' }]);
+  });
+
+  it('accepts an open end only when open ranges are allowed', () => {
+    const range = { start: '2026-10-13', end: null };
+
+    expect(validateRange(range, { isOpenEndAllowed: true }).isValid).toBe(true);
+    expect(validateRange(range).reasons).toEqual(['incomplete']);
+  });
 });
