@@ -6,7 +6,10 @@ import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { settleEffects } from '../testing/settle-effects';
 import * as Wheel from './parts';
+import { useWheel } from './use-wheel';
 import { WHEEL_POSITION_PROPERTY } from './use-wheel-motion';
+
+const SAMPLE_FRAMES = 40;
 
 type WheelProbeProps = {
   readonly initialValue: number;
@@ -59,11 +62,75 @@ const firstItemHeight = (): number => {
   return item.getBoundingClientRect().height;
 };
 
+const LateColumnYearWheel = ({ onValueChange }: { readonly onValueChange: (value: number) => void }) => {
+  const [isShown, setIsShown] = useState(false);
+  const [value, setValue] = useState(1990);
+  const wheel = useWheel({
+    label: 'Year',
+    options: years,
+    value,
+    onValueChange: (next) => {
+      setValue(next);
+      onValueChange(next);
+    },
+  });
+  const { start, end } = wheel.renderedRange;
+  const indexes = Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
+  return (
+    <>
+      <button type="button" onClick={() => setIsShown(true)}>
+        Show
+      </button>
+      {isShown && (
+        <div {...wheel.getColumnProps()}>
+          <div {...wheel.getTrackProps()}>
+            {indexes.map((index) => (
+              <Wheel.Item key={index} wheel={wheel} index={index} />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+const sampleEachFrame = async <Sample,>(read: () => Sample): Promise<readonly Sample[]> => {
+  let samples: readonly Sample[] = [];
+  for (let frame = 0; frame < SAMPLE_FRAMES; frame += 1) {
+    await nextFrame();
+    samples = [...samples, read()];
+  }
+  return samples;
+};
+
+const readPosition = (column: HTMLElement | SVGElement): number =>
+  Number.parseFloat(column.style.getPropertyValue(WHEEL_POSITION_PROPERTY));
+
+const isItemRendered = (index: number): boolean =>
+  [...document.querySelectorAll('[data-lsp-part="wheel-item"]')].some(
+    (item) => item instanceof HTMLElement && item.style.getPropertyValue('--lsp-wheel-index') === String(index),
+  );
+
+// Goal: 키 입력과 같은 틱에 프레임 표본을 모으기 시작해 애니메이션 중간을 놓치지 않음
+const pressKey = (element: Element, key: string): void => {
+  element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+};
+
+const dispatchMousePointer = (target: EventTarget, type: string, init: PointerEventInit): void => {
+  target.dispatchEvent(
+    new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'mouse', ...init }),
+  );
+};
+
 describe('Wheel', () => {
   it('exposes the column as a spinbutton with readable value text', async () => {
     const screen = await render(<MonthWheel onValueChange={vi.fn()} />);
 
-    await expect.element(screen.getByRole('spinbutton', { name: 'Month' })).toHaveAttribute('aria-valuetext', '1월');
+    const column = screen.getByRole('spinbutton', { name: 'Month' });
+    await expect.element(column).toHaveAttribute('aria-valuetext', '1월');
+    expect(column.element().style.touchAction).toBe('none');
     await expectNoAxeViolations(screen.container);
   });
 
@@ -104,20 +171,62 @@ describe('Wheel', () => {
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe(1995);
     });
 
-    it('never reports a disabled option when every option is disabled', async () => {
+    it('snaps back without reporting anything when every option is disabled', async () => {
       const onValueChange = vi.fn();
       const screen = await render(
         <WheelProbe label="Day" options={blockedDays} initialValue={1} onValueChange={onValueChange} />,
       );
-      const column = screen.getByRole('spinbutton', { name: 'Day' });
-      column.element().focus();
-      await expect.element(column).toHaveFocus();
+      const column = screen.getByRole('spinbutton', { name: 'Day' }).element();
 
-      await userEvent.keyboard('{End}');
+      pressKey(column, 'End');
+      const positions = await sampleEachFrame(() => readPosition(column));
 
-      await expect.poll(() => column.element().style.getPropertyValue(WHEEL_POSITION_PROPERTY)).toBe('2');
+      expect(Math.max(...positions)).toBeGreaterThan(1);
+      expect(positions.at(-1)).toBe(0);
       await settleEffects();
       expect(onValueChange.mock.calls).toEqual([]);
+    });
+
+    it('keeps the items around the moving position rendered while animating to a far option', async () => {
+      const screen = await render(<YearWheel onValueChange={vi.fn()} />);
+      const column = screen.getByRole('spinbutton', { name: 'Year' }).element();
+
+      pressKey(column, 'Home');
+      const samples = await sampleEachFrame(() => {
+        const position = readPosition(column);
+        return { position, isRendered: isItemRendered(Math.round(position)) };
+      });
+
+      expect(samples.some(({ position }) => position > 1 && position < 1988)).toBe(true);
+      expect(samples.filter(({ isRendered }) => !isRendered)).toEqual([]);
+    });
+
+    describe('typeahead', () => {
+      it('jumps to the option whose label starts with the typed digits', async () => {
+        const onValueChange = vi.fn();
+        const screen = await render(<YearWheel onValueChange={onValueChange} />);
+        const column = screen.getByRole('spinbutton', { name: 'Year' });
+        column.element().focus();
+        await expect.element(column).toHaveFocus();
+
+        await userEvent.keyboard('1950');
+
+        await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe(1950);
+      });
+
+      it('ignores typed text that matches no option', async () => {
+        const onValueChange = vi.fn();
+        const screen = await render(<MonthWheel onValueChange={onValueChange} />);
+        const column = screen.getByRole('spinbutton', { name: 'Month' });
+        column.element().focus();
+        await expect.element(column).toHaveFocus();
+
+        await userEvent.keyboard('x');
+        await settleEffects();
+
+        await expect.element(column).toHaveAttribute('aria-valuenow', '0');
+        expect(onValueChange.mock.calls).toEqual([]);
+      });
     });
   });
 
@@ -140,6 +249,31 @@ describe('Wheel', () => {
 
       // Goal: 1992는 끌지 않고 누른 항목을 탭으로 고른 결과. 세 칸 끌어 올리면 관성 없이도 1993 이상이 됨
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0], { timeout: 3000 }).toBeGreaterThan(1992);
+    });
+
+    it('ends a mouse drag on the next move without buttons when the release was missed', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(<YearWheel onValueChange={onValueChange} />);
+      const item = screen.getByText('1992').element();
+      const { height, top } = item.getBoundingClientRect();
+      const startY = top + height / 2;
+
+      dispatchMousePointer(item, 'pointerdown', { button: 0, buttons: 1, clientY: startY });
+      dispatchMousePointer(document, 'pointermove', { buttons: 1, clientY: startY - height * 3 });
+      dispatchMousePointer(document, 'pointermove', { buttons: 0, clientY: startY - height * 3 });
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe(1993);
+    });
+
+    it('listens to the mouse wheel on a column that mounts after the hook', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(<LateColumnYearWheel onValueChange={onValueChange} />);
+      await screen.getByRole('button', { name: 'Show' }).click();
+      const column = screen.getByRole('spinbutton', { name: 'Year' });
+
+      await userEvent.wheel(column, { delta: { y: firstItemHeight() * 3 } });
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0], { timeout: 2000 }).toBe(1993);
     });
 
     it('selects the item that is tapped without dragging', async () => {

@@ -1,10 +1,4 @@
-import {
-  type ColumnOption,
-  columnReducer,
-  createColumnState,
-  createVelocityTracker,
-  projectInertia,
-} from '@lunisolar-picker/core';
+import { type ColumnOption, columnReducer, createColumnState, type PointerSample } from '@lunisolar-picker/core';
 import {
   type CSSProperties,
   type HTMLAttributes,
@@ -17,16 +11,26 @@ import {
   useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { type DataAttributeProps, PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
 import { useStoreInstance } from '../store/use-store-instance';
 import { useLatestRef } from '../utilities/use-latest-ref';
 import { useWheelMotion, WHEEL_POSITION_PROPERTY } from './use-wheel-motion';
-import { clampPosition, nearestEnabledIndex, normalizeWheelDelta, renderWindowAround } from './wheel-geometry';
+import {
+  clampPosition,
+  nearestEnabledIndex,
+  normalizeWheelDelta,
+  projectRelease,
+  renderWindowAround,
+} from './wheel-geometry';
 
 const DRAG_THRESHOLD_PIXELS = 4;
+// Constraint: 속도는 core가 최근 100ms 샘플로 계산함. 긴 끌기에서 배열이 끝없이 늘지 않도록 최근 샘플만 둠(165Hz × 100ms보다 넉넉함)
+const MAX_GESTURE_SAMPLES = 32;
 const PAGE_STEP = 5;
 const RECENTER_DISTANCE = 10;
 const RENDER_RADIUS = 30;
+const TYPEAHEAD_RESET_MILLISECONDS = 1000;
 const WHEEL_INDEX_PROPERTY = '--lsp-wheel-index';
 const WHEEL_SETTLE_DELAY_MILLISECONDS = 120;
 
@@ -36,9 +40,13 @@ type FirstEnabledOptions<Value> = {
   readonly options: readonly ColumnOption<Value>[];
 };
 
+type FollowPointerOptions = {
+  readonly ownerDocument: Document;
+  readonly pointerId: number;
+};
+
 type GesturePointerEvent = {
   readonly clientY: number;
-  readonly pointerId: number;
   readonly timeStamp: number;
 };
 
@@ -58,8 +66,20 @@ type PointerGesture = {
   readonly isDragging: boolean;
   // Goal: 탭한 항목. 손가락이 조금 움직여도 누른 항목을 고르도록 누를 때 기억함
   readonly pressedIndex: number | null;
+  readonly samples: readonly PointerSample[];
   readonly startPosition: number;
   readonly startY: number;
+};
+
+type TypeaheadBuffer = {
+  readonly text: string;
+  readonly timeMs: number;
+};
+
+type WheelListenerOptions = {
+  readonly column: HTMLElement;
+  readonly handlers: RefObject<NativeWheelHandlers>;
+  readonly settleTimerRef: RefObject<ReturnType<typeof setTimeout> | undefined>;
 };
 
 export interface UseWheelProps<Value> {
@@ -94,17 +114,32 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   const columnRef = useRef<HTMLDivElement | null>(null);
   // Constraint: 선택 없음(-1)이어도 위치는 첫 항목에 둠
   const selectedPosition = Math.max(state.selectedIndex, 0);
-  const motion = useWheelMotion(columnRef, selectedPosition);
+  const motion = useWheelMotion({ columnRef, initialPosition: selectedPosition });
   const [renderCenter, setRenderCenter] = useState(selectedPosition);
-  const [velocityTracker] = useState(createVelocityTracker);
+  // Goal: 애니메이션 프레임 콜백이 지난 렌더의 값이 아니라 지금 그려진 창의 중심과 비교하게 함
+  const renderCenterRef = useRef(selectedPosition);
   const isInteractingRef = useRef(false);
   const gestureRef = useRef<PointerGesture | null>(null);
   // Goal: 정착 애니메이션이 향하는 항목. 키를 누르고 있어 애니메이션이 끝나기 전에 다음 키가 와도 그 다음 항목으로 넘어감
   const settlingIndexRef = useRef<number | null>(null);
+  const typeaheadRef = useRef<TypeaheadBuffer>({ text: '', timeMs: Number.NEGATIVE_INFINITY });
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     send({ type: 'options.replace', options: props.options, preferredValue: props.value });
   }, [props.options, props.value, send]);
+
+  useEffect(() => () => clearTimeout(settleTimerRef.current), []);
+
+  // Goal: 위치가 그려진 창 중심에서 RECENTER_DISTANCE 넘게 벗어날 때만 다시 그림(항목 10개당 최대 한 번)
+  // Constraint: 한 프레임에 수백 항목을 건너는 관성·Home/End에서도 그 프레임에 보이는 항목이 DOM에 있도록 바로 그림
+  const recenterRenderWindow = useCallback((position: number) => {
+    if (Math.abs(position - renderCenterRef.current) <= RECENTER_DISTANCE) return;
+    const center = Math.round(position);
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    renderCenterRef.current = center;
+    flushSync(() => setRenderCenter(center));
+  }, []);
 
   const commitIndex = useCallback(
     (index: number) => {
@@ -114,12 +149,18 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
       settlingIndexRef.current = null;
       const option = currentProps.options[index];
-      // Constraint: 전부 비활성인 열에서 멈춘 항목도 비활성일 수 있음. 비활성 값은 앱에 알리지 않음 (preflight 2.11)
-      if (!option || option.isDisabled || index === currentState.selectedIndex) return;
+      // Constraint: 전부 비활성인 열에서 멈춘 항목도 비활성일 수 있음. 비활성 값은 앱에 알리지 않고 위치를 선택된 자리로 되돌림 (preflight 2.11)
+      if (!option || option.isDisabled) {
+        const restingPosition = Math.max(currentState.selectedIndex, 0);
+        motion.setPosition(restingPosition);
+        recenterRenderWindow(restingPosition);
+        return;
+      }
+      if (index === currentState.selectedIndex) return;
       send({ type: 'option.select', index });
       currentProps.onValueChange(option.value);
     },
-    [latest, send],
+    [latest, motion, recenterRenderWindow, send],
   );
 
   const settleAt = useCallback(
@@ -127,24 +168,26 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
       const targetIndex = nearestEnabledIndex(latest.current.props.options, position);
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
       settlingIndexRef.current = targetIndex;
-      setRenderCenter(targetIndex);
-      motion.animateTo(targetIndex, durationMilliseconds, () => commitIndex(targetIndex));
+      motion.animateTo({
+        durationMilliseconds,
+        onFrame: recenterRenderWindow,
+        onSettle: () => commitIndex(targetIndex),
+        target: targetIndex,
+      });
     },
-    [latest, motion, commitIndex],
+    [latest, motion, commitIndex, recenterRenderWindow],
   );
 
   // Goal: 값이 밖에서 바뀌면(제어 값·항목 교체) 위치를 선택된 항목에 맞춤. 사용자가 움직이는 중이거나 정착 중이면 건드리지 않음
   useEffect(() => {
     if (isInteractingRef.current || settlingIndexRef.current !== null) return;
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    renderCenterRef.current = selectedPosition;
     setRenderCenter(selectedPosition);
     motion.setPosition(selectedPosition);
   }, [selectedPosition, motion]);
 
-  const recenterRenderWindow = (position: number): void => {
-    if (Math.abs(position - renderCenter) > RECENTER_DISTANCE) setRenderCenter(Math.round(position));
-  };
-
-  useNativeWheelListener(columnRef, {
+  const wheelHandlers = useLatestRef<NativeWheelHandlers>({
     isDisabled,
     onWheel: (deltaPixels) => {
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
@@ -168,8 +211,11 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
     const deltaPixels = event.clientY - gesture.startY;
     if (!gesture.isDragging && Math.abs(deltaPixels) < DRAG_THRESHOLD_PIXELS) return;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-    if (!gesture.isDragging) gestureRef.current = { ...gesture, isDragging: true };
-    velocityTracker.add({ position: event.clientY, timeMs: event.timeStamp });
+    gestureRef.current = {
+      ...gesture,
+      isDragging: true,
+      samples: [...gesture.samples, { position: event.clientY, timeMs: event.timeStamp }].slice(-MAX_GESTURE_SAMPLES),
+    };
     const nextPosition = clampPosition(
       gesture.startPosition - deltaPixels / motion.readItemSize(),
       props.options.length,
@@ -187,19 +233,17 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
       settleAt(gesture.pressedIndex ?? motion.positionRef.current);
       return;
     }
-    // Constraint: 마지막 move 뒤 멈춰 있던 시간이 속도에 반영되도록 손을 떼는 순간의 샘플을 한 번 더 넣음 (계약 §2.9 ②)
-    velocityTracker.add({ position: event.clientY, timeMs: event.timeStamp });
-    const itemSize = motion.readItemSize();
-    const inertia = projectInertia({
-      offset: motion.positionRef.current * itemSize,
-      velocity: -velocityTracker.velocity(),
-      itemSize,
+    const inertia = projectRelease({
       itemCount: props.options.length,
+      itemSize: motion.readItemSize(),
+      position: motion.positionRef.current,
+      release: { position: event.clientY, timeMs: event.timeStamp },
+      samples: gesture.samples,
     });
     settleAt(inertia.index, inertia.durationMs);
   };
 
-  // Goal: 브라우저가 제스처를 가져가면(pointercancel) 제스처를 끝내고 가까운 항목에 맞춤. 탭 선택·관성은 적용하지 않음
+  // Goal: 브라우저가 제스처를 가져가거나(pointercancel) 버튼을 뗀 것을 놓치면 제스처를 끝내고 가까운 항목에 맞춤. 탭 선택·관성은 적용하지 않음
   const cancelGesture = (): void => {
     if (gestureRef.current === null) return;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
@@ -218,33 +262,62 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
     motion.stop();
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     isInteractingRef.current = true;
-    velocityTracker.reset();
-    velocityTracker.add({ position: event.clientY, timeMs: event.timeStamp });
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     gestureRef.current = {
       isDragging: false,
       pressedIndex: itemIndexOf(event.target),
+      samples: [{ position: event.clientY, timeMs: event.timeStamp }],
       startPosition: motion.positionRef.current,
       startY: event.clientY,
     };
-    followPointer(event.currentTarget.ownerDocument, event.pointerId);
+    followPointer({ ownerDocument: event.currentTarget.ownerDocument, pointerId: event.pointerId });
+  };
+
+  // Goal: 9999개 연도 열에서도 숫자를 쳐서 바로 감 (스펙 10.3). 1초 동안 이어 친 글자를 접두어로 보고 처음 맞는 활성 항목으로 감
+  const jumpToTypedOption = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key.length !== 1) return;
+    const previous = typeaheadRef.current;
+    const isContinuing = event.timeStamp - previous.timeMs < TYPEAHEAD_RESET_MILLISECONDS;
+    const text = `${isContinuing ? previous.text : ''}${event.key}`;
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    typeaheadRef.current = { text, timeMs: event.timeStamp };
+    const matchIndex = typeaheadMatchIndex(props.options, text);
+    if (matchIndex === null) return;
+    event.preventDefault();
+    settleAt(matchIndex);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (isDisabled || event.altKey || event.ctrlKey || event.metaKey) return;
+    const isModified = event.altKey || event.ctrlKey || event.metaKey;
+    if (isDisabled || isModified || event.nativeEvent.isComposing) return;
     const baseIndex = settlingIndexRef.current ?? state.selectedIndex;
     const targetIndex = keyboardTargetIndex(event.key, baseIndex, props.options.length);
-    if (targetIndex === null) return;
+    if (targetIndex === null) {
+      jumpToTypedOption(event);
+      return;
+    }
     event.preventDefault();
     settleAt(
       firstEnabledFrom({ direction: targetIndex >= baseIndex ? 1 : -1, index: targetIndex, options: props.options }),
     );
   };
 
-  const attachColumn = useCallback((node: HTMLDivElement | null) => {
-    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-    columnRef.current = node;
-  }, []);
+  // Goal: 열 요소가 붙을 때마다 휠 리스너를 붙임. 나중에 열을 그리는 훅 사용자도 마우스 휠을 받음
+  // Constraint: 정착 타이머는 훅이 소유함. 앱 ref와 합쳐져 렌더마다 다시 붙어도 스크롤 뒤 정착이 취소되지 않음
+  const attachColumn = useCallback(
+    (node: HTMLDivElement | null) => {
+      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+      columnRef.current = node;
+      if (node === null) return undefined;
+      const detachWheel = listenToWheel({ column: node, handlers: wheelHandlers, settleTimerRef });
+      return () => {
+        detachWheel();
+        // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+        columnRef.current = null;
+      };
+    },
+    [wheelHandlers],
+  );
 
   const selectedOption = props.options[state.selectedIndex];
 
@@ -256,7 +329,8 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
       role: 'spinbutton',
       tabIndex: isDisabled ? -1 : 0,
       // Goal: 서버 렌더와 첫 화면부터 선택된 항목에 위치함. 같은 값이면 React가 다시 쓰지 않아 움직이는 중의 직접 갱신과 부딪히지 않음
-      style: cssVariables({ [WHEEL_POSITION_PROPERTY]: selectedPosition }),
+      // Constraint: 터치 끌기를 브라우저 스크롤이 가져가지 않게 touch-action은 테마가 아니라 부품이 정함 (스펙 10.3)
+      style: { touchAction: 'none', ...cssVariables({ [WHEEL_POSITION_PROPERTY]: selectedPosition }) },
       'aria-label': props.label,
       'aria-valuemin': 0,
       'aria-valuemax': Math.max(props.options.length - 1, 0),
@@ -299,7 +373,7 @@ const firstEnabledFrom = <Value>({ direction, index, options }: FirstEnabledOpti
 };
 
 // Constraint: 부품 계약상 data-* 상태 속성만 출력하므로 항목 인덱스는 항목 style의 --lsp-wheel-index에서 읽음
-const itemIndexOf = (target: EventTarget): number | null => {
+const itemIndexOf = (target: EventTarget | null): number | null => {
   const item = target instanceof Element ? target.closest(`[${PART_ATTRIBUTE}="wheel-item"]`) : null;
   if (!(item instanceof HTMLElement)) return null;
   const index = Number.parseInt(item.style.getPropertyValue(WHEEL_INDEX_PROPERTY), 10);
@@ -325,18 +399,45 @@ const keyboardTargetIndex = (key: string, selectedIndex: number, itemCount: numb
   }
 };
 
-// Constraint: setPointerCapture 대신 누른 동안만 문서에 리스너를 붙임. Firefox는 포인터 캡처가 같은 브라우저의 다른 페이지 마우스 입력까지 이 열로 끌어옴(병렬 테스트에서 확인). 터치는 브라우저가 누른 요소로 암묵 캡처하고, 마우스는 버튼을 누른 동안 문서 밖 이동도 문서로 전달됨
-const useDocumentPointerListeners = (
-  listeners: GesturePointerListeners,
-): ((ownerDocument: Document, pointerId: number) => void) => {
+// Constraint: React의 onWheel은 passive라 preventDefault가 안 됨. 페이지가 같이 스크롤되지 않도록 비passive 리스너를 직접 붙임
+const listenToWheel = ({ column, handlers, settleTimerRef }: WheelListenerOptions): (() => void) => {
+  const onWheel = (event: WheelEvent): void => {
+    if (handlers.current.isDisabled) return;
+    event.preventDefault();
+    handlers.current.onWheel(normalizeWheelDelta(event.deltaY, event.deltaMode, column.clientHeight));
+    clearTimeout(settleTimerRef.current);
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    settleTimerRef.current = setTimeout(() => handlers.current.onSettle(), WHEEL_SETTLE_DELAY_MILLISECONDS);
+  };
+  column.addEventListener('wheel', onWheel, { passive: false });
+  return () => column.removeEventListener('wheel', onWheel);
+};
+
+const typeaheadMatchIndex = <Value>(options: readonly ColumnOption<Value>[], text: string): number | null => {
+  const prefix = text.toLocaleLowerCase();
+  const index = options.findIndex(
+    (option) => !option.isDisabled && option.label.toLocaleLowerCase().startsWith(prefix),
+  );
+  return index === -1 ? null : index;
+};
+
+// Constraint: setPointerCapture 대신 누른 동안만 문서에 캡처 단계 리스너를 붙임. 캡처를 쓰면 병렬로 도는 Firefox 테스트에서 다른 테스트의 마우스 입력이 이 열로 들어온 것으로 보였음(원인은 확정하지 못함)
+// Constraint: 캡처 단계라 하위 요소의 stopPropagation에 막히지 않음. 문서 밖에서 버튼을 떼 pointerup을 놓친 마우스는 다음 move의 buttons === 0으로 끝냄
+const useDocumentPointerListeners = (listeners: GesturePointerListeners): ((options: FollowPointerOptions) => void) => {
   const latestListeners = useLatestRef(listeners);
   const detachRef = useRef<(() => void) | null>(null);
   useEffect(() => () => detachRef.current?.(), []);
   return useCallback(
-    (ownerDocument: Document, pointerId: number) => {
+    ({ ownerDocument, pointerId }: FollowPointerOptions) => {
       detachRef.current?.();
       const onMove = (event: globalThis.PointerEvent): void => {
-        if (event.pointerId === pointerId) latestListeners.current.onMove(event);
+        if (event.pointerId !== pointerId) return;
+        if (event.pointerType === 'mouse' && event.buttons === 0) {
+          detach();
+          latestListeners.current.onCancel();
+          return;
+        }
+        latestListeners.current.onMove(event);
       };
       const onUp = (event: globalThis.PointerEvent): void => {
         if (event.pointerId !== pointerId) return;
@@ -349,40 +450,18 @@ const useDocumentPointerListeners = (
         latestListeners.current.onCancel();
       };
       const detach = (): void => {
-        ownerDocument.removeEventListener('pointermove', onMove);
-        ownerDocument.removeEventListener('pointerup', onUp);
-        ownerDocument.removeEventListener('pointercancel', onCancel);
+        ownerDocument.removeEventListener('pointermove', onMove, true);
+        ownerDocument.removeEventListener('pointerup', onUp, true);
+        ownerDocument.removeEventListener('pointercancel', onCancel, true);
         // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
         detachRef.current = null;
       };
-      ownerDocument.addEventListener('pointermove', onMove);
-      ownerDocument.addEventListener('pointerup', onUp);
-      ownerDocument.addEventListener('pointercancel', onCancel);
+      ownerDocument.addEventListener('pointermove', onMove, true);
+      ownerDocument.addEventListener('pointerup', onUp, true);
+      ownerDocument.addEventListener('pointercancel', onCancel, true);
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
       detachRef.current = detach;
     },
     [latestListeners],
   );
-};
-
-// Constraint: React의 onWheel은 passive라 preventDefault가 안 됨. 페이지가 같이 스크롤되지 않도록 비passive 리스너를 직접 붙임
-const useNativeWheelListener = (columnRef: RefObject<HTMLElement | null>, handlers: NativeWheelHandlers): void => {
-  const latestHandlers = useLatestRef(handlers);
-  useEffect(() => {
-    const column = columnRef.current;
-    if (!column) return;
-    let settleTimer: ReturnType<typeof setTimeout> | undefined;
-    const onWheel = (event: WheelEvent): void => {
-      if (latestHandlers.current.isDisabled) return;
-      event.preventDefault();
-      latestHandlers.current.onWheel(normalizeWheelDelta(event.deltaY, event.deltaMode, column.clientHeight));
-      clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => latestHandlers.current.onSettle(), WHEEL_SETTLE_DELAY_MILLISECONDS);
-    };
-    column.addEventListener('wheel', onWheel, { passive: false });
-    return () => {
-      clearTimeout(settleTimer);
-      column.removeEventListener('wheel', onWheel);
-    };
-  }, [columnRef, latestHandlers]);
 };

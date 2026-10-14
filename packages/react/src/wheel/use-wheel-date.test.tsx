@@ -126,6 +126,24 @@ describe('useWheelDate', () => {
       expect(snapshot.yearCount).toBe(0);
       expect(snapshot.value).toBeNull();
     });
+
+    it('keeps a present value without a callback when the constraints lie outside its calendar', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(
+        <WheelDateProbe
+          calendars={[dangi]}
+          value="1990-06-23[u-ca=dangi]"
+          max="1800-01-01"
+          onValueChange={onValueChange}
+        />,
+      );
+      await settleEffects();
+
+      const snapshot = await readProbe(screen);
+      expect(snapshot.value).toBe('1990-06-23[u-ca=dangi]');
+      expect(snapshot.yearCount).toBe(0);
+      expect(onValueChange.mock.calls).toEqual([]);
+    });
   });
 
   describe('calendar', () => {

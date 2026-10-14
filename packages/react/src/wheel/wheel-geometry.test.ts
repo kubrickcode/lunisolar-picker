@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { clampPosition, nearestEnabledIndex, normalizeWheelDelta, renderWindowAround } from './wheel-geometry';
+import {
+  clampPosition,
+  nearestEnabledIndex,
+  normalizeWheelDelta,
+  projectRelease,
+  renderWindowAround,
+} from './wheel-geometry';
 
 const option = (value: number, isDisabled = false) => ({ value, label: String(value), isDisabled });
 
@@ -28,5 +34,21 @@ describe('wheel-geometry', () => {
   it('renders only a window of items around the center', () => {
     expect(renderWindowAround(5000, 9999, 20)).toEqual({ start: 4980, end: 5020 });
     expect(renderWindowAround(3, 9999, 20)).toEqual({ start: 0, end: 23 });
+  });
+
+  describe('projectRelease', () => {
+    const upwardDrag = [
+      { position: 300, timeMs: 0 },
+      { position: 200, timeMs: 50 },
+    ];
+    const release = { itemCount: 100, itemSize: 20, position: 10, samples: upwardDrag };
+
+    it('flings far when the finger leaves right after the last move', () => {
+      expect(projectRelease({ ...release, release: { position: 200, timeMs: 51 } }).index).toBe(58);
+    });
+
+    it('slows the fling when the finger rested before leaving', () => {
+      expect(projectRelease({ ...release, release: { position: 200, timeMs: 100 } }).index).toBe(23);
+    });
   });
 });
