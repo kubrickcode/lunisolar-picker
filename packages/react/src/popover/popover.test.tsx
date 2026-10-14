@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
+import { renderWithHydration } from '../testing/expect-hydration';
 import * as Popover from './parts';
 
 const Example = ({ isOpenInitially = false }: { isOpenInitially?: boolean }) => (
@@ -111,6 +112,23 @@ describe('Popover', () => {
     await userEvent.keyboard('{Escape}');
 
     await expect.element(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('moves focus into the content when it starts open after hydration', async () => {
+    const { recoverableErrors, unmount } = await renderWithHydration(
+      <Popover.Root defaultOpen>
+        <Popover.Trigger>Choose date</Popover.Trigger>
+        <Popover.Content aria-label="Calendar">
+          <button type="button" data-autofocus>
+            Selected day
+          </button>
+        </Popover.Content>
+      </Popover.Root>,
+    );
+
+    expect(recoverableErrors).toEqual([]);
+    expect(document.activeElement?.textContent).toBe('Selected day');
+    unmount();
   });
 
   it('closes when the pointer goes down outside', async () => {

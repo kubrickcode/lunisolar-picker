@@ -53,3 +53,23 @@ describe('lockBodyScroll', () => {
     releaseOuter();
   });
 });
+
+describe('lockBodyScroll inline styles', () => {
+  it('adds the scrollbar width to existing end padding and restores prior inline styles', () => {
+    document.body.style.paddingInlineEnd = '10px';
+    document.body.style.overflow = 'auto';
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    const release = lockBodyScroll();
+
+    expect(document.body.style.paddingInlineEnd).toBe(`${10 + scrollbarWidth}px`);
+
+    release();
+
+    expect(document.body.style.paddingInlineEnd).toBe('10px');
+    expect(document.body.style.overflow).toBe('auto');
+    expect(document.body.style.top).toBe('');
+    document.body.style.paddingInlineEnd = '';
+    document.body.style.overflow = '';
+  });
+});

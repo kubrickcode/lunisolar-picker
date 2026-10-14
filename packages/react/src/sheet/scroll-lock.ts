@@ -36,10 +36,11 @@ const applyBodyLock = (): (() => void) => {
     top: body.style.top,
   };
   const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+  const existingPadding = Number.parseFloat(getComputedStyle(body).paddingInlineEnd) || 0;
   Object.assign(body.style, {
     insetInline: '0',
     overflow: 'hidden',
-    paddingInlineEnd: `${scrollbarWidth}px`,
+    paddingInlineEnd: `${existingPadding + scrollbarWidth}px`,
     position: 'fixed',
     top: `-${scrollY}px`,
   });

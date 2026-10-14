@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
+import { renderWithHydration } from '../testing/expect-hydration';
 import * as Sheet from './parts';
 import { useSheetContext } from './sheet-context';
 
@@ -80,6 +81,41 @@ describe('Sheet', () => {
     await userEvent.keyboard('{Escape}');
 
     await expect.element(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('keeps the sheet open while an IME composition is being cancelled with Escape', async () => {
+    const screen = await render(<EscapeHandlingExample />);
+    await expect.element(screen.getByRole('dialog')).toBeVisible();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true }));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    await expect.element(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('locks scroll, hides siblings, and moves focus when it starts open after hydration', async () => {
+    const { container, recoverableErrors, unmount } = await renderWithHydration(
+      <>
+        <main>
+          <p>Page content</p>
+        </main>
+        <Sheet.Root defaultOpen>
+          <Sheet.Content aria-label="Birth date">
+            <button type="button" data-autofocus>
+              Wheel
+            </button>
+          </Sheet.Content>
+        </Sheet.Root>
+      </>,
+    );
+
+    expect(recoverableErrors).toEqual([]);
+    expect(document.body.style.position).toBe('fixed');
+    expect(container.inert).toBe(true);
+    expect(document.activeElement?.textContent).toBe('Wheel');
+
+    unmount();
+    expect(document.body.style.position).toBe('');
   });
 
   it('closes when the backdrop is tapped but not when the panel is tapped', async () => {

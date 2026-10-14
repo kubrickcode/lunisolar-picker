@@ -1,18 +1,10 @@
 import { useSyncExternalStore } from 'react';
 
-export type Presentation = 'auto' | 'popover' | 'sheet';
-export type ResolvedPresentation = 'popover' | 'sheet';
-
 // Goal: 터치 기기이면서 좁은 화면이면 팝오버 대신 바텀시트로 엶 (스펙 7.5)
 export const COARSE_NARROW_SCREEN_QUERY = '(pointer: coarse) and (max-width: 640px)';
 
-export const resolvePresentation = (
-  presentation: Presentation,
-  isCoarseNarrowScreen: boolean,
-): ResolvedPresentation => {
-  if (presentation !== 'auto') return presentation;
-  return isCoarseNarrowScreen ? 'sheet' : 'popover';
-};
+export type Presentation = 'auto' | 'popover' | 'sheet';
+export type ResolvedPresentation = 'popover' | 'sheet';
 
 export const usePresentation = (presentation: Presentation): ResolvedPresentation => {
   const isCoarseNarrowScreen = useSyncExternalStore(
@@ -21,6 +13,14 @@ export const usePresentation = (presentation: Presentation): ResolvedPresentatio
     readServerIsCoarseNarrowScreen,
   );
   return resolvePresentation(presentation, isCoarseNarrowScreen);
+};
+
+export const resolvePresentation = (
+  presentation: Presentation,
+  isCoarseNarrowScreen: boolean,
+): ResolvedPresentation => {
+  if (presentation !== 'auto') return presentation;
+  return isCoarseNarrowScreen ? 'sheet' : 'popover';
 };
 
 const subscribeToScreen = (onChange: () => void): (() => void) => {

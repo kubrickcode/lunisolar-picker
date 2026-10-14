@@ -92,9 +92,9 @@ export const usePopover = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    // Goal: 포커스가 아직 안 옮겨졌거나 body에 있어도 Esc로 닫히게 함. 자식이 Esc를 이미 처리했으면 닫지 않음
+    // Goal: 포커스가 아직 안 옮겨졌거나 body에 있어도 Esc로 닫히게 함. 자식이 Esc를 이미 처리했거나 IME 조합 중이면(Esc는 조합을 먼저 취소함) 닫지 않음
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
       event.preventDefault();
       closeAndRestoreFocus();
     };
