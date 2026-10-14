@@ -1,6 +1,6 @@
 import type { CalendarId } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
-import type { MonthGridCell } from '@lunisolar-picker/core';
+import type { CommitMode, MonthGridCell } from '@lunisolar-picker/core';
 import { type ReactElement, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, renderHook } from 'vitest-browser-react';
@@ -12,7 +12,8 @@ import { type CalendarApi, type UseCalendarProps, useCalendar } from './use-cale
 // Constraint: 값 문자열의 날짜 부분은 역법과 무관하게 ISO 양력 날짜이고, 역법은 표기로만 붙음
 const LUNAR_TODAY = `${FIXED_TODAY}[u-ca=dangi]`;
 
-type ConfirmProbeProps = {
+type ClosingProbeProps = {
+  readonly commitMode: CommitMode;
   readonly onClose: () => void;
   readonly onValueChange: UseCalendarProps['onValueChange'];
 };
@@ -20,12 +21,21 @@ type ConfirmProbeProps = {
 const renderCalendar = (initialProps: UseCalendarProps) =>
   renderHook((props?: UseCalendarProps) => useCalendar(props ?? {}), { initialProps, wrapper: KoreanProvider });
 
-const ConfirmProbe = ({ onClose, onValueChange }: ConfirmProbeProps): ReactElement => {
-  const calendar = useCalendar({ commitMode: 'confirm', onValueChange });
+const ClosingProbe = ({ commitMode, onClose, onValueChange }: ClosingProbeProps): ReactElement => {
+  const calendar = useCalendar({ commitMode, onValueChange });
   return (
     <>
       <button type="button" onClick={() => calendar.selectEpochDay(epochDayAt('2026-10-20'))}>
         Pick
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          calendar.selectEpochDay(epochDayAt('2026-10-20'));
+          onClose();
+        }}
+      >
+        Pick and close
       </button>
       <button
         type="button"
@@ -40,9 +50,13 @@ const ConfirmProbe = ({ onClose, onValueChange }: ConfirmProbeProps): ReactEleme
   );
 };
 
-const ClosingConfirmProbe = ({ onValueChange }: Pick<ConfirmProbeProps, 'onValueChange'>): ReactElement => {
+const ClosableCalendar = ({ commitMode, onValueChange }: Omit<ClosingProbeProps, 'onClose'>): ReactElement => {
   const [isOpen, setIsOpen] = useState(true);
-  return isOpen ? <ConfirmProbe onValueChange={onValueChange} onClose={() => setIsOpen(false)} /> : <p>Closed</p>;
+  return isOpen ? (
+    <ClosingProbe commitMode={commitMode} onValueChange={onValueChange} onClose={() => setIsOpen(false)} />
+  ) : (
+    <p>Closed</p>
+  );
 };
 
 const BlurProbe = ({ onBlur }: { readonly onBlur: () => void }): ReactElement => {
@@ -65,8 +79,24 @@ describe('useCalendar', () => {
       const { result, act } = await renderCalendar({ defaultValue: null, onValueChange });
 
       await act(() => result.current.selectEpochDay(epochDayAt('2026-10-20')));
+      await settleEffects();
 
       expect(result.current.value).toBe('2026-10-20');
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      expect(onValueChange).toHaveBeenCalledWith('2026-10-20', { validity: { isValid: true, reasons: [] } });
+    });
+
+    it('reports the selected date once even when the calendar closes in the same click', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(<ClosableCalendar commitMode="immediate" onValueChange={onValueChange} />, {
+        wrapper: KoreanProvider,
+      });
+
+      await screen.getByRole('button', { name: 'Pick and close' }).click();
+      await expect.element(screen.getByText('Closed')).toBeVisible();
+      await settleEffects();
+
+      expect(onValueChange).toHaveBeenCalledTimes(1);
       expect(onValueChange).toHaveBeenCalledWith('2026-10-20', { validity: { isValid: true, reasons: [] } });
     });
 
@@ -88,7 +118,9 @@ describe('useCalendar', () => {
       const { result, act } = await renderCalendar({ value: '2026-10-01', onValueChange });
 
       await act(() => result.current.selectEpochDay(epochDayAt('2026-10-20')));
+      await settleEffects();
 
+      expect(onValueChange).toHaveBeenCalledTimes(1);
       expect(onValueChange).toHaveBeenCalledWith('2026-10-20', { validity: { isValid: true, reasons: [] } });
       expect(result.current.value).toBe('2026-10-01');
     });
@@ -102,6 +134,17 @@ describe('useCalendar', () => {
 
       expect(result.current.value).toBe('2026-11-11');
       expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('opens on today in the solar calendar when the parent value is empty, ignoring defaultValue', async () => {
+      const { result } = await renderCalendar({
+        calendars: [dangi],
+        value: null,
+        defaultValue: '2026-11-20[u-ca=dangi]',
+      });
+
+      expect(result.current.navigation.focusedEpochDay).toBe(epochDayAt(FIXED_TODAY));
+      expect(result.current.navigation.displayCalendarId).toBe('gregory');
     });
 
     it('reports a non-canonical value and treats it as empty', async () => {
@@ -151,7 +194,9 @@ describe('useCalendar', () => {
 
     it('reports the confirmed value even when the calendar closes in the same click', async () => {
       const onValueChange = vi.fn();
-      const screen = await render(<ClosingConfirmProbe onValueChange={onValueChange} />, { wrapper: KoreanProvider });
+      const screen = await render(<ClosableCalendar commitMode="confirm" onValueChange={onValueChange} />, {
+        wrapper: KoreanProvider,
+      });
 
       await screen.getByRole('button', { name: 'Pick' }).click();
       await screen.getByRole('button', { name: 'Confirm' }).click();
@@ -183,6 +228,26 @@ describe('useCalendar', () => {
 
       expect(result.current.navigation.displayCalendarId).toBe('gregory');
       expect(result.current.calendar.id).toBe('gregory');
+    });
+
+    it('switches an uncontrolled display calendar while keeping the focused day and value', async () => {
+      const onValueChange = vi.fn();
+      const onDisplayCalendarChange = vi.fn<(calendarId: CalendarId) => void>();
+      const { result, act } = await renderCalendar({
+        calendars: [dangi],
+        defaultValue: '2026-10-20',
+        onValueChange,
+        onDisplayCalendarChange,
+      });
+
+      await act(() => result.current.selectDisplayCalendar('dangi'));
+      await settleEffects();
+
+      expect(result.current.navigation.displayCalendarId).toBe('dangi');
+      expect(result.current.navigation.focusedEpochDay).toBe(epochDayAt('2026-10-20'));
+      expect(result.current.value).toBe('2026-10-20');
+      expect(onDisplayCalendarChange).toHaveBeenCalledWith('dangi');
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
     it('returns to the parent display calendar when the parent keeps it unchanged', async () => {
@@ -266,6 +331,18 @@ describe('useCalendar', () => {
     await clickToFocus(screen.getByRole('textbox', { name: 'Outside' }));
 
     await expect.poll(() => onBlur.mock.calls.length).toBe(1);
+  });
+
+  it('marks only the tabbable cell, the selected day, for initial focus', async () => {
+    const { result } = await renderCalendar({ defaultValue: '2026-10-20' });
+
+    const autofocusDates = result.current.months
+      .flatMap((month) => month.weeks.flat())
+      .filter((cell) => result.current.getCellProps(cell).button['data-autofocus'] !== undefined)
+      .map((cell) => cell.date);
+
+    expect(autofocusDates).toEqual(['2026-10-20']);
+    expect(result.current.getCellProps(cellOf(result.current, '2026-10-20')).button.tabIndex).toBe(0);
   });
 
   it('opens on the month of today when there is no value', async () => {

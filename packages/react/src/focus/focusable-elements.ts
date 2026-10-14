@@ -1,6 +1,8 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
-const AUTOFOCUS_SELECTOR = '[data-autofocus]';
+// Goal: 열릴 때 처음 포커스할 요소 표시. 스타일 계약(DATA_ATTRIBUTES)이 아니라 동작 훅이라 따로 둠 (M4 preflight 3.3)
+export const AUTOFOCUS_ATTRIBUTE = 'data-autofocus';
+const AUTOFOCUS_SELECTOR = `[${AUTOFOCUS_ATTRIBUTE}]`;
 const FOCUSABLE_SELECTOR = [
   'a[href]:not([tabindex="-1"])',
   'button:not([disabled]):not([tabindex="-1"])',

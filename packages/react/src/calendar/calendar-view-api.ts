@@ -10,6 +10,7 @@ import type {
   TdHTMLAttributes,
 } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
+import { AUTOFOCUS_ATTRIBUTE } from '../focus/focusable-elements';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
 import { calendarKeyAction } from './calendar-key-action';
 import { buildCellLabel } from './cell-label';
@@ -61,7 +62,7 @@ export type CalendarViewInput = {
 
 export interface CellProps {
   readonly gridCell: TdHTMLAttributes<HTMLTableCellElement>;
-  readonly button: ButtonHTMLAttributes<HTMLButtonElement>;
+  readonly button: ButtonHTMLAttributes<HTMLButtonElement> & { readonly [AUTOFOCUS_ATTRIBUTE]?: string };
 }
 
 export type SelectionBehavior = {
@@ -104,6 +105,8 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
       button: {
         type: 'button',
         tabIndex: state.isFocused ? 0 : -1,
+        // Goal: Popover·Sheet가 열릴 때 탭으로 들어가는 칸(선택한 날, 없으면 오늘)에 포커스가 가게 함 (스펙 10.4, preflight 3.3)
+        ...(state.isFocused ? { [AUTOFOCUS_ATTRIBUTE]: '' } : {}),
         'aria-label': buildCellLabel({
           cell,
           calendar,

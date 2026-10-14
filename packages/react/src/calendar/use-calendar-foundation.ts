@@ -20,6 +20,7 @@ import type { SharedPickerProps } from '../settings/shared-picker-props';
 import { usePickerContext } from '../settings/use-picker-context';
 import type { PickerSettings } from '../settings/use-picker-settings';
 import { useStoreInstance } from '../store/use-store-instance';
+import { isCalendarProvided, providedCalendarOf } from './provided-calendar';
 
 const DEFAULT_COMMIT_MODE: CommitMode = 'immediate';
 const DEFAULT_NUMBER_OF_MONTHS = 1;
@@ -101,7 +102,7 @@ export const useCalendarFoundation = ({
   const requestedCalendarId = props.displayCalendar;
   useEffect(() => {
     if (requestedCalendarId === undefined || requestedCalendarId === navigation.displayCalendarId) return;
-    if (!isProvided(calendars, requestedCalendarId)) return;
+    if (!isCalendarProvided(calendars, requestedCalendarId)) return;
     sendNavigation({ type: 'calendar.set', calendarId: requestedCalendarId });
   }, [requestedCalendarId, navigation.displayCalendarId, calendars, sendNavigation]);
 
@@ -155,12 +156,9 @@ export const useCalendarFoundation = ({
   };
 };
 
-const isProvided = (calendars: readonly CalendarSystem[], calendarId: CalendarId): boolean =>
-  calendars.some((candidate) => candidate.id === calendarId);
-
 // Constraint: 같은 날을 양력으로 보여 줌. 포커스한 날은 epochDay라 그대로 둘 수 있음. 앱이 고른 것이 아니므로 onDisplayCalendarChange는 부르지 않음
 const moveOffRemovedCalendar = (previous: NavigationState, context: PickerContext): NavigationState =>
-  isProvided(context.calendars, previous.displayCalendarId)
+  isCalendarProvided(context.calendars, previous.displayCalendarId)
     ? previous
     : createNavigationState(context, { focusedEpochDay: previous.focusedEpochDay, displayCalendarId: gregory.id });
 
@@ -168,10 +166,6 @@ const pickSecondaryCalendar = (
   calendars: readonly CalendarSystem[],
   displayed: CalendarSystem,
 ): CalendarSystem | null => calendars.find((candidate) => candidate.id !== displayed.id) ?? null;
-
-// Constraint: 렌더 중에 던지지 않음. 주지 않은 역법을 요청받으면 양력으로 보여 줌 (preflight 3.5)
-const providedCalendarOf = (calendars: readonly CalendarSystem[], calendarId: CalendarId): CalendarSystem =>
-  calendars.find((candidate) => candidate.id === calendarId) ?? gregory;
 
 // Goal: 보이는 첫 달의 시작일이 바뀐 방향으로 넘김 애니메이션을 고름. 렌더 중 상태 갱신이라 StrictMode 이중 렌더에서도 같은 결과
 const useSlideDirection = (monthStartEpochDay: EpochDay): SlideDirection | null => {

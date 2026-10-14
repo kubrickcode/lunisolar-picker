@@ -1,4 +1,4 @@
-import { type CalendarSystem, type DateString, type EpochDay, gregory } from '@lunisolar-picker/calendar';
+import type { CalendarSystem, DateString, EpochDay } from '@lunisolar-picker/calendar';
 import {
   createSingleSelectionState,
   type DateConstraints,
@@ -22,6 +22,7 @@ import { parseOptionalDate } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { type CalendarViewApi, createCalendarViewApi } from './calendar-view-api';
 import { parseSelection, selectionKey } from './parsed-selection';
+import { toProvidedCalendar } from './provided-calendar';
 import { type CalendarFoundationProps, useCalendarFoundation } from './use-calendar-foundation';
 import { useSelectionSync } from './use-selection-sync';
 
@@ -57,8 +58,11 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     props.onInvalidValue,
     settings.calendarKey,
   );
+  // Constraint: 제어 중이면 처음 포커스·표시 역법도 부모 값(null 포함)만 따름. 쓰이지 않는 defaultValue가 화면을 정하지 않게 함
   const [initialSelected] = useState(() =>
-    parseSelection(controlled.value ?? parseOptionalDate(props.defaultValue, settings.calendars).value),
+    parseSelection(
+      controlled.isControlled ? controlled.value : parseOptionalDate(props.defaultValue, settings.calendars).value,
+    ),
   );
   const foundation = useCalendarFoundation({ props, settings, constraints: props, initialSelected });
   const { context } = foundation;
@@ -92,9 +96,8 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     emitChange: () => props.onValueChange?.(value, { validity }),
   });
 
-  // Goal: 확인 버튼이 commit 뒤 같은 클릭에서 달력을 닫아(언마운트) 이펙트가 돌지 않아도 확정 값을 알림 (preflight 1.4, 계약 §3.5 Popover.Close 조립)
-  const commit = (): void => {
-    sendSelection({ type: 'commit' });
+  // Goal: 사용자 조작이 같은 핸들러에서 달력을 닫아(언마운트) 이펙트가 돌지 않아도 확정 값을 알림. 공개 sendSelection으로 바로 보낸 이벤트는 이펙트가 알림 (preflight 1.4, 계약 §3.5 Popover.Close 조립)
+  const reportCommitted = (): void => {
     const snapshot = getSnapshot();
     const committedKey = selectionKey(snapshot.committed);
     if (selectionSync.isReported(committedKey)) return;
@@ -102,6 +105,11 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     props.onValueChange?.(singleValue(snapshot, context), {
       validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints, isRequired }),
     });
+  };
+
+  const commit = (): void => {
+    sendSelection({ type: 'commit' });
+    reportCommitted();
   };
 
   const viewApi = createCalendarViewApi({
@@ -119,6 +127,7 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
       selectEpochDay: (epochDay: EpochDay) => {
         if (!validateEpochDay(epochDay, context.constraints).isValid) return;
         sendSelection({ type: 'date.select', epochDay, calendarId: foundation.navigation.displayCalendarId });
+        reportCommitted();
       },
     },
     interaction: {
@@ -155,8 +164,3 @@ const moveSelectionOffRemovedCalendar = (
   const draft = toProvidedCalendar(previous.draft, calendars);
   return committed === previous.committed && draft === previous.draft ? previous : { committed, draft };
 };
-
-const toProvidedCalendar = (selected: SelectedDay | null, calendars: readonly CalendarSystem[]): SelectedDay | null =>
-  selected === null || calendars.some((calendar) => calendar.id === selected.calendarId)
-    ? selected
-    : { ...selected, calendarId: gregory.id };
