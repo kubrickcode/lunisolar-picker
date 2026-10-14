@@ -65,7 +65,7 @@ export {
   rangeValue,
 } from './stores/range-selection';
 export type { Segment, SegmentEvent, SegmentGroup, SegmentLimits, TypedDigit } from './stores/segment';
-export { createSegment, eraseDigit, stepSegment, typeDigit } from './stores/segment';
+export { canTakeAnotherDigit, createSegment, eraseDigit, stepSegment, typeDigit } from './stores/segment';
 export type { SelectedDay } from './stores/selectable';
 export { isSelectableDay } from './stores/selectable';
 export type { SingleSelectionEvent, SingleSelectionState } from './stores/single-selection';

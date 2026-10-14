@@ -10,8 +10,6 @@ import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
 import { type DateFieldCore, useDateFieldCore } from './use-date-field-core';
 
-const CALENDAR_KEY_SEPARATOR = ',';
-
 export interface DateFieldApi extends DateFieldCore {
   readonly value: DateString | null;
   readonly entryCalendarId: CalendarId;
@@ -32,13 +30,12 @@ export interface UseDateFieldProps extends SharedPickerProps, DateConstraints {
 
 export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
   const settings = usePickerSettings(props);
-  const calendarKey = settings.calendars.map((calendar) => calendar.id).join(CALENDAR_KEY_SEPARATOR);
   const controlled = useParsedValue(
     props.value,
     (input) => parseOptionalDate(input, settings.calendars),
     String,
     props.onInvalidValue,
-    calendarKey,
+    settings.calendarKey,
   );
   const [initialValue] = useState(
     () => controlled.value ?? parseOptionalDate(props.defaultValue, settings.calendars).value,

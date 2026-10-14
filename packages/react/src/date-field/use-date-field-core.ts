@@ -1,7 +1,6 @@
 import { type CalendarId, type CalendarSystem, LunisolarPickerError, toMonthCode } from '@lunisolar-picker/calendar';
 import {
   createDateFieldState,
-  type DateConstraints,
   type DateFieldEvent,
   type DateFieldResult,
   type DateFieldState,
@@ -10,6 +9,7 @@ import {
   dateFieldResult,
   findCalendar,
   type PickerContext,
+  type RangeConstraints,
   type Segment,
   type SelectedDay,
   supportedYearRange,
@@ -33,19 +33,35 @@ import { createFocusLeaveListener } from '../utilities/focus-leave';
 const MONTH_DAY_DIGITS = 2;
 const YEAR_DIGITS = 4;
 
-export type DateFieldCoreOptions = {
-  readonly constraints: DateConstraints;
-  // Constraint: 초기 값이 있으면 무시됨. 값이 있으면 값의 역법이 입력 역법이 됨 (계약 §2.7 ②)
-  readonly initialEntryCalendarId: CalendarId;
-  readonly initialSelected: SelectedDay | null;
+export type DateFieldCoreOptions = DateFieldSegmentsOptions & DateFieldStoreOptions;
+
+export type DateFieldSegmentsOptions = {
   readonly isDisabled: boolean;
+  // Goal: 앱의 invalid prop. 범위 필드는 범위 전체의 무효 여부를 넣어 양 끝 칸에 aria-invalid가 붙게 함
   readonly isInvalidFromApp: boolean;
   readonly isReadOnly: boolean;
   readonly isRequired: boolean;
   readonly onFocusLeave?: (() => void) | undefined;
+  readonly separator: string | undefined;
+  readonly settings: PickerSettings;
+};
+
+export type DateFieldStore = {
+  readonly context: PickerContext;
+  readonly entryCalendar: CalendarSystem;
+  readonly result: DateFieldResult;
+  readonly send: (event: DateFieldEvent) => void;
+  readonly state: DateFieldState;
+};
+
+export type DateFieldStoreOptions = {
+  // Constraint: 범위 필드는 범위 제약(maxDays 등)도 넘김. 컨텍스트가 범위 검증에 쓸 수 있게 해석해 둠
+  readonly constraints: RangeConstraints;
+  // Constraint: 초기 값이 있으면 무시됨. 값이 있으면 값의 역법이 입력 역법이 됨 (계약 §2.7 ②)
+  readonly initialEntryCalendarId: CalendarId;
+  readonly initialSelected: SelectedDay | null;
   // Goal: 앱이 제어하는 entryCalendar. 마운트 뒤 바뀔 때만 store로 밀어 넣음
   readonly requestedEntryCalendarId: CalendarId | undefined;
-  readonly separator: string | undefined;
   readonly settings: PickerSettings;
 };
 
@@ -79,39 +95,13 @@ type DescribeDateSegmentInput = {
   readonly state: DateFieldState;
 };
 
-export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore => {
-  const { settings, constraints, requestedEntryCalendarId } = options;
-  const context = usePickerContext(settings, { constraints, commitMode: 'immediate', numberOfMonths: 1 });
-  const { state, send } = useStoreInstance(
-    (previous: DateFieldState | undefined) =>
-      previous === undefined
-        ? createDateFieldState(context, {
-            selected: options.initialSelected,
-            entryCalendarId: options.initialEntryCalendarId,
-          })
-        : reorderForLocale(previous, context),
-    dateFieldReducer,
-    context,
-    { resetKey: settings.locale.id },
-  );
+export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore =>
+  useDateFieldSegments(useDateFieldStore(options), options);
 
-  // Constraint: 마운트 때 값의 역법과 entryCalendar가 달라도 값의 역법을 유지함. prop이 실제로 바뀔 때만 밀어 넣어야 마운트에서 값이 바뀌고 onValueChange가 불리지 않음
-  const lastRequestedEntryCalendarIdRef = useRef(requestedEntryCalendarId);
-  useEffect(() => {
-    if (
-      requestedEntryCalendarId === undefined ||
-      requestedEntryCalendarId === lastRequestedEntryCalendarIdRef.current
-    ) {
-      return;
-    }
-    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-    lastRequestedEntryCalendarIdRef.current = requestedEntryCalendarId;
-    send({ type: 'calendar.set', calendarId: requestedEntryCalendarId });
-  }, [requestedEntryCalendarId, send]);
-
-  // Goal: 입력 역법의 단일 출처는 store. 값 문자열·윤달 판단·data-calendar가 모두 같은 역법을 봄
-  const entryCalendar = findCalendar(settings.calendars, state.entryCalendarId);
-  const result = useMemo(() => dateFieldResult(state, context), [state, context]);
+// Goal: 범위 필드가 양 끝 결과로 범위 무효 여부를 먼저 정한 뒤 칸을 만들 수 있게 store 단계와 칸 단계를 나눔 (한 렌더 지연 없음)
+export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSegmentsOptions): DateFieldCore => {
+  const { context, entryCalendar, result, send, state } = store;
+  const { settings } = options;
   const isInvalid =
     options.isInvalidFromApp || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
   const separator = options.separator ?? settings.locale.field.separator;
@@ -167,6 +157,42 @@ export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore =
       ...partAttributes('date-field-leap-toggle', { selected: state.isLeapMonth }),
     }),
   };
+};
+
+export const useDateFieldStore = (options: DateFieldStoreOptions): DateFieldStore => {
+  const { settings, constraints, requestedEntryCalendarId } = options;
+  const context = usePickerContext(settings, { constraints, commitMode: 'immediate', numberOfMonths: 1 });
+  const { state, send } = useStoreInstance(
+    (previous: DateFieldState | undefined) =>
+      previous === undefined
+        ? createDateFieldState(context, {
+            selected: options.initialSelected,
+            entryCalendarId: options.initialEntryCalendarId,
+          })
+        : reorderForLocale(previous, context),
+    dateFieldReducer,
+    context,
+    { resetKey: settings.locale.id },
+  );
+
+  // Constraint: 마운트 때 값의 역법과 entryCalendar가 달라도 값의 역법을 유지함. prop이 실제로 바뀔 때만 밀어 넣어야 마운트에서 값이 바뀌고 onValueChange가 불리지 않음
+  const lastRequestedEntryCalendarIdRef = useRef(requestedEntryCalendarId);
+  useEffect(() => {
+    if (
+      requestedEntryCalendarId === undefined ||
+      requestedEntryCalendarId === lastRequestedEntryCalendarIdRef.current
+    ) {
+      return;
+    }
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    lastRequestedEntryCalendarIdRef.current = requestedEntryCalendarId;
+    send({ type: 'calendar.set', calendarId: requestedEntryCalendarId });
+  }, [requestedEntryCalendarId, send]);
+
+  // Goal: 입력 역법의 단일 출처는 store. 값 문자열·윤달 판단·data-calendar가 모두 같은 역법을 봄
+  const entryCalendar = findCalendar(settings.calendars, state.entryCalendarId);
+  const result = useMemo(() => dateFieldResult(state, context), [state, context]);
+  return { context, entryCalendar, result, send, state };
 };
 
 const describeDateSegment = ({

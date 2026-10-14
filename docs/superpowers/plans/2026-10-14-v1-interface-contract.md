@@ -244,7 +244,7 @@ export type SegmentEvent =
   | { type: 'segment.focus'; index } | { type: 'segment.blur' } | { type: 'digit.type'; digit } | { type: 'separator.type' }
   | { type: 'segment.erase' } | { type: 'segment.step'; amount } | { type: 'focus.shift'; amount };
 export interface TypedDigit<Kind extends string> { segment: Segment<Kind>; shouldAdvance: boolean }
-createSegment, typeDigit, eraseDigit, stepSegment
+createSegment, typeDigit, eraseDigit, stepSegment, canTakeAnotherDigit(segment): boolean
 
 export interface DateFieldState extends SegmentGroup<DateSegmentKind> { isLeapMonth: boolean; entryCalendarId: CalendarId }
 export type DateFieldEvent =
@@ -272,6 +272,8 @@ timeFieldReducer: Reducer<TimeFieldState, TimeFieldEvent, TimeFieldContext>; tim
 > 계약 변경(2026-10-14, M2 수정 재검토): 윤달 표기 인식은 설정된 역법 중 윤달이 있는 역법의 표기만 쓴다(양력만 설정한 picker는 "Leap"를 읽지 않음). 증감은 먼저 그 달 범위로 값을 맞춘 뒤 돈다(2월에서 31 ↓ → 27). `hasLeapMonths`는 역법별 최초 1회 지원 연도를 훑어 캐시한다(양력 약 25ms, 저사양 기기는 더 걸릴 수 있음 — 후속 후보: CalendarSystem에 O(1) 플래그).
 
 > 계약 변경(2026-10-14, M3-T6): `hasLeapMonths(calendar: CalendarSystem): boolean`을 core에서 공개한다(추가만, 깨지지 않음). React `DateField.LeapMonthToggle`이 역법 id 분기 없이 표시 여부를 정하는 데 쓴다(⑧). 양력 입력 필드도 첫 렌더에서 이 캐시 계산을 한 번 치른다.
+
+> 계약 변경(2026-10-14, M3-T7): `canTakeAnotherDigit(segment)`를 core에서 공개한다(추가만, 깨지지 않음). `typeDigit`의 다음 칸 이동 판단과 React `DateRangeField`의 시작일→종료일 이동 판단이 같은 기준을 쓴다.
 
 ### 2.8 column store와 휠 모델 [M2-T9]
 

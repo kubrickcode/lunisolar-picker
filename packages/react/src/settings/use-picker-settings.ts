@@ -9,6 +9,8 @@ import type { SharedPickerProps } from './shared-picker-props';
 const CALENDAR_KEY_SEPARATOR = ',';
 
 export type PickerSettings = {
+  // Goal: 역법 구성의 동일성을 나타내는 문자열. 렌더마다 새 배열이 와도 같은 구성이면 같음 (useParsedValue의 parseKey 등)
+  readonly calendarKey: string;
   readonly calendars: readonly CalendarSystem[];
   readonly locale: LocaleData;
   readonly timeZone: string | undefined;
@@ -30,8 +32,8 @@ export const usePickerSettings = (props: SharedPickerProps): PickerSettings => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: calendarKey가 구성의 동일성을 대표함
   const calendars = useMemo(() => withGregorian(requestedCalendars), [calendarKey]);
   return useMemo(
-    () => ({ calendars, locale, timeZone, todayEpochDay, weekStartsOn }),
-    [calendars, locale, timeZone, todayEpochDay, weekStartsOn],
+    () => ({ calendarKey, calendars, locale, timeZone, todayEpochDay, weekStartsOn }),
+    [calendarKey, calendars, locale, timeZone, todayEpochDay, weekStartsOn],
   );
 };
 

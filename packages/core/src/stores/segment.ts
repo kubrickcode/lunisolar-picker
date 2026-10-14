@@ -29,6 +29,14 @@ export interface TypedDigit<Kind extends string> {
   readonly shouldAdvance: boolean;
 }
 
+// Goal: 다음 숫자가 들어갈 자리가 남았는지. 칸 자동 이동과 바인딩의 필드 간 이동이 같은 기준을 씀
+export const canTakeAnotherDigit = ({
+  maxDigits,
+  maxValue,
+  typedText,
+}: Pick<Segment<string>, 'maxDigits' | 'maxValue' | 'typedText'>): boolean =>
+  typedText.length < maxDigits && Number(`${typedText}0`) <= maxValue;
+
 export const createSegment = <Kind extends string>(
   kind: Kind,
   limits: SegmentLimits,
@@ -112,9 +120,8 @@ export const stepSegment = <Kind extends string>(
 export const typeDigit = <Kind extends string>(segment: Segment<Kind>, digit: number): TypedDigit<Kind> => {
   const appended = `${segment.typedText}${digit}`;
   const isOverflowing = appended.length > segment.maxDigits || Number(appended) > segment.maxValue;
-  const typedText = isOverflowing ? String(digit) : appended;
-  const canTakeAnotherDigit = typedText.length < segment.maxDigits && Number(`${typedText}0`) <= segment.maxValue;
-  return { segment: { ...segment, typedText, value: Number(typedText) }, shouldAdvance: !canTakeAnotherDigit };
+  const typed = { ...segment, typedText: isOverflowing ? String(digit) : appended };
+  return { segment: { ...typed, value: Number(typed.typedText) }, shouldAdvance: !canTakeAnotherDigit(typed) };
 };
 
 export const withSegmentValue = <Kind extends string>(segment: Segment<Kind>, value: number | null): Segment<Kind> => ({

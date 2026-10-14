@@ -12,20 +12,19 @@ import {
   type ValidationReason,
 } from '@lunisolar-picker/calendar';
 import {
+  canTakeAnotherDigit,
   type DateFieldResult,
-  type DateSegmentKind,
   invalidBecause,
   type RangeConstraints,
   type ResolvedConstraints,
-  type Segment,
   type SelectedDay,
   VALID,
   type Validity,
   validateEpochRange,
 } from '@lunisolar-picker/core';
-import { type FocusEvent, type HTMLAttributes, useLayoutEffect, useMemo, useState } from 'react';
+import { type FocusEvent, type HTMLAttributes, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
-import { type DateFieldCore, useDateFieldCore } from '../date-field/use-date-field-core';
+import { type DateFieldCore, useDateFieldSegments, useDateFieldStore } from '../date-field/use-date-field-core';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
@@ -35,13 +34,11 @@ import { type DateRangeInput, parseOptionalRange } from '../value/parse-controll
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
 
-const CALENDAR_KEY_SEPARATOR = ',';
 const INCOMPLETE_REASON: ValidationReason = 'incomplete';
 
 type CombineRangeInput = {
   readonly calendar: CalendarSystem;
   readonly endEpochDay: EpochDay | null;
-  readonly isOpenEndAllowed: boolean;
   readonly startEpochDay: EpochDay | null;
 };
 
@@ -65,8 +62,8 @@ export type RangeSide = 'start' | 'end';
 type RangeValidityInput = {
   readonly constraints: ResolvedConstraints;
   readonly endResult: DateFieldResult;
+  readonly enteredRange: DateRangeValue | null;
   readonly startResult: DateFieldResult;
-  readonly value: DateRangeValue | null;
 };
 
 export interface UseDateRangeFieldProps extends SharedPickerProps, RangeConstraints {
@@ -83,13 +80,12 @@ export interface UseDateRangeFieldProps extends SharedPickerProps, RangeConstrai
 
 export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeFieldApi => {
   const settings = usePickerSettings(props);
-  const calendarKey = settings.calendars.map((calendar) => calendar.id).join(CALENDAR_KEY_SEPARATOR);
   const controlled = useParsedValue(
     props.value,
     (input) => parseOptionalRange(input, settings.calendars),
     describeRangeInput,
     props.onInvalidValue,
-    calendarKey,
+    settings.calendarKey,
   );
   const [initialValue] = useState(
     () => controlled.value ?? parseOptionalRange(props.defaultValue, settings.calendars).value,
@@ -99,64 +95,106 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     initialValue === null
       ? (props.entryCalendar ?? props.defaultEntryCalendar ?? gregory.id)
       : calendarIdOf(initialValue.start);
-  const sharedCoreOptions = {
+  const storeOptions = {
     settings,
     constraints: props,
     initialEntryCalendarId,
     requestedEntryCalendarId: props.entryCalendar,
+  };
+  const startStore = useDateFieldStore({
+    ...storeOptions,
+    initialSelected: selectedDayOf(initialValue?.start ?? null),
+  });
+  const endStore = useDateFieldStore({ ...storeOptions, initialSelected: selectedDayOf(initialValue?.end ?? null) });
+  const isOpenEndAllowed = props.isOpenEndAllowed === true;
+
+  // Goal: store가 담고 있는 범위(시작일만 있어도 끝 null로 둠). 열린 끝 허용 여부와 무관하게 비교해야 반쪽 제어 값이 마운트에서 알림을 내지 않음
+  // Goal: 입력 역법의 단일 출처는 store. 양 끝 store는 같은 역법으로만 바뀌므로 start 쪽 역법으로 둘 다 표기함
+  const enteredRange = useMemo(
+    () =>
+      combineRange({
+        startEpochDay: startStore.result.epochDay,
+        endEpochDay: endStore.result.epochDay,
+        calendar: startStore.entryCalendar,
+      }),
+    [startStore.result.epochDay, endStore.result.epochDay, startStore.entryCalendar],
+  );
+  const value = useMemo(() => publicRangeOf(enteredRange, isOpenEndAllowed), [enteredRange, isOpenEndAllowed]);
+  const constraints = startStore.context.constraints;
+  const validity = useMemo(
+    () => rangeValidity({ enteredRange, startResult: startStore.result, endResult: endStore.result, constraints }),
+    [enteredRange, startStore.result, endStore.result, constraints],
+  );
+  // Constraint: 이유는 양 끝의 합집합이라, 한쪽이 입력 중(incomplete)이어도 다른 이유가 있으면 무효로 표시해야 함
+  const isInvalid = props.invalid === true || validity.reasons.some((reason) => reason !== INCOMPLETE_REASON);
+
+  // Goal: 범위 전체의 무효(range-too-long 등)를 양 끝 칸의 aria-invalid·data-invalid로도 알림 (WCAG 1.3.1·3.3.1·4.1.2)
+  const segmentsOptions = {
+    settings,
     separator: props.separator,
     isDisabled: props.disabled === true,
     isReadOnly: props.readOnly === true,
-    isRequired: props.required === true,
-    isInvalidFromApp: props.invalid === true,
+    isInvalidFromApp: isInvalid,
   };
-  const start = useDateFieldCore({
-    ...sharedCoreOptions,
-    initialSelected: selectedDayOf(initialValue?.start ?? null),
-  });
-  const end = useDateFieldCore({
-    ...sharedCoreOptions,
-    initialSelected: selectedDayOf(initialValue?.end ?? null),
-  });
-  const isOpenEndAllowed = props.isOpenEndAllowed === true;
-
-  // Goal: 입력 역법의 단일 출처는 store. 양 끝 store는 같은 역법으로만 바뀌므로 start 쪽 역법으로 둘 다 표기함
-  const value = useMemo(
-    () =>
-      combineRange({
-        startEpochDay: start.result.epochDay,
-        endEpochDay: end.result.epochDay,
-        calendar: start.entryCalendar,
-        isOpenEndAllowed,
-      }),
-    [start.result.epochDay, end.result.epochDay, start.entryCalendar, isOpenEndAllowed],
-  );
-  const constraints = start.context.constraints;
-  const validity = useMemo(
-    () => rangeValidity({ value, startResult: start.result, endResult: end.result, constraints }),
-    [value, start.result, end.result, constraints],
-  );
-  const isInvalid = props.invalid === true || (!validity.isValid && !validity.reasons.includes(INCOMPLETE_REASON));
+  const isRequiredBySide: Readonly<Record<RangeSide, boolean>> = {
+    start: props.required === true,
+    // Constraint: 열린 범위가 허용되면 종료일은 선택 입력
+    end: props.required === true && !isOpenEndAllowed,
+  };
+  const start = useDateFieldSegments(startStore, { ...segmentsOptions, isRequired: isRequiredBySide.start });
+  const end = useDateFieldSegments(endStore, { ...segmentsOptions, isRequired: isRequiredBySide.end });
 
   useMoveToEndWhenStartCompletes(start, end);
 
+  // Goal: store 공간 값이 바뀌어도 공개 값(반쪽이면 null)이 그대로면 알리지 않음
+  const lastKnownValueRef = useRef(value);
   // Constraint: 부모가 다른 역법으로 적힌 범위를 주면 양 끝 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
   useValueBridge<DateRangeValue>({
-    committedValue: value,
+    committedValue: enteredRange,
     controlled,
     isEqual: isSameRange,
     syncStore: (next) => {
-      const entryCalendarId = next === null ? start.state.entryCalendarId : calendarIdOf(next.start);
+      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+      lastKnownValueRef.current = publicRangeOf(next, isOpenEndAllowed);
+      const entryCalendarId = next === null ? startStore.state.entryCalendarId : calendarIdOf(next.start);
       start.send({ type: 'value.sync', selected: selectedDayOf(next?.start ?? null), entryCalendarId });
       end.send({ type: 'value.sync', selected: selectedDayOf(next?.end ?? null), entryCalendarId });
     },
-    onValueChange: (next) => props.onValueChange?.(next, { validity }),
+    onValueChange: (next) => {
+      const nextValue = publicRangeOf(next, isOpenEndAllowed);
+      if (isSameRange(nextValue, lastKnownValueRef.current)) return;
+      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+      lastKnownValueRef.current = nextValue;
+      props.onValueChange?.(nextValue, { validity });
+    },
   });
 
+  // Goal: 뒤집힌 범위는 포커스가 범위를 벗어날 때 store에서 두 끝을 바꿔 화면도 정렬함 (스펙 4.2). 확정 값은 이미 정렬돼 있어 알림이 없음
+  // Constraint: 키 입력마다 바꾸면 입력 중인 칸이 다른 쪽으로 튐
+  const swapReversedEnds = (): void => {
+    const startEpochDay = startStore.result.epochDay;
+    const endEpochDay = endStore.result.epochDay;
+    if (startEpochDay === null || endEpochDay === null || startEpochDay <= endEpochDay) return;
+    const entryCalendarId = startStore.state.entryCalendarId;
+    start.send({
+      type: 'value.sync',
+      selected: { epochDay: endEpochDay, calendarId: entryCalendarId },
+      entryCalendarId,
+    });
+    end.send({
+      type: 'value.sync',
+      selected: { epochDay: startEpochDay, calendarId: entryCalendarId },
+      entryCalendarId,
+    });
+  };
+  const onFocusLeave = (): void => {
+    swapReversedEnds();
+    props.onBlur?.();
+  };
   const focus = (): void => start.segmentedField.focusSegment(0);
   // Constraint: DateField와 같은 정책. 사용자가 바꾼 역법은 부모가 제어해도 바로 반영하고 알림
   const setEntryCalendar = (calendarId: CalendarId): void => {
-    if (calendarId === start.state.entryCalendarId) return;
+    if (calendarId === startStore.state.entryCalendarId) return;
     start.send({ type: 'calendar.set', calendarId });
     end.send({ type: 'calendar.set', calendarId });
     props.onEntryCalendarChange?.(calendarId);
@@ -169,18 +207,18 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     value,
     validity,
     isInvalid,
-    entryCalendarId: start.state.entryCalendarId,
+    entryCalendarId: startStore.state.entryCalendarId,
     setEntryCalendar,
     focus,
     getRootProps: () => ({
       role: 'group',
       // Constraint: 시작·종료 칸 사이 이동은 필드 안이므로 그룹 전체를 벗어날 때만 알림
-      onBlur: createFocusLeaveListener(props.onBlur),
+      onBlur: createFocusLeaveListener(onFocusLeave),
       ...partAttributes('date-range-field', {
         invalid: isInvalid,
         disabled: props.disabled === true,
         readonly: props.readOnly === true,
-        calendar: start.state.entryCalendarId,
+        calendar: startStore.state.entryCalendarId,
       }),
     }),
     getRangeSeparatorProps: () => ({ 'aria-hidden': true, ...partAttributes('date-field-separator') }),
@@ -188,8 +226,7 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
       name: side === 'start' ? props.startName : props.endName,
       form: props.form,
       value: (side === 'start' ? value?.start : value?.end) ?? '',
-      // Constraint: 열린 범위가 허용되면 종료일 없이도 제출할 수 있어야 함
-      required: props.required === true && (side === 'start' || !isOpenEndAllowed),
+      required: isRequiredBySide[side],
       disabled: props.disabled,
       onFocusRequest: () => sideCores[side].segmentedField.focusSegment(0),
     }),
@@ -201,25 +238,22 @@ const describeRangeInput = (input: DateRangeInput): string => `${input.start}/${
 const selectedDayOf = (date: DateString | null): SelectedDay | null =>
   date === null ? null : { epochDay: epochDayOf(date), calendarId: calendarIdOf(date) };
 
-const combineRange = ({
-  calendar,
-  endEpochDay,
-  isOpenEndAllowed,
-  startEpochDay,
-}: CombineRangeInput): DateRangeValue | null => {
+const combineRange = ({ calendar, endEpochDay, startEpochDay }: CombineRangeInput): DateRangeValue | null => {
   const startValue = formatOrNull(startEpochDay, calendar);
   if (startValue === null) return null;
-  const endValue = formatOrNull(endEpochDay, calendar);
-  if (endValue === null && !isOpenEndAllowed) return null;
-  const normalized = normalizeDateRange(startValue, endValue);
+  const normalized = normalizeDateRange(startValue, formatOrNull(endEpochDay, calendar));
   return normalized.isOk ? normalized.value : null;
 };
 
-// Goal: 빈 범위는 유효(빨간 테두리 없음). 반만 친 범위는 'incomplete'를 알리되 isInvalid에서는 빠짐 (preflight 2.8)
-const rangeValidity = ({ constraints, endResult, startResult, value }: RangeValidityInput): Validity => {
+const publicRangeOf = (range: DateRangeValue | null, isOpenEndAllowed: boolean): DateRangeValue | null =>
+  range === null || (range.end === null && !isOpenEndAllowed) ? null : range;
+
+// Goal: 빈 범위는 유효(빨간 테두리 없음). 반만 친 범위는 'incomplete'를 알림 (preflight 2.8)
+const rangeValidity = ({ constraints, endResult, enteredRange, startResult }: RangeValidityInput): Validity => {
   const fieldReasons = [...startResult.validity.reasons, ...endResult.validity.reasons];
-  if (value !== null) {
-    const epochRange = { start: epochDayOf(value.start), end: value.end === null ? null : epochDayOf(value.end) };
+  if (enteredRange !== null) {
+    const { start, end } = enteredRange;
+    const epochRange = { start: epochDayOf(start), end: end === null ? null : epochDayOf(end) };
     return invalidBecause([...fieldReasons, ...validateEpochRange(epochRange, constraints).reasons]);
   }
   if (fieldReasons.length > 0) return invalidBecause(fieldReasons);
@@ -236,14 +270,10 @@ const useMoveToEndWhenStartCompletes = (start: DateFieldCore, end: DateFieldCore
   const isStartComplete =
     start.state.focusedIndex === lastIndex &&
     lastSegment !== undefined &&
-    isSegmentFull(lastSegment) &&
+    !canTakeAnotherDigit(lastSegment) &&
     start.result.epochDay !== null;
   const focusEndSegment = end.segmentedField.focusSegment;
   useLayoutEffect(() => {
     if (isStartComplete) focusEndSegment(0);
   }, [isStartComplete, focusEndSegment]);
 };
-
-// Constraint: core typeDigit의 다음 칸 이동 조건과 같아야 함
-const isSegmentFull = ({ maxDigits, maxValue, typedText }: Segment<DateSegmentKind>): boolean =>
-  typedText.length >= maxDigits || Number(`${typedText}0`) > maxValue;

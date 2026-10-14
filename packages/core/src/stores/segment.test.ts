@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSegment, eraseDigit, stepSegment, typeDigit } from './segment';
+import { canTakeAnotherDigit, createSegment, eraseDigit, stepSegment, typeDigit } from './segment';
 
 const month = createSegment('month', { minValue: 1, maxValue: 12, maxDigits: 2 }, null);
 const year = createSegment('year', { minValue: 1, maxValue: 9999, maxDigits: 4 }, null);
@@ -52,5 +52,21 @@ describe('segment editing', () => {
   it('wraps stepping within the limits and starts from the given value when empty', () => {
     expect(stepSegment(createSegment('month', { minValue: 1, maxValue: 12, maxDigits: 2 }, 12), 1, 1).value).toBe(1);
     expect(stepSegment(month, -1, 10).value).toBe(10);
+  });
+});
+
+describe('canTakeAnotherDigit', () => {
+  it.each([
+    ['an empty segment', '', true],
+    ['a month digit that a second digit can follow', '1', true],
+    ['a month digit that no second digit can follow', '3', false],
+    ['a full two-digit month', '09', false],
+  ])('answers for %s', (_, typedText, expected) => {
+    expect(canTakeAnotherDigit({ ...month, typedText })).toBe(expected);
+  });
+
+  it('keeps room in a year until the fourth digit', () => {
+    expect(canTakeAnotherDigit({ ...year, typedText: '199' })).toBe(true);
+    expect(canTakeAnotherDigit({ ...year, typedText: '1990' })).toBe(false);
   });
 });
