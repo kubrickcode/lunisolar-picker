@@ -1,5 +1,9 @@
 export type { DataAttribute, DataAttributeProps, PartName } from './contract/data-attributes';
 export { DATA_ATTRIBUTES, PART_NAMES } from './contract/data-attributes';
+export * as Popover from './popover/parts';
+export { usePopoverContext } from './popover/popover-context';
+export type { PopoverApi, UsePopoverProps } from './popover/use-popover';
+export { usePopover } from './popover/use-popover';
 export type { LunisolarProviderProps } from './settings/lunisolar-provider';
 export { LunisolarProvider } from './settings/lunisolar-provider';
 export type { SharedPickerProps, ValueChangeDetails } from './settings/shared-picker-props';
