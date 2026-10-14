@@ -349,6 +349,8 @@ export interface SharedPickerProps {        // 선택 필드는 모두 `| undefi
   onBlur?: () => void;                      // 포커스가 부품 전체를 벗어날 때 한 번 [M5 제안 1]
 }
 export function useToday(timeZone, today): EpochDay;
+export function usePickerSettings(props: SharedPickerProps): PickerSettings;   // [M4 preflight 4.12] 완성형이 공개 API만 쓰도록 공개
+export function useControllableState<Value>(controlled, defaultValue, onChange): readonly [Value, (next: Value) => void];   // [M4 preflight 4.12]
 ```
 
 내부(공개 export 아님, 다른 부품이 씀):
