@@ -8,10 +8,31 @@ const SIZE_BUDGETS: readonly SizeBudget[] = [
   { label: 'dangi table only', entry: 'packages/calendar/src/dangi/dangi-table.generated.ts', maxGzipBytes: 1024 },
 ];
 
+type BudgetResult = {
+  readonly isOverBudget: boolean;
+  readonly label: string;
+};
+
 type SizeBudget = {
   readonly entry: string;
   readonly label: string;
   readonly maxGzipBytes: number;
+};
+
+const checkBundleSizes = async (): Promise<void> => {
+  // Intentionally sequential - 예산별 측정 결과가 순서대로 출력되어야 읽기 쉬움
+  const results = await SIZE_BUDGETS.reduce<Promise<readonly BudgetResult[]>>(
+    async (previous, budget) => [...(await previous), await measureBudget(budget)],
+    Promise.resolve([]),
+  );
+  const overBudgetLabels = results.filter((result) => result.isOverBudget).map((result) => result.label);
+  if (overBudgetLabels.length > 0) throw new Error(`over size budget: ${overBudgetLabels.join(', ')}`);
+};
+
+const measureBudget = async (budget: SizeBudget): Promise<BudgetResult> => {
+  const gzipBytes = await measureGzipBytes(budget.entry);
+  console.info(`${budget.label}: ${gzipBytes} B gzip (budget ${budget.maxGzipBytes} B)`);
+  return { isOverBudget: gzipBytes > budget.maxGzipBytes, label: budget.label };
 };
 
 const measureGzipBytes = async (entry: string): Promise<number> => {
@@ -26,22 +47,6 @@ const measureGzipBytes = async (entry: string): Promise<number> => {
   const output = result.outputFiles[0];
   if (!output) throw new Error(`esbuild produced no output for ${entry}`);
   return gzipSync(output.contents).byteLength;
-};
-
-const reportBudget = async (budget: SizeBudget): Promise<boolean> => {
-  const gzipBytes = await measureGzipBytes(budget.entry);
-  console.info(`${budget.label}: ${gzipBytes} B gzip (budget ${budget.maxGzipBytes} B)`);
-  return gzipBytes > budget.maxGzipBytes;
-};
-
-const checkBundleSizes = async (): Promise<void> => {
-  // Intentionally sequential - 예산별 측정 결과가 순서대로 출력되어야 읽기 쉬움
-  const exceededFlags: boolean[] = [];
-  for (const budget of SIZE_BUDGETS) {
-    exceededFlags.push(await reportBudget(budget));
-  }
-  const overBudgetLabels = SIZE_BUDGETS.filter((_, index) => exceededFlags[index]).map((budget) => budget.label);
-  if (overBudgetLabels.length > 0) throw new Error(`over size budget: ${overBudgetLabels.join(', ')}`);
 };
 
 try {
