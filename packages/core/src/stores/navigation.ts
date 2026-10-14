@@ -44,14 +44,6 @@ type MovedEpochDayOptions = {
   readonly unit: FocusUnit;
 };
 
-export interface NavigationState {
-  readonly displayCalendarId: CalendarId;
-  readonly focusedEpochDay: EpochDay;
-  readonly view: CalendarView;
-  readonly visibleMonth: VisibleMonth;
-  readonly yearPageStart: number;
-}
-
 export type NavigationEvent =
   | { readonly type: 'calendar.set'; readonly calendarId: CalendarId }
   | { readonly type: 'focus.move'; readonly unit: FocusUnit; readonly amount: number }
@@ -69,6 +61,14 @@ type NavigationScope = {
   readonly context: PickerContext;
   readonly state: NavigationState;
 };
+
+export interface NavigationState {
+  readonly displayCalendarId: CalendarId;
+  readonly focusedEpochDay: EpochDay;
+  readonly view: CalendarView;
+  readonly visibleMonth: VisibleMonth;
+  readonly yearPageStart: number;
+}
 
 type WeekEdge = 'start' | 'end';
 

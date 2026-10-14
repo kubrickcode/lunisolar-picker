@@ -10,6 +10,7 @@ const solar = (year: number, month: number, day: number): EpochDay => epochDayFr
 
 describe('navigation', () => {
   const context = createTestContext();
+  const lunarContext = createTestContext({ calendars: [gregory, dangi] });
 
   it('starts focused on today in the Gregorian calendar', () => {
     expect(createNavigationState(context)).toEqual({
@@ -131,8 +132,6 @@ describe('navigation', () => {
   });
 
   describe('edges and identity', () => {
-    const lunarContext = createTestContext({ calendars: [gregory, dangi] });
-
     it('stays put when stepping a month past the last supported lunar month', () => {
       const state = createNavigationState(lunarContext, {
         focusedEpochDay: dangi.supportedRange.max,
@@ -162,17 +161,20 @@ describe('navigation', () => {
       expect(next.visibleMonth).toEqual({ year: 2026, monthCode: 'M09' });
     });
 
-    it('returns the same state for the current view and the current calendar', () => {
+    it('returns the same state when setting the current view', () => {
       const state = createNavigationState(lunarContext);
 
       expect(navigationReducer(state, { type: 'view.set', view: 'days' }, lunarContext)).toBe(state);
+    });
+
+    it('returns the same state when setting the current calendar', () => {
+      const state = createNavigationState(lunarContext);
+
       expect(navigationReducer(state, { type: 'calendar.set', calendarId: 'gregory' }, lunarContext)).toBe(state);
     });
   });
 
   describe('lunar display', () => {
-    const lunarContext = createTestContext({ calendars: [gregory, dangi] });
-
     it('keeps the focused day while switching the grid to the lunar calendar', () => {
       const next = navigationReducer(
         createNavigationState(lunarContext),
