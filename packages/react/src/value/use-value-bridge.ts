@@ -20,6 +20,8 @@ export type ValueBridgeOptions<Value> = {
 export const useValueBridge = <Value>(options: ValueBridgeOptions<Value | null>): void => {
   const { committedValue, controlled } = options;
   const lastKnownRef = useRef(committedValue);
+  // Goal: 부모가 알고 있는 공개 값(부모가 준 값이나 마지막으로 알린 값). 메아리 판정은 store 값의 공개 형태가 아니라 이 값으로 해야 알린 적 없는 공개 형태(반쪽 범위 → null)로의 재설정을 놓치지 않음
+  const lastPublicRef = useRef((options.toPublic ?? keepValue)(committedValue));
   const latest = useLatestRef(options);
   const controlledValue = controlled.isControlled ? controlled.value : undefined;
   const wasControlledRef = useRef(controlled.isControlled);
@@ -33,10 +35,11 @@ export const useValueBridge = <Value>(options: ValueBridgeOptions<Value | null>)
 
   useEffect(() => {
     if (controlledValue === undefined) return;
-    const { isEqual, toPublic = keepValue } = latest.current;
-    const lastKnown = lastKnownRef.current;
-    const isEcho = isEqual(controlledValue, lastKnown) || isEqual(controlledValue, toPublic(lastKnown));
-    if (isEcho) return;
+    const { isEqual } = latest.current;
+    if (isEqual(controlledValue, lastPublicRef.current)) return;
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    lastPublicRef.current = controlledValue;
+    if (isEqual(controlledValue, lastKnownRef.current)) return;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     lastKnownRef.current = controlledValue;
     latest.current.syncStore(controlledValue);
@@ -44,12 +47,14 @@ export const useValueBridge = <Value>(options: ValueBridgeOptions<Value | null>)
 
   useEffect(() => {
     const { isEqual, toPublic = keepValue } = latest.current;
-    const lastKnown = lastKnownRef.current;
-    if (isEqual(committedValue, lastKnown)) return;
+    if (isEqual(committedValue, lastKnownRef.current)) return;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     lastKnownRef.current = committedValue;
     const publicValue = toPublic(committedValue);
-    if (!isEqual(publicValue, toPublic(lastKnown))) latest.current.onValueChange?.(publicValue);
+    if (isEqual(publicValue, lastPublicRef.current)) return;
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    lastPublicRef.current = publicValue;
+    latest.current.onValueChange?.(publicValue);
   }, [committedValue, latest]);
 };
 

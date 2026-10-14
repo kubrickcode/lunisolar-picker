@@ -35,7 +35,7 @@ describe('HiddenInput', () => {
 
     (screen.container.querySelector('input') as HTMLInputElement).focus(); // as: 바로 위에서 그린 input 하나
 
-    expect(onFocusRequest).toHaveBeenCalledOnce();
+    await expect.poll(() => onFocusRequest.mock.calls.length).toBe(1);
   });
 
   it('renders nothing without a name', async () => {

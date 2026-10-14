@@ -14,6 +14,26 @@ import * as DateRangeField from './parts';
 
 const GREGORY_RANGE: DateRangeInput = { start: '2026-10-13', end: '2026-10-17' };
 
+type ResettingParentProps = {
+  readonly initialValue: DateRangeInput;
+  readonly pushedValue?: DateRangeInput | undefined;
+};
+
+const ResettingParent = ({ initialValue, pushedValue }: ResettingParentProps) => {
+  const [value, setValue] = useState<DateRangeInput | null>(initialValue);
+  return (
+    <>
+      <DateRangeField.Root aria-label="기간" locale={ko} value={value} onValueChange={setValue} />
+      <button type="button" onClick={() => setValue(pushedValue ?? null)}>
+        Push
+      </button>
+      <button type="button" onClick={() => setValue(null)}>
+        Reset
+      </button>
+    </>
+  );
+};
+
 const LunarEntryButton = () => {
   const range = useDateRangeFieldContext();
   return (
@@ -343,6 +363,29 @@ describe('DateRangeField', () => {
 
       await expect.element(screen.getByRole('group', { name: ko.labels.rangeStart })).toHaveTextContent('2026. 11. 01');
       await expect.element(screen.getByRole('group', { name: ko.labels.rangeEnd })).toHaveTextContent('2026. 11. 05');
+    });
+
+    it('clears the start when the parent resets a mounted half range to null', async () => {
+      const screen = await render(<ResettingParent initialValue={{ start: '2026-10-13', end: null }} />);
+      const startGroup = screen.getByRole('group', { name: ko.labels.rangeStart });
+      await expect.element(startGroup).toHaveTextContent('2026. 10. 13');
+
+      await screen.getByRole('button', { name: 'Reset' }).click();
+
+      await expect.element(startGroup).toHaveTextContent('YYYY. MM. DD');
+    });
+
+    it('clears the start when the parent resets a pushed half range to null', async () => {
+      const screen = await render(
+        <ResettingParent initialValue={GREGORY_RANGE} pushedValue={{ start: '2026-11-01', end: null }} />,
+      );
+      const startGroup = screen.getByRole('group', { name: ko.labels.rangeStart });
+      await screen.getByRole('button', { name: 'Push' }).click();
+      await expect.element(startGroup).toHaveTextContent('2026. 11. 01');
+
+      await screen.getByRole('button', { name: 'Reset' }).click();
+
+      await expect.element(startGroup).toHaveTextContent('YYYY. MM. DD');
     });
 
     it('enters both ends in defaultEntryCalendar when the range is empty', async () => {

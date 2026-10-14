@@ -1,13 +1,17 @@
 import { type ReactElement, StrictMode, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
+import { settleEffects } from '../testing/settle-effects';
 import { useValueBridge } from './use-value-bridge';
+
+const DRAFT_SUFFIX = '?';
 
 type BridgeProbeProps = {
   readonly controlledValue?: string | null | undefined;
   readonly onPick?: (() => void) | undefined;
   readonly onSync?: ((value: string | null) => void) | undefined;
   readonly onValueChange: (value: string | null) => void;
+  readonly toPublic?: ((value: string | null) => string | null) | undefined;
 };
 
 type ParentProps = {
@@ -15,7 +19,7 @@ type ParentProps = {
   readonly onValueChange: (value: string | null) => void;
 };
 
-const BridgeProbe = ({ controlledValue, onPick, onSync, onValueChange }: BridgeProbeProps): ReactElement => {
+const BridgeProbe = ({ controlledValue, onPick, onSync, onValueChange, toPublic }: BridgeProbeProps): ReactElement => {
   const [storeValue, setStoreValue] = useState<string | null>(controlledValue ?? null);
   useValueBridge<string>({
     committedValue: storeValue,
@@ -26,10 +30,14 @@ const BridgeProbe = ({ controlledValue, onPick, onSync, onValueChange }: BridgeP
       setStoreValue(value);
     },
     onValueChange,
+    toPublic,
   });
   return (
     <>
       <output>{String(storeValue)}</output>
+      <button type="button" onClick={() => setStoreValue(`2026-10-14${DRAFT_SUFFIX}`)}>
+        Draft
+      </button>
       <button
         type="button"
         onClick={() => {
@@ -63,6 +71,27 @@ const AcceptingParent = ({ onSync }: Pick<ParentProps, 'onSync'>): ReactElement 
 const CollidingParent = ({ onValueChange }: Pick<ParentProps, 'onValueChange'>): ReactElement => {
   const [value, setValue] = useState<string | null>('2026-01-01');
   return <BridgeProbe controlledValue={value} onPick={() => setValue('2026-02-02')} onValueChange={onValueChange} />;
+};
+
+// Goal: 범위 필드처럼 store에만 있는 초안(접미사 ?)은 공개 값 null로 보이는 부모. 받은 값을 그대로 되돌려 줌
+const ProjectingParent = ({ onSync }: Pick<ParentProps, 'onSync'>): ReactElement => {
+  const [value, setValue] = useState<string | null>('2026-01-01');
+  return (
+    <>
+      <BridgeProbe
+        controlledValue={value}
+        onSync={onSync}
+        onValueChange={setValue}
+        toPublic={(stored) => (stored?.endsWith(DRAFT_SUFFIX) ? null : stored)}
+      />
+      <button type="button" onClick={() => setValue(`2026-03-03${DRAFT_SUFFIX}`)}>
+        Push draft
+      </button>
+      <button type="button" onClick={() => setValue(null)}>
+        Reset
+      </button>
+    </>
+  );
 };
 
 const ModeSwitchingParent = (): ReactElement => {
@@ -144,6 +173,31 @@ describe('useValueBridge', () => {
 
     await expect.element(screen.getByRole('status')).toHaveTextContent('2026-02-02');
     await expect.poll(() => onValueChange.mock.calls).toEqual([['2026-10-14'], ['2026-02-02']]);
+  });
+
+  describe('toPublic', () => {
+    it('keeps the store when the parent echoes an emitted public value', async () => {
+      const onSync = vi.fn();
+      const screen = await render(<ProjectingParent onSync={onSync} />);
+
+      await screen.getByRole('button', { name: 'Draft' }).click();
+
+      await settleEffects();
+      await expect.element(screen.getByRole('status')).toHaveTextContent('2026-10-14?');
+      expect(onSync).not.toHaveBeenCalled();
+    });
+
+    it('syncs a parent reset whose public form was never emitted', async () => {
+      const onSync = vi.fn();
+      const screen = await render(<ProjectingParent onSync={onSync} />);
+      await screen.getByRole('button', { name: 'Push draft' }).click();
+      await expect.element(screen.getByRole('status')).toHaveTextContent('2026-03-03?');
+
+      await screen.getByRole('button', { name: 'Reset' }).click();
+
+      await expect.element(screen.getByRole('status')).toHaveTextContent('null');
+      expect(onSync.mock.calls).toEqual([['2026-03-03?'], [null]]);
+    });
   });
 
   it('warns in development when a component switches from uncontrolled to controlled', async () => {
