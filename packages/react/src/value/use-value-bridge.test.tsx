@@ -106,31 +106,6 @@ const ModeSwitchingParent = (): ReactElement => {
   );
 };
 
-const BaselineProbe = ({ onValueChange }: Pick<ParentProps, 'onValueChange'>): ReactElement => {
-  const [state, setState] = useState({ baselineKey: 'a', storeValue: '2026-01-01' as string | null });
-  useValueBridge<string>({
-    baselineKey: state.baselineKey,
-    committedValue: state.storeValue,
-    controlled: { isControlled: false, value: null },
-    isEqual: Object.is,
-    syncStore: () => {},
-    onValueChange,
-  });
-  return (
-    <>
-      <button type="button" onClick={() => setState({ baselineKey: 'b', storeValue: null })}>
-        Rebaseline
-      </button>
-      <button type="button" onClick={() => setState((previous) => ({ ...previous, storeValue: null }))}>
-        Clear
-      </button>
-      <button type="button" onClick={() => setState((previous) => ({ ...previous, storeValue: '2026-10-14' }))}>
-        Pick
-      </button>
-    </>
-  );
-};
-
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -234,28 +209,5 @@ describe('useValueBridge', () => {
 
     await expect.poll(() => warn.mock.calls.length).toBe(1);
     expect(warn.mock.calls[0]?.[0]).toMatch(/from uncontrolled to controlled/);
-  });
-
-  describe('baselineKey', () => {
-    it('adopts the committed value silently when the key changes and reports later user changes', async () => {
-      const onValueChange = vi.fn();
-      const screen = await render(<BaselineProbe onValueChange={onValueChange} />);
-
-      await screen.getByRole('button', { name: 'Rebaseline' }).click();
-      await settleEffects();
-      expect(onValueChange.mock.calls).toEqual([]);
-
-      await screen.getByRole('button', { name: 'Pick' }).click();
-      await expect.poll(() => onValueChange.mock.calls).toEqual([['2026-10-14']]);
-    });
-
-    it('still reports a value change that happens without a key change', async () => {
-      const onValueChange = vi.fn();
-      const screen = await render(<BaselineProbe onValueChange={onValueChange} />);
-
-      await screen.getByRole('button', { name: 'Clear' }).click();
-
-      await expect.poll(() => onValueChange.mock.calls).toEqual([[null]]);
-    });
   });
 });

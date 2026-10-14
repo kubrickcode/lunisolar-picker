@@ -32,6 +32,50 @@ const ControlledTimeField = ({ onValueChange }: { readonly onValueChange: (value
   );
 };
 
+type EndOfDayHarnessProps = {
+  readonly initialValue?: string | null | undefined;
+  readonly isControlled: boolean;
+  readonly isEndOfDayAllowedAtMount: boolean;
+  readonly onInvalidValue: (input: string) => void;
+  readonly onValueChange: (value: string | null) => void;
+};
+
+const EndOfDayHarness = ({
+  initialValue,
+  isControlled,
+  isEndOfDayAllowedAtMount,
+  onInvalidValue,
+  onValueChange,
+}: EndOfDayHarnessProps) => {
+  const [isEndOfDayAllowed, setIsEndOfDayAllowed] = useState(isEndOfDayAllowedAtMount);
+  const [value, setValue] = useState<string | null | undefined>(initialValue);
+  return (
+    <>
+      <TimeField.Root
+        aria-label="Time"
+        isEndOfDayAllowed={isEndOfDayAllowed}
+        onInvalidValue={onInvalidValue}
+        onValueChange={onValueChange}
+        {...(isControlled ? { value } : { defaultValue: initialValue })}
+      />
+      <button type="button" onClick={() => setIsEndOfDayAllowed((previous) => !previous)}>
+        Toggle end of day
+      </button>
+      <button type="button" onClick={() => setValue(null)}>
+        Parent clears
+      </button>
+    </>
+  );
+};
+
+const clearBothSegments = async (screen: Awaited<ReturnType<typeof render>>): Promise<void> => {
+  for (const name of ['Hour', 'Minute']) {
+    await screen.getByRole('spinbutton', { name }).click();
+    await expect.element(screen.getByRole('spinbutton', { name })).toHaveFocus();
+    await userEvent.keyboard('{Backspace}');
+  }
+};
+
 describe('TimeField', () => {
   it('reads 930 as 09:30', async () => {
     const onValueChange = vi.fn();
@@ -167,6 +211,89 @@ describe('TimeField', () => {
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('09:32');
     await expect.element(screen.getByRole('group')).not.toHaveAttribute('data-invalid');
+  });
+
+  describe.each([
+    { isControlled: true, label: 'controlled' },
+    { isControlled: false, label: 'uncontrolled' },
+  ])('24:00 while end of day is disallowed ($label)', ({ isControlled }) => {
+    const renderHarness = async (isEndOfDayAllowedAtMount: boolean, initialValue: string | null = '24:00') => {
+      const onValueChange = vi.fn();
+      const onInvalidValue = vi.fn();
+      const screen = await render(
+        <EndOfDayHarness
+          initialValue={initialValue}
+          isControlled={isControlled}
+          isEndOfDayAllowedAtMount={isEndOfDayAllowedAtMount}
+          onInvalidValue={onInvalidValue}
+          onValueChange={onValueChange}
+        />,
+      );
+      return { onInvalidValue, onValueChange, screen };
+    };
+
+    it('shows 24 as invalid without any callback after the flip', async () => {
+      const { onInvalidValue, onValueChange, screen } = await renderHarness(true);
+
+      await screen.getByRole('button', { name: 'Toggle end of day' }).click();
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-invalid');
+      await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveAttribute('aria-valuetext', '24');
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([]);
+      expect(onInvalidValue.mock.calls).toEqual([]);
+    });
+
+    it('shows a 24:00 given at mount as invalid without any callback', async () => {
+      const { onInvalidValue, onValueChange, screen } = await renderHarness(false);
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-invalid');
+      await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveAttribute('aria-valuetext', '24');
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([]);
+      expect(onInvalidValue.mock.calls).toEqual([]);
+    });
+
+    it('reports null when the user clears both segments after the flip, and stays empty when flipped back', async () => {
+      const { onValueChange, screen } = await renderHarness(true);
+      await screen.getByRole('button', { name: 'Toggle end of day' }).click();
+
+      await clearBothSegments(screen);
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBeNull();
+      await screen.getByRole('button', { name: 'Toggle end of day' }).click();
+      await settleEffects();
+      await expect.element(screen.getByRole('group')).not.toHaveAttribute('data-invalid');
+      expect(screen.getByRole('group').element().textContent).toBe('HH:mm');
+    });
+  });
+
+  it('empties the field when the parent sets null after the flip', async () => {
+    const onValueChange = vi.fn();
+    const screen = await render(
+      <EndOfDayHarness
+        initialValue="24:00"
+        isControlled
+        isEndOfDayAllowedAtMount
+        onInvalidValue={vi.fn()}
+        onValueChange={onValueChange}
+      />,
+    );
+    await screen.getByRole('button', { name: 'Toggle end of day' }).click();
+
+    await screen.getByRole('button', { name: 'Parent clears' }).click();
+
+    await expect.poll(() => screen.getByRole('group').element().textContent).toBe('HH:mm');
+    await settleEffects();
+    expect(onValueChange.mock.calls).toEqual([]);
+  });
+
+  it('still reports a malformed controlled value and shows an empty field', async () => {
+    const onInvalidValue = vi.fn();
+    const screen = await render(<TimeField.Root aria-label="Time" value="25:61" onInvalidValue={onInvalidValue} />);
+
+    await expect.poll(() => onInvalidValue.mock.calls.map(([input]) => input)).toEqual(['25:61']);
+    expect(screen.getByRole('group').element().textContent).toBe('HH:mm');
   });
 
   describe('callbacks', () => {

@@ -4,8 +4,6 @@ import { useLatestRef } from '../utilities/use-latest-ref';
 import type { ControlledInput } from './use-parsed-value';
 
 export type ValueBridgeOptions<Value> = {
-  // Goal: 값은 그대로인데 해석 설정(24:00 허용 여부)이 바뀌어 store 값이 달라지는 경우, 이 키가 바뀌면 사용자 행동이 아니므로 알림 없이 현재 값을 기준으로 삼음. 생략하면 동작이 바뀌지 않음
-  readonly baselineKey?: string | undefined;
   readonly committedValue: Value;
   readonly controlled: ControlledInput<Value>;
   readonly isEqual: (first: Value, second: Value) => boolean;
@@ -27,17 +25,6 @@ export const useValueBridge = <Value>(options: ValueBridgeOptions<Value | null>)
   const latest = useLatestRef(options);
   const controlledValue = controlled.isControlled ? controlled.value : undefined;
   const wasControlledRef = useRef(controlled.isControlled);
-  const lastBaselineKeyRef = useRef(options.baselineKey);
-
-  // Constraint: 아래 알림 이펙트보다 먼저 선언해야 같은 커밋의 값 변화를 알림 없이 기준으로 삼을 수 있음
-  useEffect(() => {
-    if (lastBaselineKeyRef.current === options.baselineKey) return;
-    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-    lastBaselineKeyRef.current = options.baselineKey;
-    const { toPublic = keepValue } = latest.current;
-    lastKnownRef.current = committedValue;
-    lastPublicRef.current = toPublic(committedValue);
-  }, [options.baselineKey, committedValue, latest]);
 
   useEffect(() => {
     if (wasControlledRef.current === controlled.isControlled) return;

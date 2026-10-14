@@ -18,11 +18,13 @@ import { type PickerSettings, usePickerSettings } from '../settings/use-picker-s
 import { useStoreInstance } from '../store/use-store-instance';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
 import type { HiddenInputProps } from '../value/hidden-input';
-import { parseOptionalTime } from '../value/parse-controlled-value';
+import { type ParsedControlledValue, parseOptionalTime } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
 
 const DEFAULT_MINUTE_STEP = 1;
+const END_OF_DAY = '24:00';
+const PARSE_KEY = 'well-formed-time';
 const TIME_PART_DIGITS = 2;
 
 export interface TimeFieldApi {
@@ -54,26 +56,20 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
   const settings = usePickerSettings(props);
   const isEndOfDayAllowed = props.isEndOfDayAllowed === true;
   const minuteStep = props.minuteStep ?? DEFAULT_MINUTE_STEP;
-  const controlled = useParsedValue(
-    props.value,
-    (input) => parseOptionalTime(input, { isEndOfDayAllowed }),
-    String,
-    props.onInvalidValue,
-    String(isEndOfDayAllowed),
-  );
-  const [initialValue] = useState(
-    () => controlled.value ?? parseOptionalTime(props.defaultValue, { isEndOfDayAllowed }).value,
-  );
+  const controlled = useParsedValue(props.value, parseWellFormedTime, String, props.onInvalidValue, PARSE_KEY);
+  const [initialValue] = useState(() => controlled.value ?? parseWellFormedTime(props.defaultValue).value);
   const context: TimeFieldContext = useMemo(() => ({ minuteStep, isEndOfDayAllowed }), [minuteStep, isEndOfDayAllowed]);
   // Goal: 시 칸 최댓값(23 또는 24)은 store 생성 때 고정되므로 24:00 허용 여부가 바뀌면 store를 새로 만듦. 이전 칸 값은 유지해 onValueChange가 불리지 않음 (preflight 3.9)
   const { state, send } = useStoreInstance(
     (previous: TimeFieldState | undefined) =>
-      previous === undefined ? createTimeFieldState(initialValue, context) : rebuildWithContext(previous, context),
+      rebuildWithContext(previous ?? createTimeFieldState(initialValue, withEndOfDayAllowed(context)), context),
     timeFieldReducer,
     context,
     { resetKey: String(isEndOfDayAllowed) },
   );
   const result = useMemo(() => timeFieldResult(state, context), [state, context]);
+  // Constraint: 허용 여부가 꺼져도 store 값은 24:00 그대로 둠. 설정이 바뀐다고 값이 비어 보이면 부모가 진짜 비움과 구별하지 못함
+  const storeTime = useMemo(() => timeFieldResult(state, withEndOfDayAllowed(context)).time, [state, context]);
   const isDisabled = props.disabled === true;
   const isInvalid =
     props.invalid === true || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
@@ -93,11 +89,18 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
   });
 
   useValueBridge<TimeString>({
-    baselineKey: String(isEndOfDayAllowed),
-    committedValue: result.time,
+    committedValue: storeTime,
     controlled,
     isEqual: Object.is,
-    syncStore: (next) => send({ type: 'value.sync', time: next }),
+    // Constraint: value.sync는 허용되지 않은 24:00을 비우므로, 허용되지 않을 때는 붙여넣기로 칸에 그대로 넣음
+    syncStore: (next) =>
+      send(
+        next === END_OF_DAY && !isEndOfDayAllowed
+          ? { type: 'text.paste', text: END_OF_DAY }
+          : { type: 'value.sync', time: next },
+      ),
+    // Goal: 허용되지 않는 24:00은 제약 위반으로 화면에 남기되 부모에게는 빈 값으로 알림
+    toPublic: (time) => (time === END_OF_DAY && !isEndOfDayAllowed ? null : time),
     onValueChange: (next) => props.onValueChange?.(next, { validity: result.validity }),
   });
 
@@ -151,6 +154,11 @@ const describeTimeSegment = (state: TimeFieldState, index: number, settings: Pic
     canToggleLeapMonth: false,
   };
 };
+
+const withEndOfDayAllowed = (context: TimeFieldContext): TimeFieldContext => ({ ...context, isEndOfDayAllowed: true });
+
+const parseWellFormedTime = (input: string | null | undefined): ParsedControlledValue<TimeString> =>
+  parseOptionalTime(input, { isEndOfDayAllowed: true });
 
 const rebuildWithContext = (previous: TimeFieldState, context: TimeFieldContext): TimeFieldState => {
   const fresh = createTimeFieldState(null, context);
