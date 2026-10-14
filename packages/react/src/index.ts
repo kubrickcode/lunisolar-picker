@@ -21,5 +21,9 @@ export type { SharedPickerProps, ValueChangeDetails } from './settings/shared-pi
 export * as Sheet from './sheet/parts';
 export type { SheetApi, UseSheetProps } from './sheet/use-sheet';
 export { useSheet } from './sheet/use-sheet';
+export * as TimeField from './time-field/parts';
+export { useTimeFieldContext } from './time-field/time-field-context';
+export type { TimeFieldApi, UseTimeFieldProps } from './time-field/use-time-field';
+export { useTimeField } from './time-field/use-time-field';
 export { useToday } from './today/use-today';
 export type { RenderProp } from './utilities/render-element';
