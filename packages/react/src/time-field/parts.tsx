@@ -7,11 +7,6 @@ import { type TimeFieldApi, type UseTimeFieldProps, useTimeField } from './use-t
 
 const TIME_SEPARATOR = ':';
 
-export interface TimeFieldRenderState {
-  readonly isDisabled: boolean;
-  readonly isInvalid: boolean;
-}
-
 export interface RootProps extends UseTimeFieldProps {
   readonly render?: RenderProp<HTMLAttributes<HTMLDivElement>, TimeFieldRenderState> | undefined;
   readonly className?: string | undefined;
@@ -31,6 +26,11 @@ export interface SegmentProps {
 
 export interface SeparatorProps extends HTMLAttributes<HTMLSpanElement> {
   readonly render?: RenderProp<HTMLAttributes<HTMLSpanElement>, Record<string, never>> | undefined;
+}
+
+export interface TimeFieldRenderState {
+  readonly isDisabled: boolean;
+  readonly isInvalid: boolean;
 }
 
 export const Root = (props: RootProps): ReactElement => {

@@ -84,7 +84,6 @@ describe('TimeField', () => {
   it('shows 24-hour digits even in an English locale', async () => {
     const screen = await render(<TimeField.Root aria-label="Time" defaultValue="21:05" />);
 
-    await expect.element(screen.getByRole('group')).toHaveTextContent('21:05');
     expect(screen.getByRole('group').element().textContent).toBe('21:05');
   });
 
@@ -126,6 +125,48 @@ describe('TimeField', () => {
       await expect.element(screen.getByRole('group')).toHaveTextContent('09:30');
       expect(onValueChange.mock.calls).toEqual([]);
     });
+
+    it('keeps 24:00 entered but invalid without a callback when the allowance is turned off, then reports the next edit', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(
+        <TimeField.Root aria-label="Time" defaultValue="24:00" isEndOfDayAllowed onValueChange={onValueChange} />,
+      );
+      await screen.rerender(<TimeField.Root aria-label="Time" defaultValue="24:00" onValueChange={onValueChange} />);
+      await settleEffects();
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-invalid');
+      await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveAttribute('aria-valuetext', '24');
+      expect(onValueChange.mock.calls).toEqual([]);
+
+      dispatchPaste(screen.getByRole('spinbutton', { name: 'Hour' }).element(), '23:00');
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('23:00');
+    });
+
+    it('rejects pasted 24:30 even when end of day is allowed', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(<TimeField.Root aria-label="Time" isEndOfDayAllowed onValueChange={onValueChange} />);
+
+      dispatchPaste(screen.getByRole('spinbutton', { name: 'Hour' }).element(), '24:30');
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-invalid');
+      await settleEffects();
+      expect(onValueChange.mock.calls.map(([value]) => value)).toEqual([]);
+    });
+  });
+
+  it('accepts a typed minute that is off the minute step', async () => {
+    const onValueChange = vi.fn();
+    const screen = await render(
+      <TimeField.Root aria-label="Time" defaultValue="09:00" minuteStep={5} onValueChange={onValueChange} />,
+    );
+
+    await screen.getByRole('spinbutton', { name: 'Minute' }).click();
+    await expect.element(screen.getByRole('spinbutton', { name: 'Minute' })).toHaveFocus();
+    await userEvent.keyboard('32');
+
+    await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('09:32');
+    await expect.element(screen.getByRole('group')).not.toHaveAttribute('data-invalid');
   });
 
   describe('callbacks', () => {

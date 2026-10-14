@@ -25,14 +25,6 @@ import { useValueBridge } from '../value/use-value-bridge';
 const DEFAULT_MINUTE_STEP = 1;
 const TIME_PART_DIGITS = 2;
 
-export interface UseTimeFieldProps extends SharedPickerProps {
-  readonly value?: string | null | undefined;
-  readonly defaultValue?: string | null | undefined;
-  readonly onValueChange?: ((value: TimeString | null, details: ValueChangeDetails) => void) | undefined;
-  readonly minuteStep?: number | undefined;
-  readonly isEndOfDayAllowed?: boolean | undefined;
-}
-
 export interface TimeFieldApi {
   readonly state: TimeFieldState;
   readonly value: TimeString | null;
@@ -49,6 +41,14 @@ export interface TimeFieldApi {
 
 export type TimeFieldRootProps = HTMLAttributes<HTMLDivElement> &
   DataAttributeProps & { readonly ref: RefCallback<HTMLElement> };
+
+export interface UseTimeFieldProps extends SharedPickerProps {
+  readonly value?: string | null | undefined;
+  readonly defaultValue?: string | null | undefined;
+  readonly onValueChange?: ((value: TimeString | null, details: ValueChangeDetails) => void) | undefined;
+  readonly minuteStep?: number | undefined;
+  readonly isEndOfDayAllowed?: boolean | undefined;
+}
 
 export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
   const settings = usePickerSettings(props);
@@ -93,6 +93,7 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
   });
 
   useValueBridge<TimeString>({
+    baselineKey: String(isEndOfDayAllowed),
     committedValue: result.time,
     controlled,
     isEqual: Object.is,
