@@ -26,6 +26,13 @@ describe('locales', () => {
       const broken = { ...ko, labels: { ...ko.labels, validation: { ...ko.labels.validation, 'invalid-date': '' } } };
       expect(() => defineLocale(broken)).toThrow(/invalid-date/);
     });
+
+    it('rejects a locale that omits a validation reason', () => {
+      const { 'invalid-date': _omitted, ...rest } = ko.labels.validation;
+      // as: 누락된 키를 가진 입력으로 타입이 못 잡는 런타임 실수를 재현함
+      const broken = { ...ko, labels: { ...ko.labels, validation: rest as LocaleData['labels']['validation'] } };
+      expect(() => defineLocale(broken)).toThrow(/invalid-date/);
+    });
   });
 
   it.each(LOCALES.map((locale) => [locale.id, locale] as const))(
@@ -50,7 +57,7 @@ describe('locales', () => {
 
     it('formats a date without weekday or calendar name for secondary labels', () => {
       expect(ko.formatDateLabel({ year: 2025, monthCode: 'M06L', day: 29 }, 'dangi')).toBe('2025년 윤6월 29일');
-      expect(en.formatDateLabel({ year: 2025, monthCode: 'M06L', day: 29 }, 'dangi')).toBe('Leap Month 6 Day 29, 2025');
+      expect(en.formatDateLabel({ year: 2025, monthCode: 'M06L', day: 29 }, 'dangi')).toBe('Leap 6 Day 29, 2025');
       expect(en.formatDateLabel({ year: 2026, monthCode: 'M10', day: 14 }, 'gregory')).toBe('October 14, 2026');
       expect(ja.formatDateLabel({ year: 2025, monthCode: 'M06L', day: 29 }, 'dangi')).toBe('2025年閏6月29日');
     });
@@ -71,7 +78,7 @@ describe('locales', () => {
   describe('en and ja', () => {
     it('formats English headings and leap months', () => {
       expect(en.formatHeading({ year: 2026, monthCode: 'M10' }, 'gregory')).toBe('October 2026');
-      expect(en.formatMonthName({ year: 2025, monthCode: 'M06L' }, 'dangi')).toBe('Leap Month 6');
+      expect(en.formatMonthName({ year: 2025, monthCode: 'M06L' }, 'dangi')).toBe('Leap 6');
       expect(en.formatDayLabel({ year: 2026, monthCode: 'M10', day: 14 }, 3, 'gregory')).toBe(
         'Wednesday, October 14, 2026',
       );

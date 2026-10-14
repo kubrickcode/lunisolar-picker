@@ -24,7 +24,7 @@ const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', '
 const formatMonthName = (month: VisibleMonth, calendarId: CalendarId): string => {
   const { month: monthNumber, isLeapMonth } = parseMonthCode(month.monthCode);
   if (calendarId === 'gregory') return MONTHS_LONG[monthNumber - 1] ?? '';
-  return `${isLeapMonth ? 'Leap Month' : 'Month'} ${monthNumber}`;
+  return `${isLeapMonth ? 'Leap' : 'Month'} ${monthNumber}`;
 };
 
 // Constraint: defineLocale 인자가 모듈 로드 시점에 이 함수를 읽으므로 export보다 먼저 선언해야 함

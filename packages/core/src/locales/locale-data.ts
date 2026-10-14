@@ -72,7 +72,7 @@ export const defineLocale = (locale: LocaleData): LocaleData => {
     describeLengthProblem({ expectedLength: DAYS_PER_WEEK, path: 'weekdays.short', values: locale.weekdays.short }),
     describeLengthProblem({ expectedLength: DAYS_PER_WEEK, path: 'weekdays.long', values: locale.weekdays.long }),
     isSegmentPermutation(locale.field.order) ? '' : 'field.order must contain year, month and day exactly once',
-    ...VALIDATION_REASONS.filter((reason) => locale.labels.validation[reason] === '').map(
+    ...VALIDATION_REASONS.filter((reason) => !locale.labels.validation[reason]).map(
       (reason) => `labels.validation.${reason} is empty`,
     ),
   ].filter((problem) => problem !== '');
