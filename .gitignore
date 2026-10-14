@@ -2,3 +2,7 @@
 .env
 .env.*
 .worktrees/
+node_modules/
+dist/
+.cache/
+coverage/
