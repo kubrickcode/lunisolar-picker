@@ -60,6 +60,32 @@ describe('time field', () => {
     ).toBe('00:00');
   });
 
+  it('steps the hour through 24 and back to 0 when end of day is allowed', () => {
+    const focused = timeFieldReducer(
+      createTimeFieldState(timeString('23:00'), END_OF_DAY),
+      { type: 'segment.focus', index: 0 },
+      END_OF_DAY,
+    );
+
+    const endOfDay = timeFieldReducer(focused, { type: 'segment.step', amount: 1 }, END_OF_DAY);
+    const midnight = timeFieldReducer(endOfDay, { type: 'segment.step', amount: 1 }, END_OF_DAY);
+
+    expect(timeFieldResult(endOfDay, END_OF_DAY).time).toBe('24:00');
+    expect(timeFieldResult(midnight, END_OF_DAY).time).toBe('00:00');
+  });
+
+  it('wraps the minute from 55 to 00 without changing the hour', () => {
+    const focused = timeFieldReducer(
+      createTimeFieldState(timeString('07:55'), FIVE_MINUTES),
+      { type: 'segment.focus', index: 1 },
+      FIVE_MINUTES,
+    );
+
+    expect(
+      timeFieldResult(timeFieldReducer(focused, { type: 'segment.step', amount: 1 }, FIVE_MINUTES), FIVE_MINUTES).time,
+    ).toBe('07:00');
+  });
+
   it('reads pasted times with or without a colon', () => {
     const empty = createTimeFieldState(null, FIVE_MINUTES);
 

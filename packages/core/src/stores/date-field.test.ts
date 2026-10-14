@@ -3,6 +3,7 @@ import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { describe, expect, it } from 'vitest';
 import { resolveConstraints } from '../constraints/resolve-constraints';
 import { en } from '../locales/en';
+import { ja } from '../locales/ja';
 import { createTestContext } from '../testing/create-test-context';
 import { reduceEvents } from '../testing/reduce-events';
 import { createDateFieldState, type DateFieldEvent, dateFieldReducer, dateFieldResult } from './date-field';
@@ -103,6 +104,46 @@ describe('date field', () => {
     expect([june.segments[1]?.value, june.isLeapMonth]).toEqual([6, false]);
   });
 
+  it('steps from the regular month when the leap flag names a leap month the year does not have', () => {
+    const lunarContext = createTestContext({ calendars: [gregory, dangi] });
+    const flaggedMarch = reduceEvents(
+      dateFieldReducer,
+      createDateFieldState(lunarContext, { selected: null, entryCalendarId: 'dangi' }),
+      [...typed('19900301'), { type: 'segment.focus', index: 1 }, { type: 'leapMonth.toggle' }],
+      lunarContext,
+    );
+
+    const april = dateFieldReducer(flaggedMarch, { type: 'segment.step', amount: 1 }, lunarContext);
+    const february = dateFieldReducer(flaggedMarch, { type: 'segment.step', amount: -1 }, lunarContext);
+
+    expect([april.segments[1]?.value, april.isLeapMonth]).toEqual([4, false]);
+    expect([february.segments[1]?.value, february.isLeapMonth]).toEqual([2, false]);
+  });
+
+  it('wraps the Gregorian month from 12 to 1 without changing the year', () => {
+    const december = reduceEvents(
+      dateFieldReducer,
+      emptyGregorian,
+      [...typed('20261215'), { type: 'segment.focus', index: 1 }],
+      koContext,
+    );
+
+    const stepped = dateFieldReducer(december, { type: 'segment.step', amount: 1 }, koContext);
+
+    expect(stepped.segments.map((segment) => segment.value)).toEqual([2026, 1, 15]);
+  });
+
+  it('steps a typed month of 00 into 1 instead of throwing', () => {
+    const zeroMonth = reduceEvents(
+      dateFieldReducer,
+      emptyGregorian,
+      [...typed('199000'), { type: 'segment.focus', index: 1 }],
+      koContext,
+    );
+
+    expect(dateFieldReducer(zeroMonth, { type: 'segment.step', amount: 1 }, koContext).segments[1]?.value).toBe(1);
+  });
+
   it('ignores the leap toggle for Gregorian entry', () => {
     const state = dateFieldReducer(emptyGregorian, { type: 'leapMonth.toggle' }, koContext);
 
@@ -115,6 +156,7 @@ describe('date field', () => {
       ['an English date into an English field', en, '03/15/1990'],
       ['a Korean date with words into a Korean field', undefined, '1990년 3월 15일'],
       ['compact digits', undefined, '19900315'],
+      ['compact digits in the English month-day-year order', en, '03151990'],
     ])('reads %s', (_, locale, text) => {
       const context = createTestContext(locale ? { locale } : {});
       const empty = createDateFieldState(context, { selected: null, entryCalendarId: 'gregory' });
@@ -122,6 +164,94 @@ describe('date field', () => {
       const state = dateFieldReducer(empty, { type: 'text.paste', text }, context);
 
       expect(dateFieldResult(state, context).epochDay).toBe(epochDayFromCivil(1990, 3, 15));
+    });
+
+    describe('leap month marker', () => {
+      it.each([
+        ['the Korean field prefix', undefined, '1990. 윤05. 01'],
+        ['the Japanese field prefix', ja, '1990年閏5月1日'],
+        ['the English lunar month name', en, 'Leap 5/1/1990'],
+      ])('reads %s before the month digits as a leap month', (_, locale, text) => {
+        const context = createTestContext({ calendars: [gregory, dangi], ...(locale ? { locale } : {}) });
+        const empty = createDateFieldState(context, { selected: null, entryCalendarId: 'dangi' });
+
+        const state = dateFieldReducer(empty, { type: 'text.paste', text }, context);
+
+        expect(state.isLeapMonth).toBe(true);
+        expect(dateFieldResult(state, context).epochDay).toBe(epochDayFromCivil(1990, 6, 23));
+      });
+
+      it('reads the same text without the marker as a regular month', () => {
+        const lunarContext = createTestContext({ calendars: [gregory, dangi] });
+        const empty = createDateFieldState(lunarContext, { selected: null, entryCalendarId: 'dangi' });
+
+        const state = dateFieldReducer(empty, { type: 'text.paste', text: '1990. 05. 01' }, lunarContext);
+
+        expect([state.segments[1]?.value, state.isLeapMonth]).toEqual([5, false]);
+      });
+
+      it('keeps the marker for Gregorian entry and reports the date as invalid', () => {
+        const state = dateFieldReducer(emptyGregorian, { type: 'text.paste', text: '1990. 윤05. 01' }, koContext);
+
+        expect(state.isLeapMonth).toBe(true);
+        expect(dateFieldResult(state, koContext)).toEqual({
+          epochDay: null,
+          validity: { isValid: false, reasons: ['invalid-date'] },
+        });
+      });
+
+      it('reads the English lunar month name in a Gregorian field as a leap marker', () => {
+        const enContext = createTestContext({ locale: en });
+        const empty = createDateFieldState(enContext, { selected: null, entryCalendarId: 'gregory' });
+
+        expect(dateFieldReducer(empty, { type: 'text.paste', text: 'Leap 5/1/1990' }, enContext).isLeapMonth).toBe(
+          true,
+        );
+      });
+
+      it('clears a pasted leap marker in a Gregorian field once the month is erased and retyped', () => {
+        const pasted = dateFieldReducer(emptyGregorian, { type: 'text.paste', text: '1990. 윤05. 01' }, koContext);
+
+        const retyped = reduceEvents(
+          dateFieldReducer,
+          pasted,
+          [
+            { type: 'segment.focus', index: 1 },
+            { type: 'segment.erase' },
+            { type: 'digit.type', digit: 0 },
+            { type: 'digit.type', digit: 5 },
+          ],
+          koContext,
+        );
+
+        expect(retyped.isLeapMonth).toBe(false);
+        expect(dateFieldResult(retyped, koContext)).toEqual({
+          epochDay: epochDayFromCivil(1990, 5, 1),
+          validity: { isValid: true, reasons: [] },
+        });
+      });
+
+      it('clears a pasted leap marker in a Gregorian field when the month is stepped', () => {
+        const pasted = dateFieldReducer(emptyGregorian, { type: 'text.paste', text: '1990. 윤05. 01' }, koContext);
+        const focused = dateFieldReducer(pasted, { type: 'segment.focus', index: 1 }, koContext);
+
+        const stepped = dateFieldReducer(focused, { type: 'segment.step', amount: 1 }, koContext);
+
+        expect([stepped.segments[1]?.value, stepped.isLeapMonth]).toEqual([6, false]);
+      });
+
+      it('keeps a pasted leap marker in a Gregorian field while other segments are edited', () => {
+        const pasted = dateFieldReducer(emptyGregorian, { type: 'text.paste', text: '1990. 윤05. 01' }, koContext);
+
+        const edited = reduceEvents(
+          dateFieldReducer,
+          pasted,
+          [{ type: 'segment.focus', index: 2 }, { type: 'segment.erase' }, { type: 'digit.type', digit: 2 }],
+          koContext,
+        );
+
+        expect(edited.isLeapMonth).toBe(true);
+      });
     });
 
     it('leaves the field untouched for text it cannot read', () => {
@@ -150,6 +280,28 @@ describe('date field', () => {
     );
 
     expect(state.focusedIndex).toBe(2);
+  });
+
+  it('moves on from a segment that already has a value when a separator is typed', () => {
+    const filled = createDateFieldState(koContext, {
+      selected: { epochDay: epochDayFromCivil(1990, 3, 15), calendarId: 'gregory' },
+      entryCalendarId: 'gregory',
+    });
+
+    const state = reduceEvents(
+      dateFieldReducer,
+      filled,
+      [{ type: 'segment.focus', index: 0 }, { type: 'separator.type' }],
+      koContext,
+    );
+
+    expect(state.focusedIndex).toBe(1);
+  });
+
+  it('stays on an empty segment when a separator is typed', () => {
+    const focused = dateFieldReducer(emptyGregorian, { type: 'segment.focus', index: 0 }, koContext);
+
+    expect(dateFieldReducer(focused, { type: 'separator.type' }, koContext)).toBe(focused);
   });
 
   it('reports the constraint reason for a complete date outside the bounds', () => {

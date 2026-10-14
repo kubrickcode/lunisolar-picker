@@ -69,8 +69,9 @@ export const reduceSegmentEvent = <Kind extends string, Group extends SegmentGro
         : focusSegmentAt<Kind, Group>(group, group.focusedIndex + event.amount);
     case 'digit.type':
       return focused ? typeIntoGroup({ digit: event.digit, focused, group }) : group;
+    // Constraint: 칸이 이미 값을 갖고 있으면 . - / 로 다음 칸으로 넘어감 (스펙 10.2). 빈 칸에서는 넘어가지 않음
     case 'separator.type':
-      return focused && focused.typedText !== '' && group.focusedIndex !== null
+      return focused !== undefined && focused.value !== null && group.focusedIndex !== null
         ? focusSegmentAt<Kind, Group>(group, group.focusedIndex + 1)
         : group;
     case 'segment.erase':
