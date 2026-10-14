@@ -427,7 +427,7 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 | 공개 | 내용 |
 |---|---|
 | `Calendar.{Root, Header, Heading, PrevButton, NextButton, TodayButton, CalendarToggle, ViewButton, Grid, HeadCell, Cell, MonthGrid, YearGrid, Layout}` | `Grid({ monthIndex?, children?: (cell: MonthGridCell) => ReactNode })`, `Cell({ cell, children?: ReactNode \| ((info: CellRenderInfo) => ReactNode) })`, `Layout({ renderCell? })` |
-| `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`, `selectEpochDay`, `isTodayVisible` |
+| `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`(포커스 가능한 칸 버튼은 `data-autofocus`를 가져 열릴 때 선택한 날, 없으면 오늘로 포커스), `selectEpochDay`, `isTodayVisible`, `isInvalid`(보이는 무효: `incomplete` 제외), `getRootProps()`(`onBlur`는 포커스가 달력 전체를 벗어날 때, `calendar` 부품 속성) [M4-T1] |
 | `RangeCalendar.Root`, `useRangeCalendar(props): RangeCalendarApi`, `useRangeCalendarContext()` | `RangeCalendarApi`: `selection`, `value`, `draftValue`, `validity`, `announcement`, `rootRef`, `setRange`, `commit`, `cancel`. 범위 props에 `startName`·`endName` |
 | `MonthCalendar.Root`, `TimeList.Root`, `listTimes(minuteStep, isEndOfDayAllowed)` | |
 | `type CellRenderInfo = MonthGridCell & CellState` | `CellState { isSelected; isToday; isDisabled; isOutsideMonth; isInRange; isRangeStart; isRangeEnd; isPreview; isFocused }` |

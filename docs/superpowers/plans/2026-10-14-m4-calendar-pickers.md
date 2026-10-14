@@ -10,7 +10,7 @@
 > - Popover는 부모의 `open=false`로 닫혀도 포커스를 트리거로 돌려준다. 선택 후 닫는 흐름에서 따로 포커스를 옮기지 않는다.
 > - WheelDatePicker(약 4290~4400행)는 `useWheelDate`의 `getWheelRootProps()`를 `<Wheel.Root>`에 펼치고 `<Wheel.HiddenInput {...wheel.getHiddenInputProps()} />`를 그린다. `disabled`·`readOnly`·`name`·`onBlur`는 이 경로로만 동작한다.
 > - theme: `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`를 스타일을 붙일 때마다 줄인다. 이 검사가 "모든 부품에 규칙"을 보장하므로 `calendar-selectors.test.ts`(약 2758행)는 달력 고유 검사만 남기거나 뺀다.
-> - `useStoreInstance`의 `send`는 `resetKey`를 쓰지 않으면 고정이다(약 33행 가정은 달력 store에 그대로 성립).
+> - `useStoreInstance`의 `send`는 `resetKey`가 바뀔 때 새로 만들어진다. M4-T1부터 달력 navigation·selection store도 `resetKey = calendarKey`를 쓰므로 역법 목록이 바뀌면 `send`가 바뀐다. `send`는 최신 ref로 읽거나 호출 시점에 쓴다. `getSnapshot()`으로 렌더 없이 최신 상태를 읽을 수 있다.
 > - 테스트: 클릭 후 입력은 `src/testing/click-to-focus.ts`의 `clickToFocus`를 쓰고, 부정 단언 전에는 `settleEffects`를 쓴다.
 
 **Goal:** 단일·범위 달력 부품(`Calendar.*`, `RangeCalendar.Root`)과 완성형 picker 5종(`DatePicker`, `DateRangePicker`, `MonthPicker`, `WheelDatePicker`, `TimePicker`)을 만들어, web-console·back-office·saju-pictures가 쓰던 기능을 공개 API만으로 재현할 수 있게 한다.
@@ -40,7 +40,7 @@
 | `src/settings/use-picker-settings.ts` | `usePickerSettings(props: SharedPickerProps): PickerSettings`, `PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars }` (calendars[0]은 gregory) |
 | `src/settings/shared-picker-props.ts` | `SharedPickerProps`(`onBlur` 포함), `ValueChangeDetails` |
 | `src/utilities/render-element.ts` | `RenderProp<Props, State>`, `renderElement(tagName, render, props, state): ReactElement` |
-| `src/store/use-store-instance.ts` | `useStoreInstance(createInitialState, reducer, context): { state; send }` (send는 참조 고정) |
+| `src/store/use-store-instance.ts` | `useStoreInstance(createInitialState: (previous?) => State, reducer, context, options?: { resetKey? }): { state; send; getSnapshot }` (send는 resetKey가 바뀔 때만 바뀜) |
 | `src/utilities/use-controllable-state.ts` | `useControllableState(controlled, defaultValue, onChange): readonly [Value, (next) => void]` |
 | `src/contract/data-attributes.ts` | `DATA_ATTRIBUTES`, `DataAttribute`, `PART_NAMES`, `PartName`, `partAttributes(part, flags?)`, `stateAttributes(flags)` (플래그 키는 `data-` 없이: `{ selected: true }`) |
 | `src/presentation/use-presentation.ts` | `Presentation`, `usePresentation(presentation): 'popover' \| 'sheet'` (`src/index.ts`에서도 export) |
