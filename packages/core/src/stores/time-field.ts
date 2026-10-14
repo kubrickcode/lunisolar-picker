@@ -11,10 +11,10 @@ import {
 } from './segment';
 
 const COMPACT_TIME_LENGTH = 4;
-const END_OF_DAY_HOUR = 24;
-const LAST_HOUR = 23;
-const MINUTES_PER_HOUR = 60;
-const TIME_PART_DIGITS = 2;
+export const END_OF_DAY_HOUR = 24;
+export const LAST_HOUR = 23;
+export const MINUTES_PER_HOUR = 60;
+export const TIME_PART_DIGITS = 2;
 
 export interface TimeFieldContext {
   readonly minuteStep: number;

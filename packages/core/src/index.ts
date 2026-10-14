@@ -38,6 +38,8 @@ export {
 export { formatDateForField } from './locales/format-date-for-field';
 export type { LocaleData, LocaleLabels } from './locales/locale-data';
 export { defineLocale } from './locales/locale-data';
+export type { ColumnEvent, ColumnOption, ColumnState } from './stores/column';
+export { columnReducer, createColumnState, selectedColumnValue } from './stores/column';
 export type { DateFieldEvent, DateFieldResult, DateFieldState } from './stores/date-field';
 export { createDateFieldState, dateFieldReducer, dateFieldResult } from './stores/date-field';
 export type { CalendarView, FocusUnit, NavigationEvent, NavigationState } from './stores/navigation';
@@ -69,6 +71,8 @@ export {
 } from './stores/single-selection';
 export type { TimeFieldContext, TimeFieldEvent, TimeFieldResult, TimeFieldState } from './stores/time-field';
 export { createTimeFieldState, timeFieldReducer, timeFieldResult } from './stores/time-field';
+export type { WheelDateColumns, WheelTimeColumns } from './stores/wheel-columns';
+export { buildTimeColumns, buildWheelDateColumns } from './stores/wheel-columns';
 export type {
   CommitMode,
   DateSegmentKind,
