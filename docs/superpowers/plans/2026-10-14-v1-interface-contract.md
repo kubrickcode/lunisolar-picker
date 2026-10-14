@@ -138,8 +138,8 @@ export function validateEpochDay(epochDay, constraints): Validity;
 export function validateEpochRange(range: EpochRange, constraints): Validity;
 export function isEpochDayInBlockedRange(anchor, candidate, constraints): boolean;
 export interface ValidationOptions { readonly calendars?: readonly CalendarSystem[] }
-export function validateDate(value: string, constraints?: DateConstraints, options?: ValidationOptions): Validity;           // 앱용
-export function validateRange(range: { start: string; end: string | null }, constraints?: RangeConstraints, options?: ValidationOptions): Validity;  // 앱용 (프리셋 비활성화)
+export function validateDate(value: string, constraints?: DateConstraints, options?: ValidationOptions): StringValidity;     // 앱용. StringValidity = Validity & { ignoredInputs } (M2-T4 리뷰: 잘못된 min/max를 조용히 버리지 않음)
+export function validateRange(range: { start: string; end: string | null }, constraints?: RangeConstraints, options?: ValidationOptions): StringValidity;  // 앱용 (프리셋 비활성화)
 ```
 
 - 바인딩은 `resolveConstraints(constraints, gregory, settings.calendars)`로 부른다. 세 번째 인자는 `min: '…[u-ca=dangi]'` 같은 표기를 해석하는 데 쓴다.
