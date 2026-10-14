@@ -1,4 +1,4 @@
-import { epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
+import { epochDayFromCivil, gregory, LunisolarPickerError } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { describe, expect, it } from 'vitest';
 import { supportedYearRange } from './calendar-math';
@@ -26,6 +26,10 @@ describe('visible-month', () => {
     expect(shiftVisibleMonth(dangi, { year: 1900, monthCode: 'M01' }, -5)).toEqual({ year: 1900, monthCode: 'M01' });
     const lastMonth = visibleMonthOf(dangi, dangi.supportedRange.max);
     expect(shiftVisibleMonth(dangi, lastMonth, 3)).toEqual(lastMonth);
+  });
+
+  it('throws when the month to step from does not exist in its year', () => {
+    expect(() => shiftVisibleMonth(dangi, { year: 2026, monthCode: 'M06L' }, 1)).toThrow(LunisolarPickerError);
   });
 
   it('reads the visible month of a day, clamping days outside the calendar', () => {

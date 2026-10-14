@@ -82,4 +82,35 @@ describe('buildMonthGrid', () => {
     expect(trailing.length).toBeGreaterThan(0);
     expect(trailing.every((cell) => cell.isOutsideSupportedRange && cell.isOutsideMonth)).toBe(true);
   });
+
+  it('lays out a lunar grid starting on Monday', () => {
+    const grid = buildMonthGrid({
+      calendar: dangi,
+      month: { year: 2026, monthCode: 'M09' },
+      weekStartsOn: 1,
+      secondaryCalendar: null,
+    });
+    const firstCell = grid.weeks[0]?.[0];
+
+    expect(firstCell?.weekday).toBe(1);
+    expect(grid.weeks.flat().filter((cell) => !cell.isOutsideMonth)).toHaveLength(dangi.daysInMonth(2026, 'M09'));
+  });
+
+  it('marks the first day of a lunar leap month on a Gregorian grid', () => {
+    const grid = buildMonthGrid({
+      calendar: gregory,
+      month: { year: 2025, monthCode: 'M07' },
+      weekStartsOn: 0,
+      secondaryCalendar: dangi,
+    });
+    const july25 = grid.weeks.flat().find((cell) => cell.epochDay === epochDayFromCivil(2025, 7, 25));
+
+    expect(july25?.secondary).toEqual({
+      calendarId: 'dangi',
+      monthCode: 'M06L',
+      day: 1,
+      isLeapMonth: true,
+      isFirstDayOfMonth: true,
+    });
+  });
 });

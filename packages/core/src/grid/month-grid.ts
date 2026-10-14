@@ -42,6 +42,13 @@ export interface BuildMonthGridOptions {
   readonly secondaryCalendar: CalendarSystem | null;
 }
 
+type BuildCellOptions = {
+  readonly calendar: CalendarSystem;
+  readonly epochDay: EpochDay;
+  readonly isInMonth: boolean;
+  readonly secondaryCalendar: CalendarSystem | null;
+};
+
 export const buildMonthGrid = (options: BuildMonthGridOptions): MonthGrid => {
   const { calendar, month, weekStartsOn, secondaryCalendar } = options;
   const firstDay = firstEpochDayOfMonth(calendar, month);
@@ -60,13 +67,6 @@ export const buildMonthGrid = (options: BuildMonthGridOptions): MonthGrid => {
     }),
   );
   return { calendarId: calendar.id, month, weeks };
-};
-
-type BuildCellOptions = {
-  readonly calendar: CalendarSystem;
-  readonly epochDay: EpochDay;
-  readonly isInMonth: boolean;
-  readonly secondaryCalendar: CalendarSystem | null;
 };
 
 const buildCell = ({ calendar, epochDay, isInMonth, secondaryCalendar }: BuildCellOptions): MonthGridCell => {

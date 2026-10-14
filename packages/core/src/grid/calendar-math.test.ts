@@ -61,13 +61,20 @@ describe('calendar-math', () => {
 
     it('moves a month missing from the truncated final year to the last known month', () => {
       const { lastYear } = supportedYearRange(dangi);
-      const knownMonths = dangi.monthsInYear(lastYear);
-      const lastKnownMonth = knownMonths.at(-1);
 
       const constrained = constrainDateFields(dangi, { year: lastYear, monthCode: 'M12', day: 1 });
 
-      expect(knownMonths).toContain(constrained.monthCode);
-      if (!knownMonths.includes('M12')) expect(constrained.monthCode).toBe(lastKnownMonth);
+      expect(lastYear).toBe(2050);
+      expect(constrained).toEqual({ year: 2050, monthCode: 'M11', day: 1 });
+    });
+
+    it('shortens day 30 to the last day of a 29-day lunar month', () => {
+      expect(dangi.daysInMonth(2026, 'M02')).toBe(29);
+      expect(constrainDateFields(dangi, { year: 2026, monthCode: 'M02', day: 30 })).toEqual({
+        year: 2026,
+        monthCode: 'M02',
+        day: 29,
+      });
     });
 
     it('always produces a date the calendar accepts', () => {

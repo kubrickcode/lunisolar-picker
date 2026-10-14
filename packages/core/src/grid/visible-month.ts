@@ -1,6 +1,12 @@
-import type { CalendarSystem, EpochDay, MonthCode } from '@lunisolar-picker/calendar';
+import { type CalendarSystem, type EpochDay, LunisolarPickerError, type MonthCode } from '@lunisolar-picker/calendar';
 import type { VisibleMonth } from '../types';
 import { clampEpochDay, fieldsOf, firstEpochDayOfMonth, supportedYearRange } from './calendar-math';
+
+type AdjacentMonthOptions = {
+  readonly calendar: CalendarSystem;
+  readonly month: VisibleMonth;
+  readonly step: 1 | -1;
+};
 
 export const shiftVisibleMonth = (calendar: CalendarSystem, month: VisibleMonth, amount: number): VisibleMonth => {
   const step = amount < 0 ? -1 : 1;
@@ -37,16 +43,14 @@ export const visibleMonthOf = (calendar: CalendarSystem, epochDay: EpochDay): Vi
 export const yearPageStartOf = (year: number, pageSize: number): number =>
   year - (((year % pageSize) + pageSize) % pageSize);
 
-type AdjacentMonthOptions = {
-  readonly calendar: CalendarSystem;
-  readonly month: VisibleMonth;
-  readonly step: 1 | -1;
-};
-
 // Constraint: 범위 밖 연도에 monthsInYear를 부르면 프로그래머 오류로 던지므로 지원 연도를 먼저 확인함
 const adjacentMonth = ({ calendar, month, step }: AdjacentMonthOptions): VisibleMonth | null => {
   const monthCodes = calendar.monthsInYear(month.year);
-  const sameYearCode = monthCodes[monthCodes.indexOf(month.monthCode) + step];
+  const currentIndex = monthCodes.indexOf(month.monthCode);
+  if (currentIndex === -1) {
+    throw new LunisolarPickerError(`${calendar.id} year ${month.year} has no month ${month.monthCode} to step from`);
+  }
+  const sameYearCode = monthCodes[currentIndex + step];
   if (sameYearCode !== undefined) return { year: month.year, monthCode: sameYearCode };
   const { firstYear, lastYear } = supportedYearRange(calendar);
   const year = month.year + step;
