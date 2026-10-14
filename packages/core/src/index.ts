@@ -38,6 +38,8 @@ export {
 export { formatDateForField } from './locales/format-date-for-field';
 export type { LocaleData, LocaleLabels } from './locales/locale-data';
 export { defineLocale } from './locales/locale-data';
+export type { CalendarView, FocusUnit, NavigationEvent, NavigationState } from './stores/navigation';
+export { createNavigationState, navigationReducer, YEAR_PAGE_SIZE } from './stores/navigation';
 export type {
   CommitMode,
   DateSegmentKind,
