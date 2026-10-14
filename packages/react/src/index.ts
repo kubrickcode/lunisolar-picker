@@ -27,3 +27,8 @@ export type { TimeFieldApi, UseTimeFieldProps } from './time-field/use-time-fiel
 export { useTimeField } from './time-field/use-time-field';
 export { useToday } from './today/use-today';
 export type { RenderProp } from './utilities/render-element';
+export * as Wheel from './wheel/parts';
+export type { UseWheelProps, WheelApi } from './wheel/use-wheel';
+export { useWheel } from './wheel/use-wheel';
+export type { UseWheelDateProps, WheelDateApi } from './wheel/use-wheel-date';
+export { useWheelDate } from './wheel/use-wheel-date';
