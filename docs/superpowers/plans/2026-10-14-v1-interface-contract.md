@@ -11,18 +11,21 @@
 
 ## 0. 워크스페이스 공통 규칙 🔒
 
-- **패키지 간 해석은 `source` export 조건으로 통일한다.** [M1-T1, M2-T2, M3-T1]
-  - 모든 패키지 `exports`의 진입점마다 맨 앞에 `"source": "./src/…ts"`를 둔다.
+- **패키지 간 해석은 `@lunisolar-picker/source` export 조건으로 통일한다.** [M1-T1, M2-T2, M3-T1]
+  - 모든 패키지 `exports`의 진입점마다 맨 앞에 `"@lunisolar-picker/source": "./src/…ts"`를 둔다.
   - `files`에는 `src`를 넣고 테스트·테스트 헬퍼(`src/testing`, `src/visual`, `*.test.*`)는 뺀다.
-  - `tsconfig.base.json`: `"customConditions": ["source"]`
-  - vitest: `resolve.conditions`와 `ssr.resolve.conditions` 맨 앞에 `'source'`. 그래서 루트 devDependency에 `vite` 8.3.4를 둔다 [M2-T2].
-  - dependency-cruiser: `enhancedResolveOptions.conditionNames: ['source', 'import', 'types', 'default']`. 패키지 경계 규칙은 공개 진입점 파일(`src/index.ts` 등)을 허용 목록에 둔다.
-  - 배포 소비자의 번들러는 `source`를 모르므로 `dist`를 쓴다. fixtures(M5)는 `dist`로 소비 환경을 검증한다.
+  - `tsconfig.base.json`: `"customConditions": ["@lunisolar-picker/source"]`
+  - vitest: `resolve.conditions`와 `ssr.resolve.conditions` 맨 앞에 `'@lunisolar-picker/source'`. 그래서 루트 devDependency에 `vite` 8.3.4를 둔다 [M2-T2].
+  - dependency-cruiser: `enhancedResolveOptions.conditionNames: ['@lunisolar-picker/source', 'import', 'types', 'default']`. 패키지 경계 규칙은 공개 진입점 파일(`src/index.ts` 등)을 허용 목록에 둔다.
+  - 배포 소비자의 번들러는 `@lunisolar-picker/source`를 모르므로 `dist`를 쓴다. fixtures(M5)는 `dist`로 소비 환경을 검증한다.
   - `tsconfig` `paths`나 vitest 별칭은 쓰지 않는다.
 - **`'use client'`는 소스에 쓰지 않는다.** react 패키지의 tsdown `banner`가 모든 산출 청크에 붙이고 `packages/react/scripts/check-use-client.ts`가 검사한다 [M3-T1].
 - **테스트 헬퍼 위치**: 각 패키지 `src/testing/`(진입점에서 export하지 않음, 배포 `files`에서 제외). 시각 회귀는 `packages/react/src/visual/*.visual.test.tsx`이고 `just visual`·`just visual-update`(Docker)로만 돈다 [M3-T10].
 
 ---
+
+
+> 계약 변경(2026-10-14, M1 전체 리뷰): ① 워크스페이스 조건 이름을 일반 이름 `source` 대신 `@lunisolar-picker/source`로 바꿨다. 소비자 모노레포가 흔히 쓰는 `customConditions: ["source"]`에 우리 `src/*.ts`가 잘못 해석되는 것을 막기 위해서다. ② `brandEpochDay(value: number): EpochDay`를 calendar 루트에서 공개한다. 정수가 아니면 `LunisolarPickerError`를 던진다. M2 이후 `as EpochDay` 캐스트 대신 이 함수를 쓴다. ③ `formatDate`와 각 역법의 `fromEpochDay`는 정수가 아닌 epoch day에 `LunisolarPickerError`를 던진다. ④ dangi 지원 범위의 실제 끝은 음력 2050년 11월 30일(양력 2051-01-12)이다.
 
 ## 1. `@lunisolar-picker/calendar` 🔒 [M1]
 
@@ -30,6 +33,7 @@
 type EpochDay = number & { readonly [epochDayBrand]: true };
 interface CivilDate { readonly year: number; readonly month: number; readonly day: number }
 epochDayFromCivil(year, month, day): EpochDay
+brandEpochDay(value: number): EpochDay           // 정수가 아니면 LunisolarPickerError (M1 전체 리뷰 후 공개)
 civilFromEpochDay(epochDay): CivilDate
 weekdayOf(epochDay): number                         // 0=일 … 6=토
 isGregorianLeapYear(year): boolean; daysInGregorianMonth(year, month): number

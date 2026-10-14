@@ -4485,7 +4485,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월·휠 날짜·시간 picker 완성형 제
 
 > 🟡 잠정: M3의 `packages/react/tsdown.config.ts`·`package.json` exports 형태에 따라 수정 위치가 바뀔 수 있음
 
-> 정합성 조정(2026-10-14): M3 `packages/react/scripts/check-use-client.ts`가 dist의 모든 `.js`를 검사하고, tsdown `banner`가 모든 청크에 `'use client';`를 붙이므로 새 검사 스크립트를 만들지 않는다. `exports`에는 다른 진입점처럼 `source` 조건을 둔다.
+> 정합성 조정(2026-10-14): M3 `packages/react/scripts/check-use-client.ts`가 dist의 모든 `.js`를 검사하고, tsdown `banner`가 모든 청크에 `'use client';`를 붙이므로 새 검사 스크립트를 만들지 않는다. `exports`에는 다른 진입점처럼 `@lunisolar-picker/source` 조건을 둔다.
 
 **Files:**
 - Modify: `packages/react/tsdown.config.ts`, `packages/react/package.json`, `.dependency-cruiser.cjs`, `scripts/check-bundle-size.ts`
@@ -4504,7 +4504,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월·휠 날짜·시간 picker 완성형 제
 
 `packages/react/package.json`의 `exports`에 추가:
 ```json
-    "./pickers": { "source": "./src/pickers/index.ts", "types": "./dist/pickers.d.ts", "default": "./dist/pickers.js" },
+    "./pickers": { "@lunisolar-picker/source": "./src/pickers/index.ts", "types": "./dist/pickers.d.ts", "default": "./dist/pickers.js" },
 ```
 
 Run: `pnpm --filter @lunisolar-picker/react run build && pnpm --filter @lunisolar-picker/react exec tsx scripts/check-use-client.ts`

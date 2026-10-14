@@ -165,8 +165,8 @@ interface CalendarSystem {
 
 ### 5.3 dangi 데이터
 
-- **출처**: 한국천문연구원(KASI) 음양력 정보 OpenAPI (data.go.kr 15012679). 지원 범위는 **1900~2050년**이다.
-- **수집**: `scripts/collect-kasi.ts`로 한 번 수집해 원본 JSON(`packages/calendar/data/kasi-dangi.json`)을 커밋한다. API 키는 환경변수로 받고 레포에 넣지 않는다.
+- **출처**: 한국천문연구원(KASI) 음양력 정보 OpenAPI (data.go.kr 15012679). KASI 제공 범위는 양력 1900-01~2050-12다. 그래서 실제 지원 범위는 음력 1900년 1월 1일(양력 1900-01-31)부터 음력 2050년 11월 30일(양력 2051-01-12)까지다. 음력 2050년 12월은 데이터가 없어 범위 밖이다.
+- **수집**: `packages/calendar/scripts/kasi/collect-kasi.ts`로 한 번 수집해 음력 달 시작일 JSON(`packages/calendar/data/kasi-dangi-months.json`)을 커밋한다. API 키는 환경변수로 받고 레포에 넣지 않는다.
 - **생성**: 원본 JSON에서 압축 표 TS 코드(`dangi-table.generated.ts`)를 생성한다. 해마다 월 대·소 13bit, 윤달 위치 4bit, 설날 epoch day를 담는다. 목표 크기는 gzip 1KB 이하다.
 - **브라우저 내장 Intl에 의존하지 않는 이유**: `Intl` `u-ca-dangi`는 엔진(ICU4C/ICU4X/AppleICU)마다 결과가 다르다. 서버(V8)와 iOS(AppleICU)가 서로 다르게 그리면 hydration mismatch가 난다. Temporal은 iOS Safari에서 아직 지원되지 않는다.
 - **교차 검증**: manseryeok, korean-lunar-calendar, Node·브라우저 `Intl` dangi와 비교한 차이 리포트를 생성한다. 정보용이며 빌드를 막지 않는다.
