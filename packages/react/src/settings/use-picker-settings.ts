@@ -6,13 +6,15 @@ import { useToday } from '../today/use-today';
 import { LunisolarSettingsContext } from './lunisolar-provider';
 import type { SharedPickerProps } from './shared-picker-props';
 
-export interface PickerSettings {
+const CALENDAR_KEY_SEPARATOR = ',';
+
+export type PickerSettings = {
   readonly calendars: readonly CalendarSystem[];
   readonly locale: LocaleData;
   readonly timeZone: string | undefined;
   readonly todayEpochDay: EpochDay;
   readonly weekStartsOn: Weekday;
-}
+};
 
 export const usePickerSettings = (props: SharedPickerProps): PickerSettings => {
   const provided = useContext(LunisolarSettingsContext);
@@ -21,7 +23,12 @@ export const usePickerSettings = (props: SharedPickerProps): PickerSettings => {
   const todayEpochDay = useToday(timeZone, props.today ?? provided.today);
   const weekStartsOn = props.weekStartsOn ?? provided.weekStartsOn ?? locale.weekStartsOn;
   const requestedCalendars = props.calendars ?? provided.calendars;
-  const calendars = useMemo(() => withGregorian(requestedCalendars), [requestedCalendars]);
+  // Goal: 인라인 `calendars={[dangi]}`가 렌더마다 새 배열이어도 같은 역법 구성이면 같은 참조를 유지함
+  const calendarKey = withGregorian(requestedCalendars)
+    .map((calendar) => calendar.id)
+    .join(CALENDAR_KEY_SEPARATOR);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: calendarKey가 구성의 동일성을 대표함
+  const calendars = useMemo(() => withGregorian(requestedCalendars), [calendarKey]);
   return useMemo(
     () => ({ calendars, locale, timeZone, todayEpochDay, weekStartsOn }),
     [calendars, locale, timeZone, todayEpochDay, weekStartsOn],

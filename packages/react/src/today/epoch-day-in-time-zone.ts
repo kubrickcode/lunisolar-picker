@@ -1,4 +1,4 @@
-import { type EpochDay, epochDayFromCivil } from '@lunisolar-picker/calendar';
+import { type EpochDay, epochDayFromCivil, LunisolarPickerError } from '@lunisolar-picker/calendar';
 
 const LOCAL_TIME_ZONE_KEY = 'local';
 // Constraint: 시간대별 Intl.DateTimeFormat 생성 비용만 줄이는 순수 메모. 요청 데이터가 없어 인스턴스 상태가 아님

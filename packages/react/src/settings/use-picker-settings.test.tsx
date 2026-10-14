@@ -1,5 +1,7 @@
 import { epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
+import { en } from '@lunisolar-picker/core/locales/en';
+import { ja } from '@lunisolar-picker/core/locales/ja';
 import { ko } from '@lunisolar-picker/core/locales/ko';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -54,6 +56,44 @@ describe('usePickerSettings', () => {
       timeZone: 'Asia/Seoul',
       weekStartsOn: 0,
     });
+  });
+});
+
+describe('usePickerSettings precedence', () => {
+  it('lets component props beat provider values for locale, time zone and calendars', async () => {
+    const settings = await readSettings(
+      <LunisolarProvider locale={ko} timeZone="Asia/Seoul" today="2026-10-14">
+        <SettingsProbe calendars={[dangi]} locale={ja} timeZone="UTC" />
+      </LunisolarProvider>,
+    );
+
+    expect(settings).toMatchObject({ calendars: ['gregory', 'dangi'], locale: 'ja', timeZone: 'UTC' });
+  });
+
+  it('merges nested providers so the inner one overrides only what it sets', async () => {
+    const settings = await readSettings(
+      <LunisolarProvider locale={ko} timeZone="Asia/Seoul" today="2026-10-14" weekStartsOn={1}>
+        <LunisolarProvider locale={en}>
+          <SettingsProbe />
+        </LunisolarProvider>
+      </LunisolarProvider>,
+    );
+
+    expect(settings).toMatchObject({ locale: 'en', timeZone: 'Asia/Seoul', weekStartsOn: 1 });
+  });
+
+  it('keeps the calendars identity when an inline array has the same calendars', async () => {
+    const seen: (readonly unknown[])[] = [];
+    const Probe = (props: SharedPickerProps): ReactElement => {
+      seen.push(usePickerSettings(props).calendars);
+      return <output>{seen.length}</output>;
+    };
+    const screen = await render(<Probe calendars={[dangi]} today="2026-10-14" />);
+
+    await screen.rerender(<Probe calendars={[dangi]} today="2026-10-14" />);
+
+    expect(seen.length).toBeGreaterThan(1);
+    expect(new Set(seen).size).toBe(1);
   });
 });
 

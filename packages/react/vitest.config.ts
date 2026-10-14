@@ -5,7 +5,25 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  resolve: { conditions: ['@lunisolar-picker/source', ...defaultClientConditions] },
+  resolve: {
+    conditions: ['@lunisolar-picker/source', ...defaultClientConditions],
+    dedupe: ['react', 'react-dom'],
+  },
+  // Constraint: 브라우저 모드는 처음 만나는 의존성을 실행 중에 최적화하며 페이지를 다시 로드함. 미리 지정하지 않으면 첫 실행이 "Invalid hook call"과 iframe 타임아웃으로 실패함
+  optimizeDeps: {
+    include: [
+      '@floating-ui/react-dom',
+      'axe-core',
+      'fast-check',
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react-dom/server',
+      'react/jsx-dev-runtime',
+      'react/jsx-runtime',
+      'vitest-browser-react',
+    ],
+  },
   ssr: { resolve: { conditions: ['@lunisolar-picker/source', ...defaultServerConditions] } },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
