@@ -1,4 +1,4 @@
-import { epochDayFromCivil } from '@lunisolar-picker/calendar';
+import { epochDayFromCivil, LunisolarPickerError } from '@lunisolar-picker/calendar';
 import type { ReactElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,15 @@ import { useToday } from './use-today';
 type TodayProbeProps = { readonly timeZone?: string; readonly today?: string };
 
 const TodayProbe = ({ timeZone, today }: TodayProbeProps): ReactElement => <output>{useToday(timeZone, today)}</output>;
+
+const catchError = (action: () => void): unknown => {
+  try {
+    action();
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+};
 
 const renderToThrow = (element: ReactElement): void => {
   renderToString(element);
@@ -68,8 +77,12 @@ describe('useToday', () => {
     expect(container.textContent).toBe(String(epochDayInTimeZone(Date.now(), undefined)));
   });
 
-  it('rejects an unknown time zone with the bad value in the message', () => {
-    expect(() => renderToThrow(<TodayProbe timeZone="Mars/Olympus" />)).toThrow(/Mars\/Olympus/);
+  it('rejects an unknown time zone with a typed error carrying the bad value and the native cause', () => {
+    const thrown = catchError(() => renderToThrow(<TodayProbe timeZone="Mars/Olympus" />));
+
+    expect(thrown).toBeInstanceOf(LunisolarPickerError);
+    expect((thrown as Error).message).toContain('Mars/Olympus'); // as: 던져진 값이 Error임을 위 단언으로 확인함
+    expect((thrown as Error).cause).toBeInstanceOf(RangeError); // as: 던져진 값이 Error임을 위 단언으로 확인함
   });
 });
 

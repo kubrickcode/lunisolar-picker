@@ -17,10 +17,18 @@ const formatterFor = (timeZone: string | undefined): Intl.DateTimeFormat => {
   const cached = formatterCache.get(key);
   if (cached) return cached;
   const baseOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'numeric', year: 'numeric' };
-  const formatter = new Intl.DateTimeFormat(
-    'en-US',
-    timeZone === undefined ? baseOptions : { ...baseOptions, timeZone },
-  );
+  const formatter = createFormatter(timeZone, baseOptions);
   formatterCache.set(key, formatter);
   return formatter;
+};
+
+const createFormatter = (
+  timeZone: string | undefined,
+  baseOptions: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat => {
+  try {
+    return new Intl.DateTimeFormat('en-US', timeZone === undefined ? baseOptions : { ...baseOptions, timeZone });
+  } catch (error) {
+    throw new LunisolarPickerError(`Invalid time zone: "${timeZone}"`, { cause: error });
+  }
 };
