@@ -72,6 +72,7 @@ describe('createDangiCalendar', () => {
     [{ year: 2000, monthCode: 'M02' as const, day: 30 }],
     [{ year: 2000, monthCode: 'M04L' as const, day: 1 }],
     [{ year: 2000, monthCode: 'M01' as const, day: 0 }],
+    [{ year: 2002, monthCode: 'M01L' as const, day: 1 }],
   ])('reports invalid-date for %o', (fields) => {
     expect(calendar.toEpochDay(fields)).toEqual({ isOk: false, error: 'invalid-date' });
   });
@@ -80,7 +81,6 @@ describe('createDangiCalendar', () => {
     [{ year: 1999, monthCode: 'M01' as const, day: 1 }],
     [{ year: 2003, monthCode: 'M01' as const, day: 1 }],
     [{ year: 2002, monthCode: 'M04' as const, day: 1 }],
-    [{ year: 2002, monthCode: 'M01L' as const, day: 1 }],
   ])('reports outside-calendar-range for %o, including months past the truncated final year', (fields) => {
     expect(calendar.toEpochDay(fields)).toEqual({ isOk: false, error: 'outside-calendar-range' });
   });

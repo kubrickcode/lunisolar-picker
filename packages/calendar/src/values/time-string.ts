@@ -18,15 +18,15 @@ export interface ParsedTime {
   readonly value: TimeString;
 }
 
+export interface TimeOptions {
+  readonly isEndOfDayAllowed?: boolean;
+}
+
 type TimeCandidate = {
   readonly hour: number;
   readonly isEndOfDayAllowed: boolean;
   readonly minute: number;
 };
-
-export interface TimeOptions {
-  readonly isEndOfDayAllowed?: boolean;
-}
 
 export const parseTime = (input: string, options: TimeOptions = {}): Result<ParsedTime, ValidationReason> => {
   const match = TIME_STRING_PATTERN.exec(input);

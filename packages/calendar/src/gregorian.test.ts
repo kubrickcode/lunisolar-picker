@@ -1,11 +1,14 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { brandEpochDay, epochDayFromCivil } from './epoch-day';
+import { brandEpochDay, type EpochDay, epochDayFromCivil } from './epoch-day';
 import { LunisolarPickerError } from './errors';
 import { gregory } from './gregorian';
 import type { MonthCode } from './month-code';
 
 // as: toEpochDay의 거부 경로를 검증하려고 일부러 잘못된 월 코드를 넘김
+// as: fromEpochDay의 프로그래머 오류 경로를 검증하려고 일부러 정수가 아닌 값을 EpochDay로 넘김
+const asFractionalEpochDay = (value: number): EpochDay => value as EpochDay;
+
 const asUnvalidatedMonthCode = (monthCode: string): MonthCode => monthCode as MonthCode;
 
 describe('gregory', () => {
@@ -33,6 +36,16 @@ describe('gregory', () => {
 
     it('throws for a year outside 1-9999', () => {
       expect(() => gregory.monthsInYear(10_000)).toThrow(LunisolarPickerError);
+    });
+
+    it('returns a frozen list so callers cannot corrupt the shared months', () => {
+      expect(Object.isFrozen(gregory.monthsInYear(2026))).toBe(true);
+    });
+  });
+
+  describe('fromEpochDay', () => {
+    it('throws for a fractional epoch day because that is a programmer error', () => {
+      expect(() => gregory.fromEpochDay(asFractionalEpochDay(20_740.5))).toThrow(LunisolarPickerError);
     });
   });
 

@@ -19,11 +19,11 @@ export const expectedMonthCount = (record: Pick<DangiYearRecord, 'leapMonth'>): 
 export const isTruncated = (record: DangiYearRecord): boolean =>
   record.monthLengths.length < expectedMonthCount(record);
 
+export const allMonthCodesOf = (leapMonth: number): readonly MonthCode[] =>
+  REGULAR_MONTH_NUMBERS.flatMap((month) => monthCodesForMonth(month, leapMonth));
+
 export const monthCodesOf = (record: DangiYearRecord): readonly MonthCode[] =>
-  REGULAR_MONTH_NUMBERS.flatMap((month) => monthCodesForMonth(month, record.leapMonth)).slice(
-    0,
-    record.monthLengths.length,
-  );
+  allMonthCodesOf(record.leapMonth).slice(0, record.monthLengths.length);
 
 const monthCodesForMonth = (month: number, leapMonth: number): readonly MonthCode[] =>
   month === leapMonth ? [toMonthCode(month, false), toMonthCode(month, true)] : [toMonthCode(month, false)];

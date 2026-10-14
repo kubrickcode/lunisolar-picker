@@ -9,6 +9,7 @@ import type { ValidationReason } from '../validation-reason';
 
 const ANNOTATION_PREFIX_LENGTH = '[u-ca='.length;
 const DATE_STRING_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:\[u-ca=([a-z]+)\])?$/;
+const DAY_DIGITS = 2;
 const DAY_START = 8;
 const ISO_DATE_LENGTH = 10;
 const MONTH_DIGITS = 2;
@@ -81,11 +82,12 @@ export const formatDate = (
   epochDay: EpochDay,
   calendar: CalendarSystem = gregory,
 ): Result<DateString, ValidationReason> => {
+  if (!Number.isInteger(epochDay)) throw new LunisolarPickerError(`epochDay must be an integer, received ${epochDay}`);
   if (!isWithinSupportedRange(gregory, epochDay) || !isWithinSupportedRange(calendar, epochDay)) {
     return err('outside-calendar-range');
   }
   const { year, month, day } = civilFromEpochDay(epochDay);
-  const isoDate = `${padNumber(year, YEAR_DIGITS)}-${padNumber(month, MONTH_DIGITS)}-${padNumber(day, MONTH_DIGITS)}`;
+  const isoDate = `${padNumber(year, YEAR_DIGITS)}-${padNumber(month, MONTH_DIGITS)}-${padNumber(day, DAY_DIGITS)}`;
   return ok(brandDateString(calendar.id === gregory.id ? isoDate : `${isoDate}[u-ca=${calendar.id}]`));
 };
 

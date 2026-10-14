@@ -1,9 +1,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { brandEpochDay, epochDayFromCivil } from '../epoch-day';
+import { brandEpochDay, type EpochDay, epochDayFromCivil } from '../epoch-day';
 import { LunisolarPickerError } from '../errors';
 import { decodeDangiYear, encodeDangiYear } from './table-codec';
 import type { DangiYearRecord } from './year-record';
+
+// as: 인코더의 거부 경로를 검증하려고 일부러 정수가 아닌 값을 EpochDay로 넘김
+const asUnvalidatedEpochDay = (value: number): EpochDay => value as EpochDay;
 
 const leapYear: DangiYearRecord = {
   year: 2025,
@@ -58,9 +61,9 @@ describe('table-codec', () => {
     ['a new year more than 63 days after January 1', { ...leapYear, newYearEpochDay: epochDayFromCivil(2025, 3, 6) }],
     [
       'a non-integer new year offset',
-      { ...leapYear, newYearEpochDay: brandEpochDay(epochDayFromCivil(2025, 1, 29) + 0.5) },
+      { ...leapYear, newYearEpochDay: asUnvalidatedEpochDay(epochDayFromCivil(2025, 1, 29) + 0.5) },
     ],
-    ['a NaN new year offset', { ...leapYear, newYearEpochDay: brandEpochDay(Number.NaN) }],
+    ['a NaN new year offset', { ...leapYear, newYearEpochDay: asUnvalidatedEpochDay(Number.NaN) }],
     ['a month that is neither 29 nor 30 days', { ...leapYear, monthLengths: [31, ...leapYear.monthLengths.slice(1)] }],
     ['a leap month number above 12', { ...leapYear, leapMonth: 13 }],
     ['more months than the year can hold', { ...leapYear, leapMonth: 0 }],

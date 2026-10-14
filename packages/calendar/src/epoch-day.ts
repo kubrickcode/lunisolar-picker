@@ -1,3 +1,5 @@
+import { LunisolarPickerError } from './errors';
+
 const DAYS_FROM_ERA_START_TO_EPOCH = 719_468;
 const DAYS_PER_ERA = 146_097;
 const DAYS_PER_WEEK = 7;
@@ -27,8 +29,10 @@ export const epochDayFromCivil = (year: number, month: number, day: number): Epo
   return brandEpochDay(era * DAYS_PER_ERA + dayOfEra - DAYS_FROM_ERA_START_TO_EPOCH);
 };
 
-// as: brand — 호출부가 정수 epoch day만 넘기도록 계산 결과를 이 생성자로만 EpochDay로 만든다
-export const brandEpochDay = (value: number): EpochDay => value as EpochDay;
+export const brandEpochDay = (value: number): EpochDay => {
+  if (!Number.isInteger(value)) throw new LunisolarPickerError(`epoch day must be an integer, received ${value}`);
+  return value as EpochDay; // as: 정수임을 위에서 검증했으므로 EpochDay 브랜드를 부여
+};
 
 export const civilFromEpochDay = (epochDay: EpochDay): CivilDate => {
   const shiftedDay = epochDay + DAYS_FROM_ERA_START_TO_EPOCH;

@@ -8,12 +8,24 @@ import {
   isGregorianLeapYear,
   weekdayOf,
 } from './epoch-day';
+import { LunisolarPickerError } from './errors';
 
 const FIRST_SUPPORTED_EPOCH_DAY = -719_162;
 const LAST_SUPPORTED_EPOCH_DAY = 2_932_896;
 const MILLISECONDS_PER_DAY = 86_400_000;
 
 describe('epoch-day', () => {
+  describe('brandEpochDay', () => {
+    it('brands an integer unchanged', () => {
+      expect(brandEpochDay(20_740)).toBe(20_740);
+    });
+
+    it('throws for a fractional value and names it', () => {
+      expect(() => brandEpochDay(20_740.5)).toThrow('20740.5');
+      expect(() => brandEpochDay(Number.NaN)).toThrow(LunisolarPickerError);
+    });
+  });
+
   describe('epochDayFromCivil', () => {
     it.each([
       [1970, 1, 1, 0],

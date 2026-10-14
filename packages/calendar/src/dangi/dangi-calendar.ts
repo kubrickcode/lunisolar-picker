@@ -1,10 +1,11 @@
 import type { CalendarSystem, DateFields, SupportedRange } from '../calendar-system';
 import { brandEpochDay, type EpochDay } from '../epoch-day';
 import { LunisolarPickerError } from '../errors';
+import { isMonthCode, type MonthCode } from '../month-code';
 import { err, ok, type Result } from '../result';
 import type { ValidationReason } from '../validation-reason';
 import { decodeDangiYear } from './table-codec';
-import { type DangiYearRecord, isTruncated, monthCodesOf } from './year-record';
+import { allMonthCodesOf, type DangiYearRecord, monthCodesOf } from './year-record';
 
 export type DangiTable = {
   readonly firstYear: number;
@@ -46,6 +47,9 @@ export const createDangiCalendar = (table: DangiTable): CalendarSystem => {
       return epochDayInRecord(record, fields);
     },
     fromEpochDay: (epochDay) => {
+      if (!Number.isInteger(epochDay)) {
+        throw new LunisolarPickerError(`epochDay must be an integer, received ${epochDay}`);
+      }
       if (epochDay < supportedRange.min || epochDay > supportedRange.max) return err('outside-calendar-range');
       return ok(fieldsInRecord(findRecordContaining(records, epochDay), epochDay));
     },
@@ -56,14 +60,18 @@ const epochDayInRecord = (
   record: DangiYearRecord,
   { monthCode, day }: DateFields,
 ): Result<EpochDay, ValidationReason> => {
+  if (!isMonthCode(monthCode)) return err('invalid-date');
   const monthIndex = monthCodesOf(record).indexOf(monthCode);
-  // Constraint: 데이터가 끝난 마지막 해의 뒤쪽 달은 실제로 있을 수 있으므로 '없는 날짜'가 아니라 '범위 밖'으로 알림
-  if (monthIndex === -1) return err(isTruncated(record) ? 'outside-calendar-range' : 'invalid-date');
+  if (monthIndex === -1) return err(isAfterKnownMonths(record, monthCode) ? 'outside-calendar-range' : 'invalid-date');
   const days = record.monthLengths[monthIndex] ?? 0;
   if (!Number.isInteger(day) || day < 1 || day > days) return err('invalid-date');
   const daysBeforeMonth = record.monthLengths.slice(0, monthIndex).reduce((total, length) => total + length, 0);
   return ok(brandEpochDay(record.newYearEpochDay + daysBeforeMonth + day - 1));
 };
+
+// Constraint: 데이터가 끝난 마지막 해의 뒤쪽 달은 실제로 있을 수 있으므로 '없는 날짜'가 아니라 '범위 밖'으로 알림. 그 해에 있을 수 없는 달 코드는 해당하지 않음
+const isAfterKnownMonths = (record: DangiYearRecord, monthCode: MonthCode): boolean =>
+  allMonthCodesOf(record.leapMonth).indexOf(monthCode) >= record.monthLengths.length;
 
 const findRecordContaining = (records: readonly DangiYearRecord[], epochDay: EpochDay): DangiYearRecord => {
   let lowIndex = 0;

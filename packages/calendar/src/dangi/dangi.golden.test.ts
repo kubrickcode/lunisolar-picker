@@ -4,7 +4,9 @@ import kasiData from '../../data/kasi-dangi-months.json';
 import { buildYearRecords, DANGI_FIRST_YEAR, lastEpochDayOf } from '../../scripts/kasi/build-year-records';
 import { isoDateToEpochDay } from '../../scripts/kasi/iso-date';
 import type { KasiDataFile } from '../../scripts/kasi/kasi-types';
-import { brandEpochDay, epochDayFromCivil } from '../epoch-day';
+import { brandEpochDay, type EpochDay, epochDayFromCivil } from '../epoch-day';
+import { LunisolarPickerError } from '../errors';
+import type { MonthCode } from '../month-code';
 import { toMonthCode } from '../month-code';
 import { DANGI_YEAR_TABLE } from './dangi-table.generated';
 import { dangi } from './index';
@@ -13,7 +15,37 @@ import { encodeDangiYear } from './table-codec';
 const dataFile = kasiData as KasiDataFile; // as: JSON import를 스크립트가 쓰는 데이터 파일 타입으로 좁힘
 const supportedMonthStarts = dataFile.monthStarts.filter((start) => start.lunarYear >= DANGI_FIRST_YEAR);
 
+// as: 프로그래머 오류 경로를 검증하려고 일부러 정수가 아닌 값을 EpochDay로 넘김
+const asFractionalEpochDay = (value: number): EpochDay => value as EpochDay;
+
+// as: 거부 경로를 검증하려고 일부러 존재하지 않는 월 코드를 넘김
+const asUnvalidatedMonthCode = (monthCode: string): MonthCode => monthCode as MonthCode;
+
 describe('dangi against KASI data', () => {
+  it('throws for a fractional epoch day because that is a programmer error', () => {
+    expect(() => dangi.fromEpochDay(asFractionalEpochDay(20_740.5))).toThrow(LunisolarPickerError);
+  });
+
+  describe('truncated final year 2050 (leap month 3, known through M11)', () => {
+    it('rejects a month that cannot exist in that year as invalid-date', () => {
+      expect(dangi.toEpochDay({ year: 2050, monthCode: 'M01L', day: 1 })).toEqual({
+        isOk: false,
+        error: 'invalid-date',
+      });
+      expect(dangi.toEpochDay({ year: 2050, monthCode: asUnvalidatedMonthCode('M13'), day: 1 })).toEqual({
+        isOk: false,
+        error: 'invalid-date',
+      });
+    });
+
+    it('reports a real month after the known data as outside-calendar-range', () => {
+      expect(dangi.toEpochDay({ year: 2050, monthCode: 'M12', day: 1 })).toEqual({
+        isOk: false,
+        error: 'outside-calendar-range',
+      });
+    });
+  });
+
   it('ships a table generated from the committed KASI data', () => {
     expect(buildYearRecords(dataFile.monthStarts, DANGI_FIRST_YEAR).map(encodeDangiYear)).toEqual(DANGI_YEAR_TABLE);
   });

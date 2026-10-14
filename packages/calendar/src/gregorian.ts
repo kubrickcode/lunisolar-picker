@@ -9,8 +9,8 @@ const LAST_YEAR = 9999;
 // Constraint: 아래 GREGORIAN_MONTH_CODES 초기화가 이 상수를 즉시 읽으므로 알파벳 순서보다 먼저 선언해야 함
 const MONTHS_PER_YEAR = 12;
 
-const GREGORIAN_MONTH_CODES: readonly MonthCode[] = Array.from({ length: MONTHS_PER_YEAR }, (_, index) =>
-  toMonthCode(index + 1, false),
+const GREGORIAN_MONTH_CODES: readonly MonthCode[] = Object.freeze(
+  Array.from({ length: MONTHS_PER_YEAR }, (_, index) => toMonthCode(index + 1, false)),
 );
 
 const SUPPORTED_RANGE: SupportedRange = {
@@ -40,6 +40,7 @@ export const gregory: CalendarSystem = {
     return ok(epochDayFromCivil(year, month, day));
   },
   fromEpochDay(epochDay) {
+    assertIntegerEpochDay(epochDay);
     if (epochDay < SUPPORTED_RANGE.min || epochDay > SUPPORTED_RANGE.max) return err('outside-calendar-range');
     const { year, month, day } = civilFromEpochDay(epochDay);
     return ok({ year, monthCode: toMonthCode(month, false), day });
@@ -47,6 +48,10 @@ export const gregory: CalendarSystem = {
 };
 
 const isSupportedYear = (year: number): boolean => Number.isInteger(year) && year >= FIRST_YEAR && year <= LAST_YEAR;
+
+const assertIntegerEpochDay = (epochDay: number): void => {
+  if (!Number.isInteger(epochDay)) throw new LunisolarPickerError(`epochDay must be an integer, received ${epochDay}`);
+};
 
 const assertSupportedYear = (year: number): void => {
   if (!isSupportedYear(year)) {

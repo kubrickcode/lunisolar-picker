@@ -2,6 +2,7 @@ export type { CalendarId, CalendarSystem, DateFields, SupportedRange } from './c
 export { isWithinSupportedRange } from './calendar-system';
 export type { CivilDate, EpochDay } from './epoch-day';
 export {
+  brandEpochDay,
   civilFromEpochDay,
   daysInGregorianMonth,
   epochDayFromCivil,

@@ -12,12 +12,12 @@
   ],
   "exports": {
     ".": {
-      "source": "./src/index.ts",
+      "@lunisolar-picker/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./dangi": {
-      "source": "./src/dangi/index.ts",
+      "@lunisolar-picker/source": "./src/dangi/index.ts",
       "types": "./dist/dangi.d.ts",
       "default": "./dist/dangi.js"
     },

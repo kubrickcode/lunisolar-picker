@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { brandEpochDay, epochDayFromCivil } from '../epoch-day';
+import { brandEpochDay, type EpochDay, epochDayFromCivil } from '../epoch-day';
 import { LunisolarPickerError } from '../errors';
 import { gregory } from '../gregorian';
 import { createStubCalendar } from '../testing/stub-calendar';
@@ -13,6 +13,9 @@ const stubDangi = createStubCalendar({
   supportedRange: { min: epochDayFromCivil(1900, 1, 31), max: epochDayFromCivil(2050, 12, 31) },
   fields: { year: 2026, monthCode: 'M09', day: 4 },
 });
+
+// as: formatDate의 프로그래머 오류 경로를 검증하려고 일부러 정수가 아닌 값을 EpochDay로 넘김
+const asFractionalEpochDay = (value: number): EpochDay => value as EpochDay;
 
 describe('date-string', () => {
   describe('parseDate', () => {
@@ -72,6 +75,10 @@ describe('date-string', () => {
   });
 
   describe('formatDate', () => {
+    it('throws for a fractional epoch day because that is a programmer error', () => {
+      expect(() => formatDate(asFractionalEpochDay(20_740.5))).toThrow(LunisolarPickerError);
+    });
+
     it('pads years below 1000 to four digits', () => {
       expect(unwrapOk(formatDate(epochDayFromCivil(999, 3, 7)))).toBe('0999-03-07');
     });

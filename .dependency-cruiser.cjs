@@ -39,7 +39,7 @@ module.exports = {
     enhancedResolveOptions: {
       extensions: ['.ts', '.js', '.json'],
       exportsFields: ['exports'],
-      conditionNames: ['source', 'import', 'types', 'default'],
+      conditionNames: ['@lunisolar-picker/source', 'import', 'types', 'default'],
     },
   },
 };
