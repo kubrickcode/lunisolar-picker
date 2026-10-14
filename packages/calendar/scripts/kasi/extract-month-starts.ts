@@ -32,14 +32,17 @@ const assertMonthLengths = (monthStarts: readonly KasiMonthStart[]): void => {
 
 // Constraint: 한 달이라도 빠지면 그 뒤 모든 날짜가 어긋나므로 시작일 간격이 직전 달 길이와 정확히 같아야 함
 const assertContiguous = (monthStarts: readonly KasiMonthStart[]): void => {
-  monthStarts.slice(1).forEach((current, index) => {
-    const previous = monthStarts[index];
-    if (!previous) return;
-    const expectedStart = isoDateToEpochDay(previous.solarStart) + previous.days;
-    if (isoDateToEpochDay(current.solarStart) !== expectedStart) {
-      throw new Error(
-        `lunar month starting ${current.solarStart} does not follow ${previous.solarStart} (+${previous.days} days)`,
-      );
-    }
-  });
+  monthStarts.reduce<KasiMonthStart | undefined>((previous, current) => {
+    if (previous) assertFollows(previous, current);
+    return current;
+  }, undefined);
+};
+
+const assertFollows = (previous: KasiMonthStart, current: KasiMonthStart): void => {
+  const expectedStart = isoDateToEpochDay(previous.solarStart) + previous.days;
+  if (isoDateToEpochDay(current.solarStart) !== expectedStart) {
+    throw new Error(
+      `lunar month starting ${current.solarStart} does not follow ${previous.solarStart} (+${previous.days} days)`,
+    );
+  }
 };

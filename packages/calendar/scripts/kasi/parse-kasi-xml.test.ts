@@ -7,6 +7,16 @@ const kasiItem = (fields: { solarDay: string; lunarDay: string; leapFlag: string
 const kasiResponse = (items: string): string =>
   `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><response><header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE.</resultMsg></header><body><items>${items}</items><numOfRows>31</numOfRows><pageNo>1</pageNo><totalCount>2</totalCount></body></response>`;
 
+const thrownKasiError = (run: () => unknown): KasiApiError => {
+  try {
+    run();
+  } catch (error) {
+    if (error instanceof KasiApiError) return error;
+    throw error;
+  }
+  throw new Error('expected parseKasiDayItems to throw a KasiApiError');
+};
+
 describe('parseKasiDayItems', () => {
   it('reads each day item with its leap flag and lunar month length', () => {
     const xml = kasiResponse(
@@ -42,11 +52,12 @@ describe('parseKasiDayItems', () => {
     expect(() => parseKasiDayItems(xml)).toThrow(/22/);
   });
 
-  it('raises the gateway reason when the service key is rejected', () => {
+  it('raises the gateway reason and code when the service key is rejected', () => {
     const xml =
       '<OpenAPI_ServiceResponse><cmmMsgHeader><errMsg>SERVICE ERROR</errMsg><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg><returnReasonCode>30</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>';
 
     expect(() => parseKasiDayItems(xml)).toThrow(/SERVICE_KEY_IS_NOT_REGISTERED_ERROR/);
+    expect(thrownKasiError(() => parseKasiDayItems(xml)).code).toBe('30');
   });
 
   it('refuses an item with an unknown leap flag', () => {
@@ -59,5 +70,17 @@ describe('parseKasiDayItems', () => {
     const xml = kasiResponse('<item><lunDay>01</lunDay></item>');
 
     expect(() => parseKasiDayItems(xml)).toThrow(/missing <solYear>/);
+  });
+
+  it('refuses a response whose item count differs from totalCount', () => {
+    const xml = kasiResponse(kasiItem({ solarDay: '25', lunarDay: '01', leapFlag: '윤', lunarMonthDays: '29' }));
+
+    expect(() => parseKasiDayItems(xml)).toThrow(/totalCount/);
+  });
+
+  it('refuses a numeric field that is not plain digits', () => {
+    const xml = kasiResponse(kasiItem({ solarDay: '25', lunarDay: '01', leapFlag: '윤', lunarMonthDays: '1e2' }));
+
+    expect(() => parseKasiDayItems(xml)).toThrow(/not an integer/);
   });
 });
