@@ -21,6 +21,27 @@ describe('gestures', () => {
       expect(tracker.velocity()).toBe(0.5);
     });
 
+    it('keeps a sample exactly at the window boundary and drops one just past it', () => {
+      const atBoundary = createVelocityTracker();
+      atBoundary.add({ position: 0, timeMs: 0 });
+      atBoundary.add({ position: 100, timeMs: 100 });
+      expect(atBoundary.velocity()).toBe(1);
+
+      const pastBoundary = createVelocityTracker();
+      pastBoundary.add({ position: 0, timeMs: 0 });
+      pastBoundary.add({ position: 100, timeMs: 101 });
+      expect(pastBoundary.velocity()).toBe(0);
+    });
+
+    it('ignores a sample older than the newest one', () => {
+      const tracker = createVelocityTracker();
+      tracker.add({ position: 0, timeMs: 100 });
+      tracker.add({ position: 50, timeMs: 150 });
+      tracker.add({ position: 999, timeMs: 120 });
+
+      expect(tracker.velocity()).toBe(1);
+    });
+
     it('reports zero without two samples and after reset', () => {
       const tracker = createVelocityTracker();
       tracker.add({ position: 10, timeMs: 0 });

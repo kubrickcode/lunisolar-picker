@@ -1,3 +1,4 @@
+import { LunisolarPickerError } from '@lunisolar-picker/calendar';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { easeOutPosition, projectInertia } from './inertia';
@@ -16,6 +17,23 @@ describe('gestures', () => {
         durationMs: 500,
         index: 6,
       });
+    });
+
+    it('reports no selection for an empty list', () => {
+      expect(projectInertia({ itemCount: 0, itemSize: 40, offset: 80, velocity: 0.5 }).index).toBe(-1);
+    });
+
+    it('treats a non-finite velocity as no velocity', () => {
+      expect(projectInertia({ itemCount: 10, itemSize: 40, offset: 130, velocity: Number.NaN })).toEqual({
+        durationMs: 200,
+        index: 3,
+      });
+    });
+
+    it('rejects a non-positive item size', () => {
+      expect(() => projectInertia({ itemCount: 10, itemSize: 0, offset: 0, velocity: 0 })).toThrow(
+        LunisolarPickerError,
+      );
     });
 
     it('never lands outside the list and keeps durations bounded', () => {
@@ -47,6 +65,17 @@ describe('gestures', () => {
     it('jumps to the target instead of returning NaN when the duration is not positive', () => {
       expect(easeOutPosition(0, 100, 0, 0)).toBe(100);
       expect(easeOutPosition(0, 100, 50, -10)).toBe(100);
+    });
+
+    it('eases monotonically toward a lower target and stays put when both ends are equal', () => {
+      const falling = [0, 100, 200, 300].map((elapsed) => easeOutPosition(100, 0, elapsed, 300));
+      expect(falling).toEqual([...falling].sort((first, second) => second - first));
+      expect(easeOutPosition(50, 50, 150, 300)).toBe(50);
+    });
+
+    it('jumps to the target for non-finite time', () => {
+      expect(easeOutPosition(0, 100, Number.NaN, 300)).toBe(100);
+      expect(easeOutPosition(0, 100, 10, Number.POSITIVE_INFINITY)).toBe(100);
     });
 
     it('stays at the origin for negative elapsed time', () => {
