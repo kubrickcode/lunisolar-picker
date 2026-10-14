@@ -258,7 +258,7 @@ export interface TimeFieldContext { readonly minuteStep: number; readonly isEndO
 export interface TimeFieldState extends SegmentGroup<TimeSegmentKind> {}
 export type TimeFieldEvent = SegmentEvent | { type: 'text.paste'; text } | { type: 'value.sync'; time: TimeString | null };
 export interface TimeFieldResult { readonly time: TimeString | null; readonly validity: Validity }
-createTimeFieldState(initial: TimeString | null, context: TimeFieldContext): TimeFieldState
+createTimeFieldState(initial: TimeString | null, context: TimeFieldContext): TimeFieldState   // 초기·동기화 값은 24:00을 허용해 파싱(형식 오류가 아닌 제약 위반으로 남김). 시 maxValue는 context를 따름 (M3-T8)
 timeFieldReducer: Reducer<TimeFieldState, TimeFieldEvent, TimeFieldContext>; timeFieldResult(state, context): TimeFieldResult
 ```
 
@@ -401,7 +401,7 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 |---|---|
 | `DateField.{Root, Segment({ index }), Separator, HiddenInput, LeapMonthToggle}`, `useDateField`, `useDateFieldContext` | Root에 children이 없으면 로케일 순서로 세그먼트·구분자·윤달 토글·hidden input을 그림. `entryCalendar`·`defaultEntryCalendar`·`onEntryCalendarChange`, `separator`. 역법 규칙: 값이 있으면 값의 역법이 이긴다. `entryCalendar`·`defaultEntryCalendar`는 빈 필드에만 적용된다. 마운트와 부모의 값 동기화는 콜백을 보내지 않는다(사용자 조작만 보고). 단 값이 있는 상태에서 부모가 `entryCalendar` prop을 바꾸면 명시적 요청으로 보고, 값을 새 역법으로 다시 표기해 `onValueChange`를 보낸다. 부모가 다른 역법의 값을 넣으면 필드는 그 역법으로 바뀌지만 `onEntryCalendarChange`는 부르지 않으므로, 제어형 `entryCalendar`와 어긋날 수 있다. `L`(한글 모드의 `ㅣ` 포함, 물리 키 KeyL)로 윤달을 전환하고, Ctrl·Cmd·Alt 조합 키는 브라우저에 넘긴다 |
 | `DateRangeField.{Root, Start, End, Separator}`, `useDateRangeField` | 시작일을 다 채우면 종료일로 이동, `startName`·`endName`, `RangeConstraints`. 역법 규칙은 DateField와 같다(범위 값의 start 역법이 이김) |
-| `TimeField.{Root, Segment({ index }), Separator, HiddenInput}`, `useTimeField` | `minuteStep`, `isEndOfDayAllowed` |
+| `TimeField.{Root, Segment({ index }), Separator, HiddenInput}`, `useTimeField` | `minuteStep`, `isEndOfDayAllowed`. 기기 로케일과 무관하게 24시간제. 형식이 맞는 `24:00`은 허용되지 않아도 형식 오류가 아니라 제약 위반이다: 칸에 그대로 보이고 invalid로 표시되며, 공개 값은 `null`이고 `onInvalidValue`는 형식이 틀린 문자열에만 불린다. `isEndOfDayAllowed`를 바꿔도 입력은 유지되고 콜백은 없다. 직접 입력한 분은 `minuteStep`에 맞지 않아도 유효하다(간격은 화살표 키에만 적용) |
 | `Wheel.{Root, Column, Item, Highlight}`, `useWheel` | `Wheel.Column`은 `useWheel` props(`options`, `value`, `onValueChange`, `isEqual?`, `label`, `disabled?`)와 `renderItem?`을 받음 |
 | `useWheelDate(props): WheelDateApi` | `{ fields; columns: WheelDateColumns; value; entryCalendarId; labels: { year; month; day }; selectYear; selectMonth; selectDay; setEntryCalendar }` |
 | `Popover.{Root, Trigger, Content, Close}`, `usePopover`, `usePopoverContext` | Content는 닫히면 언마운트되고, 마운트 후에만 포털을 그린다(SSR 안전). `Close`에 `onClick`을 주면 앱 핸들러가 먼저 돈 뒤 닫힘. Esc는 열린 동안 `document`에서 받되 `defaultPrevented`·`isComposing`이면 무시한다. 포커스 가두기는 레이아웃 기반이라 jsdom에서는 동작하지 않는다(M5 문서) |
