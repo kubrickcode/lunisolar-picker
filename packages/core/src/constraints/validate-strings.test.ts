@@ -21,6 +21,12 @@ describe('string helpers for presets', () => {
     ).toBe(true);
   });
 
+  it('reports a range whose ends are written in different calendars as an invalid date', () => {
+    expect(
+      validateRange({ start: '2026-10-13', end: '2026-10-15[u-ca=dangi]' }, {}, { calendars: [dangi] }).reasons,
+    ).toContain('invalid-date');
+  });
+
   it('reports an unreadable max on a date without applying it', () => {
     const result = validateDate('2026-10-14', { max: 'garbage' });
 

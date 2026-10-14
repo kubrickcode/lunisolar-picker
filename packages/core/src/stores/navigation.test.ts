@@ -1,4 +1,4 @@
-import { type EpochDay, epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
+import { type DateFields, type EpochDay, epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { describe, expect, it } from 'vitest';
 import { resolveConstraints } from '../constraints/resolve-constraints';
@@ -7,6 +7,12 @@ import { reduceEvents } from '../testing/reduce-events';
 import { createNavigationState, type NavigationEvent, navigationReducer } from './navigation';
 
 const solar = (year: number, month: number, day: number): EpochDay => epochDayFromCivil(year, month, day);
+
+const lunar = (fields: DateFields): EpochDay => {
+  const epochDay = dangi.toEpochDay(fields);
+  if (!epochDay.isOk) throw new Error(`test lunar date ${JSON.stringify(fields)} is not valid: ${epochDay.error}`);
+  return epochDay.value;
+};
 
 describe('navigation', () => {
   const context = createTestContext();
@@ -131,6 +137,38 @@ describe('navigation', () => {
     });
   });
 
+  describe('year picking', () => {
+    it('moves focus into the picked year so the next month shift stays in that year', () => {
+      const events: NavigationEvent[] = [
+        { type: 'view.set', view: 'years' },
+        { type: 'year.pick', year: 2030 },
+        { type: 'view.set', view: 'days' },
+        { type: 'month.shift', amount: 1 },
+      ];
+
+      const next = reduceEvents(navigationReducer, createNavigationState(context), events, context);
+
+      expect(next.visibleMonth).toEqual({ year: 2030, monthCode: 'M11' });
+      expect(next.focusedEpochDay).toBe(solar(2030, 11, 14));
+    });
+
+    it('clamps a lunar pick into the last supported year and keeps both visible months inside the range', () => {
+      const twoLunarMonths = createTestContext({ calendars: [gregory, dangi], numberOfMonths: 2 });
+      const state = createNavigationState(twoLunarMonths, {
+        focusedEpochDay: lunar({ year: 2049, monthCode: 'M12', day: 15 }),
+        displayCalendarId: 'dangi',
+      });
+
+      const next = navigationReducer(state, { type: 'year.pick', year: 2050 }, twoLunarMonths);
+
+      expect(dangi.fromEpochDay(next.focusedEpochDay)).toEqual({
+        isOk: true,
+        value: { year: 2050, monthCode: 'M11', day: 15 },
+      });
+      expect(next).toMatchObject({ view: 'months', visibleMonth: { year: 2050, monthCode: 'M10' } });
+    });
+  });
+
   describe('edges and identity', () => {
     it('stays put when stepping a month past the last supported lunar month', () => {
       const state = createNavigationState(lunarContext, {
@@ -139,6 +177,19 @@ describe('navigation', () => {
       });
 
       expect(navigationReducer(state, { type: 'focus.move', unit: 'month', amount: 1 }, lunarContext)).toBe(state);
+    });
+
+    it('keeps the last of two visible months on the last supported lunar month when shifting forward', () => {
+      const twoLunarMonths = createTestContext({ calendars: [gregory, dangi], numberOfMonths: 2 });
+      const state = createNavigationState(twoLunarMonths, {
+        focusedEpochDay: lunar({ year: 2050, monthCode: 'M10', day: 1 }),
+        displayCalendarId: 'dangi',
+      });
+
+      const next = navigationReducer(state, { type: 'month.shift', amount: 1 }, twoLunarMonths);
+
+      expect(state.visibleMonth).toEqual({ year: 2050, monthCode: 'M10' });
+      expect(next.visibleMonth).toEqual({ year: 2050, monthCode: 'M10' });
     });
 
     it('clamps to the last lunar day when the focus lies beyond the lunar range', () => {

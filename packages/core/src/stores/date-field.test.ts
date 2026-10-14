@@ -1,4 +1,4 @@
-import { epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
+import { type CalendarSystem, epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { describe, expect, it } from 'vitest';
 import { resolveConstraints } from '../constraints/resolve-constraints';
@@ -150,6 +150,47 @@ describe('date field', () => {
     expect(state).toBe(emptyGregorian);
   });
 
+  it('decides leap month support from the calendar data rather than its id', () => {
+    const leaplessCalendar: CalendarSystem = { ...gregory, id: 'dangi' };
+    const context = createTestContext({ calendars: [gregory, leaplessCalendar] });
+    const empty = createDateFieldState(context, { selected: null, entryCalendarId: 'dangi' });
+
+    expect(dateFieldReducer(empty, { type: 'leapMonth.toggle' }, context)).toBe(empty);
+  });
+
+  describe('stepping within the entry calendar', () => {
+    it.each([
+      ['up past the last day of a 28-day month', 1, 1],
+      ['down past the first day', -1, 28],
+    ])('wraps the day %s', (_, amount, expectedDay) => {
+      const typedDay = amount > 0 ? '28' : '01';
+      const february = reduceEvents(
+        dateFieldReducer,
+        emptyGregorian,
+        [...typed(`202602${typedDay}`), { type: 'segment.focus', index: 2 }],
+        koContext,
+      );
+
+      expect(dateFieldReducer(february, { type: 'segment.step', amount }, koContext).segments[2]?.value).toBe(
+        expectedDay,
+      );
+    });
+
+    it('wraps the lunar year within the supported lunar years', () => {
+      const lunarContext = createTestContext({ calendars: [gregory, dangi] });
+      const lastYear = reduceEvents(
+        dateFieldReducer,
+        createDateFieldState(lunarContext, { selected: null, entryCalendarId: 'dangi' }),
+        [...typed('20500101'), { type: 'segment.focus', index: 0 }],
+        lunarContext,
+      );
+
+      expect(dateFieldReducer(lastYear, { type: 'segment.step', amount: 1 }, lunarContext).segments[0]?.value).toBe(
+        1900,
+      );
+    });
+  });
+
   describe('paste', () => {
     it.each([
       ['an ISO date into an English field', en, '1990-03-15'],
@@ -200,12 +241,21 @@ describe('date field', () => {
         });
       });
 
-      it('reads the English lunar month name in a Gregorian field as a leap marker', () => {
-        const enContext = createTestContext({ locale: en });
+      it('reads the English lunar month name in a Gregorian field as a leap marker when a lunar calendar is configured', () => {
+        const enContext = createTestContext({ calendars: [gregory, dangi], locale: en });
         const empty = createDateFieldState(enContext, { selected: null, entryCalendarId: 'gregory' });
 
         expect(dateFieldReducer(empty, { type: 'text.paste', text: 'Leap 5/1/1990' }, enContext).isLeapMonth).toBe(
           true,
+        );
+      });
+
+      it('takes the leap month name only from calendars that are configured and have leap months', () => {
+        const enContext = createTestContext({ locale: en });
+        const empty = createDateFieldState(enContext, { selected: null, entryCalendarId: 'gregory' });
+
+        expect(dateFieldReducer(empty, { type: 'text.paste', text: 'Leap 5/1/1990' }, enContext).isLeapMonth).toBe(
+          false,
         );
       });
 
@@ -327,6 +377,25 @@ describe('date field', () => {
 
     expect(lunar.segments.map((segment) => segment.value)).toEqual([1990, 5, 1]);
     expect(lunar.isLeapMonth).toBe(true);
+  });
+
+  it('leaves the segments empty instead of throwing for a day the entry calendar cannot represent', () => {
+    const lunarContext = createTestContext({ calendars: [gregory, dangi] });
+    const beyondLunarRange = { epochDay: epochDayFromCivil(2060, 1, 1), calendarId: 'dangi' } as const;
+    const filled = createDateFieldState(lunarContext, {
+      selected: { epochDay: epochDayFromCivil(2026, 10, 14), calendarId: 'dangi' },
+      entryCalendarId: 'dangi',
+    });
+
+    const created = createDateFieldState(lunarContext, { selected: beyondLunarRange, entryCalendarId: 'dangi' });
+    const synced = dateFieldReducer(
+      filled,
+      { type: 'value.sync', selected: beyondLunarRange, entryCalendarId: 'dangi' },
+      lunarContext,
+    );
+
+    expect(created.segments.map((segment) => segment.value)).toEqual([null, null, null]);
+    expect(synced.segments.map((segment) => segment.value)).toEqual([null, null, null]);
   });
 
   describe('no-op events', () => {

@@ -98,6 +98,14 @@ describe('time field', () => {
     ).toBe('14:30');
   });
 
+  it('reads a pasted three-digit group as a one-digit hour and two-digit minute', () => {
+    const empty = createTimeFieldState(null, FIVE_MINUTES);
+
+    expect(
+      timeFieldResult(timeFieldReducer(empty, { type: 'text.paste', text: '930' }, FIVE_MINUTES), FIVE_MINUTES).time,
+    ).toBe('09:30');
+  });
+
   it('treats an empty time as valid and one filled segment as incomplete', () => {
     const partial = reduceEvents(timeFieldReducer, createTimeFieldState(null, FIVE_MINUTES), typed('9'), FIVE_MINUTES);
 

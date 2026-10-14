@@ -101,9 +101,11 @@ export const stepSegment = <Kind extends string>(
   startValue: number,
 ): Segment<Kind> => {
   if (segment.value === null) return { ...segment, value: startValue, typedText: '' };
-  const span = segment.maxValue - segment.minValue + 1;
-  const offset = (((segment.value - segment.minValue + amount) % span) + span) % span;
-  return { ...segment, value: segment.minValue + offset, typedText: '' };
+  return {
+    ...segment,
+    value: wrapStep({ amount, maxValue: segment.maxValue, minValue: segment.minValue, value: segment.value }),
+    typedText: '',
+  };
 };
 
 // Goal: 다음 숫자가 들어갈 자리가 없으면 바로 다음 칸으로 넘김 (예: 월 칸에 3 → 03, 시 칸에 9 → 09)
@@ -120,6 +122,21 @@ export const withSegmentValue = <Kind extends string>(segment: Segment<Kind>, va
   value,
   typedText: '',
 });
+
+export const wrapStep = ({
+  amount,
+  maxValue,
+  minValue,
+  value,
+}: {
+  readonly amount: number;
+  readonly maxValue: number;
+  readonly minValue: number;
+  readonly value: number;
+}): number => {
+  const span = maxValue - minValue + 1;
+  return minValue + ((((value - minValue + amount) % span) + span) % span);
+};
 
 const typeIntoGroup = <Kind extends string, Group extends SegmentGroup<Kind>>({
   digit,

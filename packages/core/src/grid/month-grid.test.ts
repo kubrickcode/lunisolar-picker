@@ -1,4 +1,4 @@
-import { epochDayFromCivil, gregory } from '@lunisolar-picker/calendar';
+import { epochDayFromCivil, gregory, parseDate } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { describe, expect, it } from 'vitest';
 import { buildMonthGrid } from './month-grid';
@@ -81,6 +81,20 @@ describe('buildMonthGrid', () => {
 
     expect(trailing.length).toBeGreaterThan(0);
     expect(trailing.every((cell) => cell.isOutsideSupportedRange && cell.isOutsideMonth)).toBe(true);
+  });
+
+  it('gives trailing days past 9999-12-31 a canonical clamped date string', () => {
+    const grid = buildMonthGrid({
+      calendar: gregory,
+      month: { year: 9999, monthCode: 'M12' },
+      weekStartsOn: 0,
+      secondaryCalendar: null,
+    });
+    const trailing = grid.weeks.flat().filter((cell) => cell.epochDay > gregory.supportedRange.max);
+
+    expect(trailing.length).toBeGreaterThan(0);
+    expect(trailing.every((cell) => cell.isOutsideSupportedRange && cell.date === '9999-12-31')).toBe(true);
+    expect(grid.weeks.flat().every((cell) => parseDate(cell.date).isOk)).toBe(true);
   });
 
   it('lays out a lunar grid starting on Monday', () => {

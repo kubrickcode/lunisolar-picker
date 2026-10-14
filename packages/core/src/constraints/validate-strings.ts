@@ -40,6 +40,10 @@ export const validateRange = (
   const end = range.end === null ? null : parseDate(range.end, { calendars: knownCalendars });
   if (!start.isOk) return { ...invalidBecause([start.error]), ignoredInputs: [] };
   if (end !== null && !end.isOk) return { ...invalidBecause([end.error]), ignoredInputs: [] };
+  // Constraint: 범위의 양 끝은 같은 역법이어야 함 (스펙 4.2, normalizeDateRange와 같은 규칙)
+  if (end !== null && end.value.calendar !== start.value.calendar) {
+    return { ...invalidBecause(['invalid-date']), ignoredInputs: [] };
+  }
   const resolved = resolveConstraints(constraints, findCalendar(knownCalendars, start.value.calendar), knownCalendars);
   const endEpochDay: EpochDay | null = end === null ? null : end.value.epochDay;
   const isReversed = endEpochDay !== null && endEpochDay < start.value.epochDay;

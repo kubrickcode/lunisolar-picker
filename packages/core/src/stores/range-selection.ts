@@ -198,7 +198,9 @@ const isRepresentableRange = ({ calendarId, range }: SelectedRange, context: Pic
   return formatDate(range.start, calendar).isOk && (range.end === null || formatDate(range.end, calendar).isOk);
 };
 
+// Constraint: 누르거나 손잡이를 끄는 중에는 끝이 아직 정해지지 않았으므로 확인을 무시함. 열린 끝으로 확정되면 드래그가 조용히 잘림
 const commitDraft = ({ context, state }: RangeSelectionScope): RangeSelectionState => {
+  if (state.pointerPhase !== 'idle' || state.grabbedHandle !== null) return state;
   const draft = committableDraft(state);
   if (draft?.range.end === null && !context.constraints.isOpenEndAllowed) return state;
   return resetTo(state, { committed: draft, draft });

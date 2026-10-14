@@ -8,12 +8,12 @@ import {
   formatDate,
   gregory,
   isWithinSupportedRange,
+  LunisolarPickerError,
   parseMonthCode,
   weekdayOf,
 } from '@lunisolar-picker/calendar';
-import { padDigits } from '../format-digits';
 import { type SecondaryDateLabel, toWeekday, type VisibleMonth, type Weekday } from '../types';
-import { daysInVisibleMonth, firstEpochDayOfMonth } from './calendar-math';
+import { clampEpochDay, daysInVisibleMonth, firstEpochDayOfMonth } from './calendar-math';
 
 const DAYS_PER_WEEK = 7;
 // Constraint: 달마다 줄 수가 바뀌면 팝오버 높이가 흔들리므로 항상 6주를 그림
@@ -82,12 +82,12 @@ const buildCell = ({ calendar, epochDay, isInMonth, secondaryCalendar }: BuildCe
   };
 };
 
-// Constraint: 6주 격자의 앞뒤 칸은 양력 지원 범위(0001-01-01) 밖일 수 있음. 그 칸은 선택 불가(isOutsideSupportedRange)라 형식만 맞춘 문자열을 둠
+// Constraint: 6주 격자의 앞뒤 칸은 양력 지원 범위(0001-01-01~9999-12-31) 밖일 수 있음. 그 칸은 선택 불가(isOutsideSupportedRange)이고, date는 정규 형식을 지키도록 가장 가까운 지원 날짜로 당긴 문자열을 둠
 const dateStringOf = (epochDay: EpochDay): DateString => {
-  const formatted = formatDate(epochDay);
-  if (formatted.isOk) return formatted.value;
-  const { year, month, day } = civilFromEpochDay(epochDay);
-  return `${padDigits(year, 4)}-${padDigits(month, 2)}-${padDigits(day, 2)}` as DateString; // as: 양력 범위 밖 격자 칸 — 선택 불가 칸에 형식만 맞춘 문자열
+  const formatted = formatDate(clampEpochDay(epochDay, gregory.supportedRange));
+  if (!formatted.isOk)
+    throw new LunisolarPickerError(`cannot format clamped epoch day ${epochDay}: ${formatted.error}`);
+  return formatted.value;
 };
 
 const secondaryLabelOf = (calendar: CalendarSystem, epochDay: EpochDay): SecondaryDateLabel | null => {

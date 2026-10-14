@@ -30,6 +30,18 @@ export const YEAR_PAGE_SIZE = 12;
 export type CalendarView = 'days' | 'months' | 'years';
 export type FocusUnit = 'day' | 'week' | 'month' | 'year';
 
+type CapVisibleMonthOptions = {
+  readonly calendar: CalendarSystem;
+  readonly numberOfMonths: number;
+  readonly visibleMonth: VisibleMonth;
+};
+
+type FirstVisibleMonthOptions = {
+  readonly calendar: CalendarSystem;
+  readonly focusedEpochDay: EpochDay;
+  readonly numberOfMonths: number;
+};
+
 type KeepFocusVisibleOptions = {
   readonly calendar: CalendarSystem;
   readonly focusedEpochDay: EpochDay;
@@ -88,7 +100,7 @@ export const createNavigationState = (
     initial.focusedEpochDay ?? context.today,
     boundsFor(calendar, context.constraints),
   );
-  const visibleMonth = visibleMonthOf(calendar, focusedEpochDay);
+  const visibleMonth = firstVisibleMonthFor({ calendar, focusedEpochDay, numberOfMonths: context.numberOfMonths });
   return {
     displayCalendarId,
     focusedEpochDay,
@@ -148,7 +160,25 @@ const focusAsFirstMonth = (
   epochDay: EpochDay,
 ): Pick<NavigationState, 'focusedEpochDay' | 'visibleMonth'> => {
   const focusedEpochDay = clampEpochDay(epochDay, boundsFor(calendar, context.constraints));
-  return { focusedEpochDay, visibleMonth: visibleMonthOf(calendar, focusedEpochDay) };
+  return {
+    focusedEpochDay,
+    visibleMonth: firstVisibleMonthFor({ calendar, focusedEpochDay, numberOfMonths: context.numberOfMonths }),
+  };
+};
+
+const firstVisibleMonthFor = ({ calendar, focusedEpochDay, numberOfMonths }: FirstVisibleMonthOptions): VisibleMonth =>
+  capVisibleMonth({ calendar, numberOfMonths, visibleMonth: visibleMonthOf(calendar, focusedEpochDay) });
+
+// Constraint: 여러 달을 나란히 보여 줄 때 첫 달·마지막 달이 역법의 지원 달 밖으로 나가면 그 칸에 그릴 달이 없음
+const capVisibleMonth = ({ calendar, numberOfMonths, visibleMonth }: CapVisibleMonthOptions): VisibleMonth => {
+  const firstMonth = visibleMonthOf(calendar, calendar.supportedRange.min);
+  const latestFirstMonth = shiftVisibleMonth(
+    calendar,
+    visibleMonthOf(calendar, calendar.supportedRange.max),
+    -(numberOfMonths - 1),
+  );
+  if (compareVisibleMonths(calendar, visibleMonth, firstMonth) < 0) return firstMonth;
+  return compareVisibleMonths(calendar, visibleMonth, latestFirstMonth) > 0 ? latestFirstMonth : visibleMonth;
 };
 
 // Goal: 여러 달을 보여 줄 때 포커스가 보이는 달 안에서 움직이면 화면을 흔들지 않음
@@ -166,7 +196,11 @@ const keepFocusVisible = ({
 };
 
 const shiftMonths = ({ calendar, context, state }: NavigationScope, amount: number): NavigationState => {
-  const visibleMonth = shiftVisibleMonth(calendar, state.visibleMonth, amount);
+  const visibleMonth = capVisibleMonth({
+    calendar,
+    numberOfMonths: context.numberOfMonths,
+    visibleMonth: shiftVisibleMonth(calendar, state.visibleMonth, amount),
+  });
   const focusedEpochDay = clampEpochDay(
     movedEpochDay({ amount, calendar, epochDay: state.focusedEpochDay, unit: 'month' }),
     boundsFor(calendar, context.constraints),
@@ -199,25 +233,18 @@ const weekEdgeOf = ({ context, edge, epochDay }: WeekEdgeOptions): EpochDay => {
   return brandEpochDay(edge === 'start' ? weekStart : weekStart + DAYS_PER_WEEK - 1);
 };
 
-const pickMonth = ({ calendar, context, state }: NavigationScope, month: VisibleMonth): NavigationState => {
+const pickMonth = (scope: NavigationScope, month: VisibleMonth): NavigationState => {
+  const { calendar, state } = scope;
   const focusDay = fieldsOf(calendar, state.focusedEpochDay).day;
-  const focusedEpochDay = clampEpochDay(
-    epochDayOfFields(calendar, constrainDateFields(calendar, { ...month, day: focusDay })),
-    boundsFor(calendar, context.constraints),
-  );
-  return mergeNavigation(state, {
-    focusedEpochDay,
-    view: 'days',
-    visibleMonth: visibleMonthOf(calendar, focusedEpochDay),
-  });
+  const fields = constrainDateFields(calendar, { ...month, day: focusDay });
+  return mergeNavigation(state, { ...focusAsFirstMonth(scope, epochDayOfFields(calendar, fields)), view: 'days' });
 };
 
-const pickYear = ({ calendar, state }: NavigationScope, year: number): NavigationState => {
-  const constrained = constrainDateFields(calendar, { day: 1, monthCode: state.visibleMonth.monthCode, year });
-  return mergeNavigation(state, {
-    view: 'months',
-    visibleMonth: { monthCode: constrained.monthCode, year: constrained.year },
-  });
+// Goal: 연도를 고르면 포커스도 그해로 옮김. 그래야 이어지는 달 이동·키보드 이동이 고른 해에서 시작함
+const pickYear = (scope: NavigationScope, year: number): NavigationState => {
+  const { calendar, state } = scope;
+  const fields = constrainDateFields(calendar, { ...fieldsOf(calendar, state.focusedEpochDay), year });
+  return mergeNavigation(state, { ...focusAsFirstMonth(scope, epochDayOfFields(calendar, fields)), view: 'months' });
 };
 
 const shiftYearPage = ({ calendar, state }: NavigationScope, amount: number): NavigationState => {

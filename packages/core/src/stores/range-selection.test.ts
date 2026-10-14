@@ -323,6 +323,19 @@ describe('range selection', () => {
       expect(committed.anchor).toBeNull();
     });
 
+    it.each([
+      ['a press that has not been released', [press(13), enter(15)]],
+      ['a grabbed handle', [select(11), select(15), { type: 'handle.grab', handle: 'end' }, enter(18)]],
+    ] satisfies [string, RangeSelectionEvent[]][])(
+      'ignores confirm during %s instead of committing an open end',
+      (_, events) => {
+        const context = createTestContext({ commitMode: 'confirm', constraints });
+        const midGesture = reduceEvents(rangeSelectionReducer, empty, events, context);
+
+        expect(rangeSelectionReducer(midGesture, { type: 'commit' }, context)).toBe(midGesture);
+      },
+    );
+
     it('does not commit the first tap on its own in immediate mode', () => {
       const context = createTestContext({ constraints });
       const inProgress = rangeSelectionReducer(empty, select(13), context);

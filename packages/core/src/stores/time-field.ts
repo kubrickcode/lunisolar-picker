@@ -11,7 +11,8 @@ import {
 } from './segment';
 import { assertMinuteStep, END_OF_DAY_HOUR, LAST_HOUR, MINUTES_PER_HOUR, TIME_PART_DIGITS } from './time-constants';
 
-const COMPACT_TIME_LENGTH = 4;
+// Constraint: 붙여넣은 한 덩어리 숫자는 끝 두 자리가 분. 세 자리면 한 자리 시("930" → 09:30), 네 자리면 HHMM
+const COMPACT_TIME_LENGTHS: ReadonlySet<number> = new Set([3, 4]);
 
 export interface TimeFieldContext {
   readonly minuteStep: number;
@@ -80,9 +81,9 @@ export const timeFieldResult = (state: TimeFieldState, context: TimeFieldContext
 const pasteTime = (state: TimeFieldState, text: string): TimeFieldState => {
   const digitGroups = text.match(/\d+/g) ?? [];
   const [firstGroup, secondGroup] = digitGroups;
-  const isCompact = digitGroups.length === 1 && firstGroup?.length === COMPACT_TIME_LENGTH;
-  const hourText = isCompact ? firstGroup?.slice(0, TIME_PART_DIGITS) : firstGroup;
-  const minuteText = isCompact ? firstGroup?.slice(TIME_PART_DIGITS) : secondGroup;
+  const isCompact = digitGroups.length === 1 && COMPACT_TIME_LENGTHS.has(firstGroup?.length ?? 0);
+  const hourText = isCompact ? firstGroup?.slice(0, -TIME_PART_DIGITS) : firstGroup;
+  const minuteText = isCompact ? firstGroup?.slice(-TIME_PART_DIGITS) : secondGroup;
   if (hourText === undefined || minuteText === undefined || (!isCompact && digitGroups.length !== 2)) return state;
   const [hourSegment, minuteSegment] = state.segments;
   if (!hourSegment || !minuteSegment) return state;
