@@ -1,0 +1,47 @@
+{
+  "name": "@lunisolar-picker/react",
+  "version": "0.0.0",
+  "description": "Unstyled React hooks and parts for lunisolar-picker",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/testing",
+    "!src/visual"
+  ],
+  "exports": {
+    ".": {
+      "@lunisolar-picker/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract": {
+      "@lunisolar-picker/source": "./src/contract.ts",
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@floating-ui/react-dom": "2.1.9",
+    "@lunisolar-picker/calendar": "workspace:*",
+    "@lunisolar-picker/core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:visual": "vitest run --config vitest.visual.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json",
+    "package-check": "publint --strict && attw --pack . --profile esm-only && tsx scripts/check-use-client.ts"
+  }
+}

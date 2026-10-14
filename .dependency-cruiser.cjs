@@ -52,6 +52,23 @@ module.exports = {
       from: { path: '^packages/calendar' },
       to: { path: '^packages/core' },
     },
+    {
+      name: 'react-no-internal-imports-of-other-packages',
+      comment:
+        '다른 패키지는 공개 진입점으로만 쓴다 (스펙 3.2). source 조건으로 공개 진입점도 src 파일로 해석되므로 진입점 파일은 허용',
+      severity: 'error',
+      from: { path: '^packages/react/src' },
+      to: {
+        path: '^packages/(calendar|core)/src/',
+        pathNot: '^packages/calendar/src/(index|dangi/index)\\.ts$|^packages/core/src/(index|locales/(ko|en|ja))\\.ts$',
+      },
+    },
+    {
+      name: 'react-src-no-node-builtins',
+      severity: 'error',
+      from: { path: '^packages/react/src' },
+      to: { dependencyTypes: ['core'] },
+    },
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
@@ -59,7 +76,7 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.base.json' },
     enhancedResolveOptions: {
-      extensions: ['.ts', '.js', '.json'],
+      extensions: ['.ts', '.tsx', '.js', '.json'],
       exportsFields: ['exports'],
       conditionNames: ['@lunisolar-picker/source', 'import', 'types', 'default'],
     },

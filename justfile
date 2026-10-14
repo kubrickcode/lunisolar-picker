@@ -20,6 +20,9 @@ fix:
 deps:
     pnpm exec depcruise packages scripts --config .dependency-cruiser.cjs
 
+install-browsers:
+    pnpm exec playwright install chromium firefox webkit
+
 test:
     pnpm -r run test
 
