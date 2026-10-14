@@ -4,6 +4,15 @@
 
 > 🟡 **잠정 계획**: M2(core)·M3(react 기반·theme·입력 부품)가 끝나기 전에 쓴 계획이다. M2·M3의 실제 이름·시그니처·파일 경로가 계약(`2026-10-14-v1-interface-contract.md`)과 다르면, 실행 전에 계약을 먼저 고치고 이 계획의 해당 import·호출부를 맞춘다. 동작·테스트 기대값은 그대로 둔다.
 
+> 🔁 **M3 결과 반영(2026-10-14)**: M3가 끝나면서 아래 가정이 바뀌었다. 실행 전 계약 §3.3 끝의 "계약 변경(M3 전체 리뷰)" 목록과 §4 메모를 먼저 읽고, 이 계획의 해당 코드는 그 목록에 맞춰 옮긴다(동작·테스트 기대값은 그대로).
+> - `RangeValueInput`(약 2184행)을 새로 만들지 말고 `@lunisolar-picker/react`의 `DateRangeInput`을 import한다.
+> - DatePicker가 `calendarProps`를 `DateField.Root`와 `Calendar.Root`에 함께 펼치면(약 3710행) `ref`가 달력에도 간다. `ref`는 입력 칸 Root에만 넘긴다(필드 Root의 `ref.focus()`가 첫 칸에 포커스).
+> - Popover는 부모의 `open=false`로 닫혀도 포커스를 트리거로 돌려준다. 선택 후 닫는 흐름에서 따로 포커스를 옮기지 않는다.
+> - WheelDatePicker(약 4290~4400행)는 `useWheelDate`의 `getWheelRootProps()`를 `<Wheel.Root>`에 펼치고 `<Wheel.HiddenInput {...wheel.getHiddenInputProps()} />`를 그린다. `disabled`·`readOnly`·`name`·`onBlur`는 이 경로로만 동작한다.
+> - theme: `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`를 스타일을 붙일 때마다 줄인다. 이 검사가 "모든 부품에 규칙"을 보장하므로 `calendar-selectors.test.ts`(약 2758행)는 달력 고유 검사만 남기거나 뺀다.
+> - `useStoreInstance`의 `send`는 `resetKey`를 쓰지 않으면 고정이다(약 33행 가정은 달력 store에 그대로 성립).
+> - 테스트: 클릭 후 입력은 `src/testing/click-to-focus.ts`의 `clickToFocus`를 쓰고, 부정 단언 전에는 `settleEffects`를 쓴다.
+
 **Goal:** 단일·범위 달력 부품(`Calendar.*`, `RangeCalendar.Root`)과 완성형 picker 5종(`DatePicker`, `DateRangePicker`, `MonthPicker`, `WheelDatePicker`, `TimePicker`)을 만들어, web-console·back-office·saju-pictures가 쓰던 기능을 공개 API만으로 재현할 수 있게 한다.
 
 **Architecture:** 두 달력 Root는 공통 `useCalendarFoundation`(역법·제약·navigation store·월 격자·포커스 요청) 위에 선택 store(single/range)만 바꿔 얹는다. 부품은 `CalendarViewApi` 컨텍스트 하나로 칸 상태·속성·키보드를 받는다. 범위 드래그는 `useRangePointer`가 포인터 이벤트를 날짜 이벤트로 바꿔 core store에 보내고, 가장자리 머묾 판정은 core `createEdgeDwell`이 맡는다. 완성형은 `src/pickers/`에서 공개 진입점(`src/index.ts`)과 M3 공용 모듈(`src/contract/`, `src/settings/`, `src/utilities/`)만 import한다.

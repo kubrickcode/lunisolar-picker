@@ -408,6 +408,18 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 | `Sheet.{Root, Content, Close}`, `useSheet`, `useSheetContext` | Trigger 없음(열림은 앱이 `open`으로 제어). Content는 닫히면 언마운트. `SheetApi`에 `titleId`는 없다. 이름은 `Content`의 `aria-label`로 준다. 스크롤 잠금과 형제 inert는 참조 계수라 겹쳐 열어도 닫는 순서와 무관하다 |
 | `usePresentation(presentation)`, `resolvePresentation`, `type Presentation = 'auto' \| 'popover' \| 'sheet'` | |
 
+> **계약 변경(2026-10-14, M3 전체 리뷰)** — 위 표보다 이 목록이 우선한다.
+> 1. 공통 콜백 규칙: 모든 입력 부품의 `onValueChange`·`onEntryCalendarChange`는 사용자 조작에만 불린다. 마운트, 부모의 값 동기화와 되돌림(echo), locale·`calendars`·`isEndOfDayAllowed` 변경은 콜백을 보내지 않는다. 예외 두 가지: 값이 있을 때 부모가 `entryCalendar`를 바꾸면 명시적 요청으로 보고 다시 표기한 값을 알리며, 비제어 필드는 폼 `reset`에서 `defaultValue`로 돌아가며 알린다(React Aria와 같음). 폼 reset은 hidden input이 있어야 하므로 `name`(범위는 `startName`·`endName`)이 필요하다. 제어 필드는 reset을 무시한다.
+> 2. `useValueBridge(options)`에 선택 `toPublic`이 있다: 내부(store) 값과 공개 값이 다를 때(반쪽 범위, 허용되지 않는 24:00) 쓴다. 되돌림 판정은 "부모가 마지막으로 알고 있는 공개 값"(부모가 준 값 또는 보낸 값) 기준이다. `HiddenInputProps`에 `onFormReset`이 있다.
+> 3. DateField store의 `resetKey`는 `locale.id|calendarKey`라서 locale이나 역법 목록이 바뀌면 `send` 참조가 바뀐다. 달력(M4)처럼 `resetKey`를 안 쓰는 store의 `send`는 고정이다.
+> 4. 필드 Root(`DateField`, `DateRangeField`, `TimeField`)는 `ref?: Ref<{ focus(): void }>`를 받고, `focus()`는 첫 칸(범위는 시작일 첫 칸)에 포커스한다(스펙 §7.6, react-hook-form 연동).
+> 5. 훅 API 모양 통일: `DateFieldApi`·`DateRangeFieldApi`·`TimeFieldApi`·`WheelDateApi`가 모두 `validity`, `isInvalid`, `isDisabled`, `isReadOnly`를 갖는다. `DateRangeField` 렌더 상태는 `{ isInvalid, isDisabled }`이고 Root는 `data-focused`를 낸다. `TimeField.HiddenInput`도 prop 덮어쓰기를 받는다. `DateFieldCore.isLeapMonthAvailable()`은 제거했다.
+> 6. 윤달: `DateRangeField`의 기본 시작·종료 칸도 윤달 토글을 그린다(이름에 쪽 라벨이 붙음). 토글은 비활성일 때 `data-disabled`를 낸다. 쓰던 입력 역법이 `calendars`에서 빠지면 양력으로 넘어간다: 비제어는 값을 양력으로 다시 표기하고, 제어는 칸을 비우고 `onInvalidValue`로 알린다.
+> 7. Wheel: `Wheel.Root`가 `disabled`·`readOnly`·`invalid`·`ref`를 받아 모든 열에 전한다(fieldset처럼). `useWheel`·`Wheel.Column`에 `readOnly`(포커스는 되지만 바뀌지 않음, `aria-readonly`·`data-readonly`)가 있고, 무효면 열이 `aria-invalid`를 낸다. 새 부품 `Wheel.HiddenInput`. 연도 열은 숫자를 치면 그 해로 이동한다(입력이 멈춘 뒤 한 번 확정). 열 inline style에 `touch-action: none`.
+> 8. `useWheelDate`가 `SharedPickerProps`를 지킨다: `WheelDateApi`에 `validity`·`isInvalid`·`isDisabled`·`isReadOnly`·`focus()`·`getWheelRootProps()`(`<Wheel.Root>`에 펼칠 컴포넌트 props, DOM props 아님)·`getHiddenInputProps()`. 선택 전에는 현재 오늘을 따른다. M4 WheelDatePicker는 `<Wheel.Root {...wheel.getWheelRootProps()}>`와 `<Wheel.HiddenInput {...wheel.getHiddenInputProps()} />`를 그린다. 부모 값이 min/max 밖이면 `fields`는 잘린 날짜를 보이고 `value`는 원래 값이므로, 확인 흐름은 `selectDay(fields.day)`로 확정한다.
+> 9. Popover: 어떤 경로로 닫히든(Esc, 바깥 클릭, `Close`, 부모의 `open=false`) 포커스가 콘텐츠 안에 있었거나 사라졌으면 트리거로 돌아간다. 사용자가 다른 곳으로 옮긴 포커스는 건드리지 않는다. `closeAndRestoreFocus`는 이제 `setOpen(false)`와 같다.
+> 10. 새 공개 export: `useSheetContext`, `DateRangeInput`(M4는 `RangeValueInput`을 따로 만들지 않고 이것을 import), `WheelDateRootProps`, `Wheel.HiddenInput`, `DateRangeFieldRenderState`.
+
 ### 3.4 달력 부품 [M4-T1~T7]
 
 | 공개 | 내용 |
@@ -443,6 +455,8 @@ usePickerSelection(): PickerSelection     // DateRangePicker의 presets·footer 
 ---
 
 ## 4. `@lunisolar-picker/theme` 🟡 [M3-T10, M4-T6]
+
+> **계약 변경(2026-10-14, M3 전체 리뷰)**: `popover-trigger`(`[data-open]` 포함)도 스타일한다. `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`는 아직 규칙이 없는 M4 부품 목록이다. M4는 `PART_NAMES`에 부품을 더하거나 스타일을 붙일 때마다 이 목록을 줄인다(모든 부품에 규칙이 있는지 검사함). 새 토큰 `--lsp-focus`·`--lsp-placeholder`(스펙 §8.1). 포털 콘텐츠 때문에 `.dark`·`data-theme`은 `html`이나 `body`에 둔다.
 
 ```
 @lunisolar-picker/theme/mono.css           @layer lunisolar-picker 단일 파일. 입력 부품(M3) + 달력·picker(M4, 같은 이름의 layer 블록을 끝에 덧붙임)
