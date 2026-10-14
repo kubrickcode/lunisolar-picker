@@ -30,6 +30,28 @@ module.exports = {
       from: { path: '^packages/calendar/src', pathNot: '\\.test\\.ts$' },
       to: { path: '^packages/calendar/scripts' },
     },
+    {
+      name: 'core-src-only-calendar',
+      comment: 'core의 런타임 의존성은 calendar 하나뿐 (스펙 3.2)',
+      severity: 'error',
+      from: { path: '^packages/core/src', pathNot: '\\.test\\.ts$' },
+      to: {
+        dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer', 'npm-no-pkg', 'npm-unknown', 'core'],
+      },
+    },
+    {
+      name: 'core-uses-calendar-public-entries',
+      comment: 'calendar 내부 파일에 기대면 패키지 경계와 tree-shaking이 무너짐',
+      severity: 'error',
+      from: { path: '^packages/core/src' },
+      to: { path: '^packages/calendar/src/', pathNot: '^packages/calendar/src/(index|dangi/index)\\.ts$' },
+    },
+    {
+      name: 'calendar-does-not-depend-on-core',
+      severity: 'error',
+      from: { path: '^packages/calendar' },
+      to: { path: '^packages/core' },
+    },
   ],
   options: {
     doNotFollow: { path: 'node_modules' },

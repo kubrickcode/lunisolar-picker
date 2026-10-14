@@ -1,0 +1,48 @@
+{
+  "name": "@lunisolar-picker/core",
+  "version": "0.0.0",
+  "description": "Framework-agnostic state, constraints, month grids and gestures for lunisolar-picker",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/testing"
+  ],
+  "exports": {
+    ".": {
+      "@lunisolar-picker/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./locales/ko": {
+      "@lunisolar-picker/source": "./src/locales/ko.ts",
+      "types": "./dist/locales/ko.d.ts",
+      "default": "./dist/locales/ko.js"
+    },
+    "./locales/en": {
+      "@lunisolar-picker/source": "./src/locales/en.ts",
+      "types": "./dist/locales/en.d.ts",
+      "default": "./dist/locales/en.js"
+    },
+    "./locales/ja": {
+      "@lunisolar-picker/source": "./src/locales/ja.ts",
+      "types": "./dist/locales/ja.d.ts",
+      "default": "./dist/locales/ja.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@lunisolar-picker/calendar": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json",
+    "package-check": "publint --strict && attw --pack . --profile esm-only"
+  }
+}
