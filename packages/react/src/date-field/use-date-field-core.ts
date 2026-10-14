@@ -37,8 +37,8 @@ export type DateFieldCoreOptions = DateFieldSegmentsOptions & DateFieldStoreOpti
 
 export type DateFieldSegmentsOptions = {
   readonly isDisabled: boolean;
-  // Goal: 앱의 invalid prop. 범위 필드는 범위 전체의 무효 여부를 넣어 양 끝 칸에 aria-invalid가 붙게 함
-  readonly isInvalidFromApp: boolean;
+  // Goal: 이 칸 묶음을 소유한 쪽이 정한 무효 여부. DateField는 앱의 invalid prop, 범위 필드는 invalid prop과 범위 단위 이유(range-too-long 등)를 넣음
+  readonly isInvalidFromOwner: boolean;
   readonly isReadOnly: boolean;
   readonly isRequired: boolean;
   readonly onFocusLeave?: (() => void) | undefined;
@@ -103,7 +103,7 @@ export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSe
   const { context, entryCalendar, result, send, state } = store;
   const { settings } = options;
   const isInvalid =
-    options.isInvalidFromApp || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
+    options.isInvalidFromOwner || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
   const separator = options.separator ?? settings.locale.field.separator;
   const isLeapMonthInEnteredYear = hasLeapMonthIn(entryCalendar, {
     year: segmentOf(state, 'year')?.value ?? null,

@@ -14,15 +14,15 @@ import {
 import {
   canTakeAnotherDigit,
   type DateFieldResult,
+  type EpochRange,
   invalidBecause,
   type RangeConstraints,
-  type ResolvedConstraints,
   type SelectedDay,
   VALID,
   type Validity,
   validateEpochRange,
 } from '@lunisolar-picker/core';
-import { type FocusEvent, type HTMLAttributes, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type FocusEvent, type HTMLAttributes, useLayoutEffect, useMemo, useState } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { type DateFieldCore, useDateFieldSegments, useDateFieldStore } from '../date-field/use-date-field-core';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
@@ -35,6 +35,12 @@ import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
 
 const INCOMPLETE_REASON: ValidationReason = 'incomplete';
+// Goal: 한 날짜가 아니라 범위 전체에 걸린 이유. 양 끝 칸 모두에 무효를 표시함
+const RANGE_LEVEL_REASONS: ReadonlySet<ValidationReason> = new Set([
+  'range-includes-disabled',
+  'range-too-long',
+  'range-too-short',
+]);
 
 type CombineRangeInput = {
   readonly calendar: CalendarSystem;
@@ -60,9 +66,9 @@ export interface DateRangeFieldApi {
 export type RangeSide = 'start' | 'end';
 
 type RangeValidityInput = {
-  readonly constraints: ResolvedConstraints;
   readonly endResult: DateFieldResult;
-  readonly enteredRange: DateRangeValue | null;
+  // Constraint: 시작일이 없어 범위를 만들 수 없으면 null
+  readonly rangeReasons: readonly ValidationReason[] | null;
   readonly startResult: DateFieldResult;
 };
 
@@ -121,20 +127,25 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
   );
   const value = useMemo(() => publicRangeOf(enteredRange, isOpenEndAllowed), [enteredRange, isOpenEndAllowed]);
   const constraints = startStore.context.constraints;
+  const rangeReasons = useMemo(
+    () => (enteredRange === null ? null : validateEpochRange(epochRangeOf(enteredRange), constraints).reasons),
+    [enteredRange, constraints],
+  );
   const validity = useMemo(
-    () => rangeValidity({ enteredRange, startResult: startStore.result, endResult: endStore.result, constraints }),
-    [enteredRange, startStore.result, endStore.result, constraints],
+    () => rangeValidity({ rangeReasons, startResult: startStore.result, endResult: endStore.result }),
+    [rangeReasons, startStore.result, endStore.result],
   );
   // Constraint: 이유는 양 끝의 합집합이라, 한쪽이 입력 중(incomplete)이어도 다른 이유가 있으면 무효로 표시해야 함
   const isInvalid = props.invalid === true || validity.reasons.some((reason) => reason !== INCOMPLETE_REASON);
+  const hasRangeLevelReason = rangeReasons?.some((reason) => RANGE_LEVEL_REASONS.has(reason)) ?? false;
 
-  // Goal: 범위 전체의 무효(range-too-long 등)를 양 끝 칸의 aria-invalid·data-invalid로도 알림 (WCAG 1.3.1·3.3.1·4.1.2)
+  // Goal: 범위 전체의 무효(range-too-long 등)는 양 끝 칸의 aria-invalid·data-invalid로도 알림 (WCAG 1.3.1·3.3.1·4.1.2). 한 날짜의 이유는 그 끝에만 표시함(core가 자기 결과로 더함)
   const segmentsOptions = {
     settings,
     separator: props.separator,
     isDisabled: props.disabled === true,
     isReadOnly: props.readOnly === true,
-    isInvalidFromApp: isInvalid,
+    isInvalidFromOwner: props.invalid === true || hasRangeLevelReason,
   };
   const isRequiredBySide: Readonly<Record<RangeSide, boolean>> = {
     start: props.required === true,
@@ -146,27 +157,19 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
 
   useMoveToEndWhenStartCompletes(start, end);
 
-  // Goal: store 공간 값이 바뀌어도 공개 값(반쪽이면 null)이 그대로면 알리지 않음
-  const lastKnownValueRef = useRef(value);
   // Constraint: 부모가 다른 역법으로 적힌 범위를 주면 양 끝 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
   useValueBridge<DateRangeValue>({
     committedValue: enteredRange,
     controlled,
     isEqual: isSameRange,
     syncStore: (next) => {
-      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-      lastKnownValueRef.current = publicRangeOf(next, isOpenEndAllowed);
       const entryCalendarId = next === null ? startStore.state.entryCalendarId : calendarIdOf(next.start);
       start.send({ type: 'value.sync', selected: selectedDayOf(next?.start ?? null), entryCalendarId });
       end.send({ type: 'value.sync', selected: selectedDayOf(next?.end ?? null), entryCalendarId });
     },
-    onValueChange: (next) => {
-      const nextValue = publicRangeOf(next, isOpenEndAllowed);
-      if (isSameRange(nextValue, lastKnownValueRef.current)) return;
-      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-      lastKnownValueRef.current = nextValue;
-      props.onValueChange?.(nextValue, { validity });
-    },
+    // Goal: 반쪽 범위는 열린 끝이 허용될 때만 공개 값. 부모가 되돌려 준 null이 store의 시작일을 지우지 않음
+    toPublic: (next) => publicRangeOf(next, isOpenEndAllowed),
+    onValueChange: (next) => props.onValueChange?.(next, { validity }),
   });
 
   // Goal: 뒤집힌 범위는 포커스가 범위를 벗어날 때 store에서 두 끝을 바꿔 화면도 정렬함 (스펙 4.2). 확정 값은 이미 정렬돼 있어 알림이 없음
@@ -245,17 +248,18 @@ const combineRange = ({ calendar, endEpochDay, startEpochDay }: CombineRangeInpu
   return normalized.isOk ? normalized.value : null;
 };
 
+const epochRangeOf = ({ start, end }: DateRangeValue): EpochRange => ({
+  start: epochDayOf(start),
+  end: end === null ? null : epochDayOf(end),
+});
+
 const publicRangeOf = (range: DateRangeValue | null, isOpenEndAllowed: boolean): DateRangeValue | null =>
   range === null || (range.end === null && !isOpenEndAllowed) ? null : range;
 
 // Goal: 빈 범위는 유효(빨간 테두리 없음). 반만 친 범위는 'incomplete'를 알림 (preflight 2.8)
-const rangeValidity = ({ constraints, endResult, enteredRange, startResult }: RangeValidityInput): Validity => {
+const rangeValidity = ({ endResult, rangeReasons, startResult }: RangeValidityInput): Validity => {
   const fieldReasons = [...startResult.validity.reasons, ...endResult.validity.reasons];
-  if (enteredRange !== null) {
-    const { start, end } = enteredRange;
-    const epochRange = { start: epochDayOf(start), end: end === null ? null : epochDayOf(end) };
-    return invalidBecause([...fieldReasons, ...validateEpochRange(epochRange, constraints).reasons]);
-  }
+  if (rangeReasons !== null) return invalidBecause([...fieldReasons, ...rangeReasons]);
   if (fieldReasons.length > 0) return invalidBecause(fieldReasons);
   // Constraint: 칸이 모두 비어 있을 때만 core 결과가 epochDay null이면서 유효함
   const isEmpty = startResult.epochDay === null && endResult.epochDay === null;

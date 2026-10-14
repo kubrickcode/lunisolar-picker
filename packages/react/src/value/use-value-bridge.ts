@@ -9,6 +9,8 @@ export type ValueBridgeOptions<Value> = {
   readonly isEqual: (first: Value, second: Value) => boolean;
   readonly onValueChange: ((value: Value) => void) | undefined;
   readonly syncStore: (value: Value) => void;
+  // Goal: store 공간 값과 공개 값이 다를 때(범위 필드의 반쪽 범위 → null) 공개 값으로 알리고, 부모가 되돌려 준 공개 값을 메아리로 보아 store를 지우지 않음. 생략하면 그대로 씀
+  readonly toPublic?: ((value: Value) => Value) | undefined;
 };
 
 // Goal: store가 값의 단일 출처. 부모가 준 값은 store로 밀어 넣고(알림 없음), 사용자가 바꾼 값만 onValueChange로 알림 (계약 §2.1)
@@ -30,17 +32,24 @@ export const useValueBridge = <Value>(options: ValueBridgeOptions<Value | null>)
   }, [controlled.isControlled]);
 
   useEffect(() => {
-    if (controlledValue === undefined || latest.current.isEqual(controlledValue, lastKnownRef.current)) return;
+    if (controlledValue === undefined) return;
+    const { isEqual, toPublic = keepValue } = latest.current;
+    const lastKnown = lastKnownRef.current;
+    const isEcho = isEqual(controlledValue, lastKnown) || isEqual(controlledValue, toPublic(lastKnown));
+    if (isEcho) return;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     lastKnownRef.current = controlledValue;
     latest.current.syncStore(controlledValue);
   }, [controlledValue, latest]);
 
   useEffect(() => {
-    if (latest.current.isEqual(committedValue, lastKnownRef.current)) return;
+    const { isEqual, toPublic = keepValue } = latest.current;
+    const lastKnown = lastKnownRef.current;
+    if (isEqual(committedValue, lastKnown)) return;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     lastKnownRef.current = committedValue;
-    latest.current.onValueChange?.(committedValue);
+    const publicValue = toPublic(committedValue);
+    if (!isEqual(publicValue, toPublic(lastKnown))) latest.current.onValueChange?.(publicValue);
   }, [committedValue, latest]);
 };
 
@@ -48,3 +57,5 @@ const describeModeSwitch = (isControlled: boolean): string => {
   const [from, to] = isControlled ? ['uncontrolled', 'controlled'] : ['controlled', 'uncontrolled'];
   return `[lunisolar-picker] a component switched from ${from} to ${to}. Keep value defined (null for empty) for its whole lifetime.`;
 };
+
+const keepValue = <Value>(value: Value): Value => value;

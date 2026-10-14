@@ -122,8 +122,29 @@ describe('DateRangeField', () => {
     await expect.element(screen.getByRole('group', { name: '기간' })).toHaveAttribute('data-invalid', '');
     await expect.element(screen.getByRole('group', { name: ko.labels.rangeStart })).toHaveAttribute('data-invalid', '');
     await expect
+      .element(screen.getByRole('spinbutton', { name: ko.labels.day }).first())
+      .toHaveAttribute('aria-invalid', 'true');
+    await expect
       .element(screen.getByRole('spinbutton', { name: ko.labels.day }).last())
       .toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('marks only the end whose own date is invalid', async () => {
+    const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} />);
+
+    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
+    await userEvent.keyboard('20260230');
+    await screen.getByRole('spinbutton', { name: ko.labels.year }).last().click();
+    await userEvent.keyboard('20261017');
+
+    await expect.element(screen.getByRole('group', { name: '기간' })).toHaveAttribute('data-invalid', '');
+    await expect
+      .element(screen.getByRole('spinbutton', { name: ko.labels.day }).first())
+      .toHaveAttribute('aria-invalid', 'true');
+    await expect
+      .element(screen.getByRole('spinbutton', { name: ko.labels.day }).last())
+      .not.toHaveAttribute('aria-invalid');
+    await expect.element(screen.getByRole('group', { name: ko.labels.rangeEnd })).not.toHaveAttribute('data-invalid');
   });
 
   it('stays invalid while the other end is still being typed', async () => {
@@ -286,6 +307,42 @@ describe('DateRangeField', () => {
         .element(screen.getByRole('group', { name: ko.labels.rangeEnd }))
         .toHaveAttribute('data-calendar', 'dangi');
       expect(onEntryCalendarChange.mock.calls).toEqual([['dangi']]);
+    });
+
+    it('keeps the start when the parent echoes the null emitted for an erased end', async () => {
+      const onValueChange = vi.fn();
+      const EchoingParent = () => {
+        const [value, setValue] = useState<DateRangeInput | null>(GREGORY_RANGE);
+        return (
+          <>
+            <DateRangeField.Root
+              aria-label="기간"
+              locale={ko}
+              value={value}
+              onValueChange={(next, details) => {
+                onValueChange(next, details);
+                setValue(next);
+              }}
+            />
+            <button type="button" onClick={() => setValue({ start: '2026-11-01', end: '2026-11-05' })}>
+              Next month
+            </button>
+          </>
+        );
+      };
+      const screen = await render(<EchoingParent />);
+
+      await screen.getByRole('spinbutton', { name: ko.labels.day }).last().click();
+      await userEvent.keyboard('{Backspace}');
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBeNull();
+      await settleEffects();
+      await expect.element(screen.getByRole('group', { name: ko.labels.rangeStart })).toHaveTextContent('2026. 10. 13');
+
+      await screen.getByRole('button', { name: 'Next month' }).click();
+
+      await expect.element(screen.getByRole('group', { name: ko.labels.rangeStart })).toHaveTextContent('2026. 11. 01');
+      await expect.element(screen.getByRole('group', { name: ko.labels.rangeEnd })).toHaveTextContent('2026. 11. 05');
     });
 
     it('enters both ends in defaultEntryCalendar when the range is empty', async () => {

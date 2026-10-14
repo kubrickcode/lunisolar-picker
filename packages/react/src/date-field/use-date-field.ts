@@ -51,7 +51,7 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
     isDisabled: props.disabled === true,
     isReadOnly: props.readOnly === true,
     isRequired: props.required === true,
-    isInvalidFromApp: props.invalid === true,
+    isInvalidFromOwner: props.invalid === true,
     onFocusLeave: props.onBlur,
   });
   const value = useMemo(
