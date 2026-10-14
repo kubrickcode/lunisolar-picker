@@ -13,6 +13,12 @@ export type { PickerContext } from './context';
 export { findCalendar } from './context';
 export type { CreateStoreOptions, Reducer, Store } from './create-store';
 export { createStore } from './create-store';
+export type { EdgeDirection, EdgeDwell } from './gestures/edge-dwell';
+export { createEdgeDwell, EDGE_DWELL_DELAY_MS } from './gestures/edge-dwell';
+export type { InertiaInput, InertiaTarget } from './gestures/inertia';
+export { easeOutPosition, projectInertia } from './gestures/inertia';
+export type { PointerSample, VelocityTracker } from './gestures/velocity-tracker';
+export { createVelocityTracker } from './gestures/velocity-tracker';
 export type { CalendarBounds } from './grid/calendar-math';
 export {
   boundsFor,
