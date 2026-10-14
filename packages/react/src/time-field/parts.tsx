@@ -1,7 +1,15 @@
-import { type CSSProperties, Fragment, type HTMLAttributes, type ReactElement, type ReactNode } from 'react';
+import {
+  type CSSProperties,
+  Fragment,
+  type HTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+  useImperativeHandle,
+} from 'react';
 import { mergeProps } from '../utilities/merge-props';
 import { type RenderProp, renderElement } from '../utilities/render-element';
-import { HiddenInput as HiddenInputElement } from '../value/hidden-input';
+import { HiddenInput as HiddenInputElement, type HiddenInputProps } from '../value/hidden-input';
 import { TimeFieldContext, useTimeFieldContext } from './time-field-context';
 import { type TimeFieldApi, type UseTimeFieldProps, useTimeField } from './use-time-field';
 
@@ -16,6 +24,8 @@ export interface RootProps extends UseTimeFieldProps {
   readonly 'aria-labelledby'?: string | undefined;
   readonly 'aria-describedby'?: string | undefined;
   readonly children?: ReactNode;
+  // Goal: ref.focus()가 첫 입력 칸에 포커스함 (스펙 7.6). react-hook-form이 검증 실패 칸으로 포커스를 옮길 때 씀
+  readonly ref?: Ref<{ focus(): void }> | undefined;
 }
 
 export interface SegmentProps {
@@ -35,6 +45,7 @@ export interface TimeFieldRenderState {
 
 export const Root = (props: RootProps): ReactElement => {
   const field = useTimeField(props);
+  useImperativeHandle(props.ref, () => ({ focus: field.focus }), [field.focus]);
   const appProps = {
     className: props.className,
     style: props.style,
@@ -54,9 +65,9 @@ export const Root = (props: RootProps): ReactElement => {
   );
 };
 
-export const HiddenInput = (): ReactElement | null => {
+export const HiddenInput = (props: Partial<HiddenInputProps>): ReactElement | null => {
   const field = useTimeFieldContext();
-  return <HiddenInputElement {...field.getHiddenInputProps()} />;
+  return <HiddenInputElement {...field.getHiddenInputProps()} {...props} />;
 };
 
 export const Segment = ({ index, render, className }: SegmentProps): ReactElement => {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import { dispatchMousePointer } from '../testing/dispatch-mouse-pointer';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { settleEffects } from '../testing/settle-effects';
 import * as Wheel from './parts';
@@ -155,12 +156,6 @@ const isItemRendered = (index: number): boolean =>
 // Goal: 키 입력과 같은 틱에 프레임 표본을 모으기 시작해 애니메이션 중간을 놓치지 않음
 const pressKey = (element: Element, key: string): void => {
   element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
-};
-
-const dispatchMousePointer = (target: EventTarget, type: string, init: PointerEventInit): void => {
-  target.dispatchEvent(
-    new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'mouse', ...init }),
-  );
 };
 
 describe('Wheel', () => {

@@ -175,10 +175,50 @@
     font-size: 0.8em;
   }
 
+  /* 선택된 윤달 토글이 읽기 전용으로 막혀도 강조색 위 글자가 흐려지지 않도록 선택 규칙보다 앞에 둠 */
+  [data-lsp-part="date-field-leap-toggle"][data-disabled] {
+    color: var(--lsp-subtle);
+    cursor: not-allowed;
+  }
+
   [data-lsp-part="date-field-leap-toggle"][data-selected] {
     border-color: var(--lsp-accent);
     background: var(--lsp-accent);
     color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="popover-trigger"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-block-size: 40px;
+    padding-inline: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font: inherit;
+    cursor: pointer;
+    color-scheme: var(--lsp-color-scheme);
+    transition:
+      border-color var(--lsp-duration),
+      box-shadow var(--lsp-duration);
+  }
+
+  [data-lsp-part="popover-trigger"]:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  [data-lsp-part="popover-trigger"][data-open] {
+    border-color: var(--lsp-muted);
+    box-shadow: 0 0 0 3px var(--lsp-ring);
+  }
+
+  [data-lsp-part="popover-trigger"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
 
   [data-lsp-part="popover"] {
@@ -239,6 +279,10 @@
     -webkit-touch-callout: none;
   }
 
+  [data-lsp-part="wheel"][data-invalid] {
+    border-color: var(--lsp-danger);
+  }
+
   [data-lsp-part="wheel"]::after {
     content: "";
     position: absolute;
@@ -274,6 +318,10 @@
   [data-lsp-part="wheel-column"]:focus-visible {
     outline: 2px solid var(--lsp-focus);
     outline-offset: -2px;
+  }
+
+  [data-lsp-part="wheel-column"][data-readonly] {
+    cursor: default;
   }
 
   [data-lsp-part="wheel-column"][data-disabled] {
@@ -334,7 +382,8 @@
 
     [data-lsp-part="date-field"],
     [data-lsp-part="date-range-field"],
-    [data-lsp-part="time-field"] {
+    [data-lsp-part="time-field"],
+    [data-lsp-part="popover-trigger"] {
       transition: none;
     }
 
@@ -351,7 +400,8 @@
       outline: 2px solid Highlight;
     }
 
-    [data-lsp-part="wheel-column"]:focus-visible {
+    [data-lsp-part="wheel-column"]:focus-visible,
+    [data-lsp-part="popover-trigger"]:focus-visible {
       outline: 2px solid Highlight;
     }
 

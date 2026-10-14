@@ -59,6 +59,12 @@ export const useSheet = ({ open, defaultOpen = false, onOpenChange }: UseSheetPr
 
   const close = useCallback(() => setOpen(false), [setOpen]);
 
+  // Constraint: ref 콜백이 렌더마다 새 함수면 React가 매번 null과 요소로 다시 부름. 한 번 만든 콜백을 계속 씀
+  const attachPanel = useCallback((node: HTMLDivElement | null) => {
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    panelRef.current = node;
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
     // Goal: 포커스가 아직 안 옮겨졌거나 body에 있어도 Esc로 닫히게 함. 자식이 Esc를 이미 처리했거나 IME 조합 중이면(Esc는 조합을 먼저 취소함) 닫지 않음
@@ -88,9 +94,7 @@ export const useSheet = ({ open, defaultOpen = false, onOpenChange }: UseSheetPr
       ...partAttributes('sheet-backdrop', { open: isOpen }),
     }),
     getPanelProps: () => ({
-      ref: (node) => {
-        panelRef.current = node;
-      },
+      ref: attachPanel,
       role: 'dialog',
       'aria-modal': true,
       tabIndex: -1,

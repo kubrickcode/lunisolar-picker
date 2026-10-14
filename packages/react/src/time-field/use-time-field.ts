@@ -1,16 +1,14 @@
-import type { TimeString } from '@lunisolar-picker/calendar';
+import { LunisolarPickerError, type TimeString } from '@lunisolar-picker/calendar';
 import {
   createTimeFieldState,
-  type Segment,
   type TimeFieldContext,
   type TimeFieldEvent,
   type TimeFieldState,
-  type TimeSegmentKind,
   timeFieldReducer,
   timeFieldResult,
   type Validity,
 } from '@lunisolar-picker/core';
-import { type HTMLAttributes, type RefCallback, useMemo, useState } from 'react';
+import { type HTMLAttributes, type RefCallback, useCallback, useMemo, useState } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { type SegmentDescription, type SegmentedField, useSegmentedField } from '../segments/use-segmented-field';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
@@ -18,6 +16,7 @@ import { type PickerSettings, usePickerSettings } from '../settings/use-picker-s
 import { useStoreInstance } from '../store/use-store-instance';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
 import type { HiddenInputProps } from '../value/hidden-input';
+import { isVisiblyInvalid } from '../value/is-visibly-invalid';
 import { type ParsedControlledValue, parseOptionalTime } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
@@ -33,6 +32,7 @@ export interface TimeFieldApi {
   readonly validity: Validity;
   readonly isInvalid: boolean;
   readonly isDisabled: boolean;
+  readonly isReadOnly: boolean;
   readonly segmentedField: SegmentedField;
   send(event: TimeFieldEvent): void;
   focus(): void;
@@ -71,8 +71,8 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
   // Constraint: 허용 여부가 꺼져도 store 값은 24:00 그대로 둠. 설정이 바뀐다고 값이 비어 보이면 부모가 진짜 비움과 구별하지 못함
   const storeTime = useMemo(() => timeFieldResult(state, withEndOfDayAllowed(context)).time, [state, context]);
   const isDisabled = props.disabled === true;
-  const isInvalid =
-    props.invalid === true || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
+  const isReadOnly = props.readOnly === true;
+  const isInvalid = isVisiblyInvalid({ invalid: props.invalid === true, reasons: result.validity.reasons });
 
   const segmentedField = useSegmentedField({
     focusedIndex: state.focusedIndex,
@@ -83,7 +83,7 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
     },
     segmentPart: 'time-field-segment',
     isDisabled,
-    isReadOnly: props.readOnly === true,
+    isReadOnly,
     isInvalid,
     isRequired: props.required === true,
   });
@@ -98,7 +98,12 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
     onValueChange: (next) => props.onValueChange?.(next, { validity: result.validity }),
   });
 
-  const focus = (): void => segmentedField.focusSegment(0);
+  const { focusSegment } = segmentedField;
+  const focus = useCallback(() => focusSegment(0), [focusSegment]);
+  // Goal: 비제어일 때만 form reset으로 처음 기본값으로 돌아감. 제어 값은 부모가 정함
+  const resetToDefault = (): void => {
+    if (!controlled.isControlled) send({ type: 'value.sync', time: initialValue });
+  };
 
   return {
     state,
@@ -106,6 +111,7 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
     validity: result.validity,
     isInvalid,
     isDisabled,
+    isReadOnly,
     segmentedField,
     send,
     focus,
@@ -116,7 +122,7 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
       ...partAttributes('time-field', {
         invalid: isInvalid,
         disabled: isDisabled,
-        readonly: props.readOnly === true,
+        readonly: isReadOnly,
         focused: segmentedField.isFocusWithin,
       }),
     }),
@@ -128,12 +134,16 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
       required: props.required,
       disabled: props.disabled,
       onFocusRequest: focus,
+      onFormReset: resetToDefault,
     }),
   };
 };
 
 const describeTimeSegment = (state: TimeFieldState, index: number, settings: PickerSettings): SegmentDescription => {
-  const segment = state.segments[index] as Segment<TimeSegmentKind>; // as: 칸 개수는 store가 고정하고 부품이 그 안의 index만 넘김
+  const segment = state.segments[index];
+  if (segment === undefined) {
+    throw new LunisolarPickerError(`TimeField.Segment index ${index} is out of range (0-${state.segments.length - 1})`);
+  }
   const { locale } = settings;
   const valueDisplay = segment.value === null ? null : String(segment.value).padStart(TIME_PART_DIGITS, '0');
   const placeholder = locale.field.placeholder[segment.kind];

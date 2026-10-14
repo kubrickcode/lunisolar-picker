@@ -1,9 +1,14 @@
+import { LunisolarPickerError } from '@lunisolar-picker/calendar';
 import { ko } from '@lunisolar-picker/core/locales/ko';
-import { useState } from 'react';
+import { createRef, useState } from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import { clickToFocus } from '../testing/click-to-focus';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
+import { renderWithHydration } from '../testing/expect-hydration';
+import { formElementOf } from '../testing/form-element';
 import { settleEffects } from '../testing/settle-effects';
 import * as TimeField from './parts';
 
@@ -11,6 +16,15 @@ const dispatchPaste = (element: Element, text: string): void => {
   const event = new Event('paste', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'clipboardData', { value: { getData: () => text } });
   element.dispatchEvent(event);
+};
+
+const catchError = (action: () => void): unknown => {
+  try {
+    action();
+  } catch (error) {
+    return error;
+  }
+  return undefined;
 };
 
 const ControlledTimeField = ({ onValueChange }: { readonly onValueChange: (value: string | null) => void }) => {
@@ -93,8 +107,7 @@ const EchoingParent = ({
 
 const clearBothSegments = async (screen: Awaited<ReturnType<typeof render>>): Promise<void> => {
   for (const name of ['Hour', 'Minute']) {
-    await screen.getByRole('spinbutton', { name }).click();
-    await expect.element(screen.getByRole('spinbutton', { name })).toHaveFocus();
+    await clickToFocus(screen.getByRole('spinbutton', { name }));
     await userEvent.keyboard('{Backspace}');
   }
 };
@@ -104,9 +117,8 @@ describe('TimeField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<TimeField.Root aria-label="시각" locale={ko} onValueChange={onValueChange} />);
 
-    await screen.getByRole('spinbutton', { name: ko.labels.hour }).click();
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.hour }));
 
-    await expect.element(screen.getByRole('spinbutton', { name: ko.labels.hour })).toHaveFocus();
     await userEvent.keyboard('930');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('09:30');
@@ -125,9 +137,8 @@ describe('TimeField', () => {
         />,
       );
 
-      await screen.getByRole('spinbutton', { name: ko.labels.minute }).click();
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.minute }));
 
-      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.minute })).toHaveFocus();
       await userEvent.keyboard('{ArrowUp}');
 
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('09:35');
@@ -139,9 +150,8 @@ describe('TimeField', () => {
         <TimeField.Root aria-label="Time" defaultValue="09:00" minuteStep={15} onValueChange={onValueChange} />,
       );
 
-      await screen.getByRole('spinbutton', { name: 'Minute' }).click();
+      await clickToFocus(screen.getByRole('spinbutton', { name: 'Minute' }));
 
-      await expect.element(screen.getByRole('spinbutton', { name: 'Minute' })).toHaveFocus();
       await userEvent.keyboard('{ArrowDown}');
 
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('09:45');
@@ -172,9 +182,8 @@ describe('TimeField', () => {
       const onValueChange = vi.fn();
       const screen = await render(<TimeField.Root aria-label="Time" isEndOfDayAllowed onValueChange={onValueChange} />);
 
-      await screen.getByRole('spinbutton', { name: 'Hour' }).click();
+      await clickToFocus(screen.getByRole('spinbutton', { name: 'Hour' }));
 
-      await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveFocus();
       await userEvent.keyboard('2400');
 
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('24:00');
@@ -228,8 +237,7 @@ describe('TimeField', () => {
       <TimeField.Root aria-label="Time" defaultValue="09:00" minuteStep={5} onValueChange={onValueChange} />,
     );
 
-    await screen.getByRole('spinbutton', { name: 'Minute' }).click();
-    await expect.element(screen.getByRole('spinbutton', { name: 'Minute' })).toHaveFocus();
+    await clickToFocus(screen.getByRole('spinbutton', { name: 'Minute' }));
     await userEvent.keyboard('32');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('09:32');
@@ -304,8 +312,7 @@ describe('TimeField', () => {
     expect(onValueChange.mock.calls).toEqual([]);
     expect(onInvalidValue.mock.calls).toEqual([]);
 
-    await screen.getByRole('spinbutton', { name: 'Hour' }).click();
-    await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveFocus();
+    await clickToFocus(screen.getByRole('spinbutton', { name: 'Hour' }));
     await userEvent.keyboard('{Backspace}');
     await expect.poll(() => onValueChange.mock.calls.map(([value]) => value)).toEqual([null]);
 
@@ -362,9 +369,8 @@ describe('TimeField', () => {
       const onValueChange = vi.fn();
       const screen = await render(<ControlledTimeField onValueChange={onValueChange} />);
 
-      await screen.getByRole('spinbutton', { name: 'Hour' }).click();
+      await clickToFocus(screen.getByRole('spinbutton', { name: 'Hour' }));
 
-      await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveFocus();
       await userEvent.keyboard('{ArrowUp}');
       await expect.poll(() => onValueChange.mock.calls.length).toBe(1);
       await settleEffects();
@@ -382,6 +388,53 @@ describe('TimeField', () => {
       await settleEffects();
       expect(onValueChange.mock.calls).toEqual([]);
     });
+  });
+
+  it('focuses the hour segment through the root ref', async () => {
+    const ref = createRef<{ focus(): void }>();
+    const screen = await render(<TimeField.Root ref={ref} aria-label="Time" />);
+
+    ref.current?.focus();
+
+    await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveFocus();
+  });
+
+  it('restores the default time when the form resets', async () => {
+    const screen = await render(
+      <form aria-label="Schedule">
+        <TimeField.Root aria-label="Start time" name="startTime" defaultValue="09:00" />
+      </form>,
+    );
+    const form = formElementOf(screen.getByRole('form'));
+    await clickToFocus(screen.getByRole('spinbutton', { name: 'Hour' }));
+    await userEvent.keyboard('{ArrowUp}');
+    await expect.poll(() => new FormData(form).get('startTime')).toBe('10:00');
+
+    form.reset();
+
+    await expect.poll(() => new FormData(form).get('startTime')).toBe('09:00');
+    await expect.element(screen.getByRole('group')).toHaveTextContent('09:00');
+  });
+
+  it('rejects a segment index outside the fields with a typed error', () => {
+    const thrown = catchError(() =>
+      renderToString(
+        <TimeField.Root aria-label="Time">
+          <TimeField.Segment index={2} />
+        </TimeField.Root>,
+      ),
+    );
+
+    expect(thrown).toBeInstanceOf(LunisolarPickerError);
+  });
+
+  it('hydrates without a mismatch', async () => {
+    const { recoverableErrors, unmount } = await renderWithHydration(
+      <TimeField.Root aria-label="Time" name="startTime" defaultValue="09:00" />,
+    );
+
+    expect(recoverableErrors).toEqual([]);
+    unmount();
   });
 
   it('submits the time under its name and has no accessibility violations', async () => {

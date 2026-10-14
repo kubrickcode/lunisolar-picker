@@ -11,10 +11,11 @@ import {
 
 const EMPTY: ParsedControlledValue<never> = { value: null, invalidReason: null };
 
-export type DateRangeInput = {
+// Goal: 범위 필드·범위 picker가 받는 범위 입력 모양. 공개 API라 M4 picker가 다시 정의하지 않고 가져다 씀
+export interface DateRangeInput {
   readonly end: string | null;
   readonly start: string;
-};
+}
 
 export type ParsedControlledValue<Value> = {
   readonly invalidReason: ValidationReason | null;

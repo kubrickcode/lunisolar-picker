@@ -19,6 +19,7 @@ export type { LunisolarProviderProps } from './settings/lunisolar-provider';
 export { LunisolarProvider } from './settings/lunisolar-provider';
 export type { SharedPickerProps, ValueChangeDetails } from './settings/shared-picker-props';
 export * as Sheet from './sheet/parts';
+export { useSheetContext } from './sheet/sheet-context';
 export type { SheetApi, UseSheetProps } from './sheet/use-sheet';
 export { useSheet } from './sheet/use-sheet';
 export * as TimeField from './time-field/parts';
@@ -27,8 +28,9 @@ export type { TimeFieldApi, UseTimeFieldProps } from './time-field/use-time-fiel
 export { useTimeField } from './time-field/use-time-field';
 export { useToday } from './today/use-today';
 export type { RenderProp } from './utilities/render-element';
+export type { DateRangeInput } from './value/parse-controlled-value';
 export * as Wheel from './wheel/parts';
 export type { UseWheelProps, WheelApi } from './wheel/use-wheel';
 export { useWheel } from './wheel/use-wheel';
-export type { UseWheelDateProps, WheelDateApi } from './wheel/use-wheel-date';
+export type { UseWheelDateProps, WheelDateApi, WheelDateRootProps } from './wheel/use-wheel-date';
 export { useWheelDate } from './wheel/use-wheel-date';

@@ -1,6 +1,6 @@
 import { type CalendarId, calendarIdOf, type DateString, epochDayOf, gregory } from '@lunisolar-picker/calendar';
 import type { DateConstraints } from '@lunisolar-picker/core';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
 import { formatOrNull } from '../value/format-or-null';
@@ -60,22 +60,29 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
   );
   const { validity } = core.result;
 
-  // Constraint: 부모가 다른 역법으로 적힌 값을 주면 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
+  // Constraint: 밖에서 정한 값(부모 값·form reset의 기본값)이 다른 역법으로 적혀 있으면 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
+  const syncValue = (next: DateString | null): void => {
+    core.send({
+      type: 'value.sync',
+      selected: next === null ? null : { epochDay: epochDayOf(next), calendarId: calendarIdOf(next) },
+      entryCalendarId: next === null ? core.state.entryCalendarId : calendarIdOf(next),
+    });
+  };
+
   useValueBridge<DateString>({
     committedValue: value,
     controlled,
     isEqual: Object.is,
-    syncStore: (next) => {
-      core.send({
-        type: 'value.sync',
-        selected: next === null ? null : { epochDay: epochDayOf(next), calendarId: calendarIdOf(next) },
-        entryCalendarId: next === null ? core.state.entryCalendarId : calendarIdOf(next),
-      });
-    },
+    syncStore: syncValue,
     onValueChange: (next) => props.onValueChange?.(next, { validity }),
   });
 
-  const focus = (): void => core.segmentedField.focusSegment(0);
+  const { focusSegment } = core.segmentedField;
+  const focus = useCallback(() => focusSegment(0), [focusSegment]);
+  // Goal: 비제어일 때만 form reset으로 처음 기본값으로 돌아감. 제어 값은 부모가 정함
+  const resetToDefault = (): void => {
+    if (!controlled.isControlled) syncValue(initialValue);
+  };
   // Constraint: 입력 칸은 부모가 거부해도 되돌리지 않음(useValueBridge와 같은 정책). 사용자가 바꾼 역법은 바로 반영하고 알림. 제어 prop은 다음에 바뀔 때 다시 밀어 넣음
   const setEntryCalendar = (calendarId: CalendarId): void => {
     if (calendarId === core.state.entryCalendarId) return;
@@ -96,6 +103,7 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
       required: props.required,
       disabled: props.disabled,
       onFocusRequest: focus,
+      onFormReset: resetToDefault,
     }),
   };
 };

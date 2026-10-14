@@ -1,4 +1,10 @@
-import { type CalendarId, type CalendarSystem, LunisolarPickerError, toMonthCode } from '@lunisolar-picker/calendar';
+import {
+  type CalendarId,
+  type CalendarSystem,
+  gregory,
+  LunisolarPickerError,
+  toMonthCode,
+} from '@lunisolar-picker/calendar';
 import {
   createDateFieldState,
   type DateFieldEvent,
@@ -13,6 +19,7 @@ import {
   type Segment,
   type SelectedDay,
   supportedYearRange,
+  type Validity,
 } from '@lunisolar-picker/core';
 import {
   type ButtonHTMLAttributes,
@@ -20,6 +27,7 @@ import {
   type HTMLAttributes,
   type RefCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -29,8 +37,10 @@ import { usePickerContext } from '../settings/use-picker-context';
 import type { PickerSettings } from '../settings/use-picker-settings';
 import { useStoreInstance } from '../store/use-store-instance';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
+import { isVisiblyInvalid } from '../value/is-visibly-invalid';
 
 const MONTH_DAY_DIGITS = 2;
+const RESET_KEY_SEPARATOR = '|';
 const YEAR_DIGITS = 4;
 
 export type DateFieldCoreOptions = DateFieldSegmentsOptions & DateFieldStoreOptions;
@@ -69,6 +79,7 @@ export interface DateFieldCore {
   readonly state: DateFieldState;
   readonly context: PickerContext;
   readonly result: DateFieldResult;
+  readonly validity: Validity;
   readonly entryCalendar: CalendarSystem;
   readonly separator: string;
   readonly isInvalid: boolean;
@@ -79,7 +90,6 @@ export interface DateFieldCore {
   getRootProps(): DateFieldRootProps;
   getSeparatorProps(): HTMLAttributes<HTMLSpanElement> & DataAttributeProps;
   getLeapMonthToggleProps(): ButtonHTMLAttributes<HTMLButtonElement> & DataAttributeProps;
-  isLeapMonthAvailable(): boolean;
 }
 
 export type DateFieldRootProps = HTMLAttributes<HTMLDivElement> &
@@ -87,6 +97,13 @@ export type DateFieldRootProps = HTMLAttributes<HTMLDivElement> &
     readonly onBlur: (event: FocusEvent<HTMLElement>) => void;
     readonly ref: RefCallback<HTMLElement>;
   };
+
+type CalendarRemovalInput = {
+  readonly context: PickerContext;
+  // Constraint: 직전 렌더의 입력 역법. 앱이 calendars에서 뺀 뒤에는 context에 없으므로 여기서만 날짜를 구할 수 있음
+  readonly previousEntryCalendar: CalendarSystem;
+  readonly state: DateFieldState;
+};
 
 type DescribeDateSegmentInput = {
   readonly canToggleLeapMonth: boolean;
@@ -102,8 +119,7 @@ export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore =
 export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSegmentsOptions): DateFieldCore => {
   const { context, entryCalendar, result, send, state } = store;
   const { settings } = options;
-  const isInvalid =
-    options.isInvalidFromOwner || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
+  const isInvalid = isVisiblyInvalid({ invalid: options.isInvalidFromOwner, reasons: result.validity.reasons });
   const separator = options.separator ?? settings.locale.field.separator;
   const isLeapMonthInEnteredYear = hasLeapMonthIn(entryCalendar, {
     year: segmentOf(state, 'year')?.value ?? null,
@@ -111,6 +127,7 @@ export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSe
   });
   // Goal: 그해에 없는 윤달 표시가 남아 있으면 끌 수 있어야 함. 막으면 사용자가 invalid-date에서 빠져나올 수 없음
   const canToggleLeapMonth = isLeapMonthInEnteredYear || state.isLeapMonth;
+  const isLeapMonthToggleDisabled = options.isDisabled || options.isReadOnly || !canToggleLeapMonth;
 
   const segmentedField = useSegmentedField({
     focusedIndex: state.focusedIndex,
@@ -127,6 +144,7 @@ export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSe
     state,
     context,
     result,
+    validity: result.validity,
     entryCalendar,
     separator,
     isInvalid,
@@ -134,7 +152,6 @@ export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSe
     isReadOnly: options.isReadOnly,
     segmentedField,
     send,
-    isLeapMonthAvailable: () => isLeapMonthInEnteredYear,
     getRootProps: () => ({
       ref: segmentedField.rootRef,
       role: 'group',
@@ -152,9 +169,12 @@ export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSe
       type: 'button',
       'aria-pressed': state.isLeapMonth,
       'aria-label': settings.locale.labels.leapMonth,
-      disabled: options.isDisabled || options.isReadOnly || !canToggleLeapMonth,
+      disabled: isLeapMonthToggleDisabled,
       onClick: () => send({ type: 'leapMonth.toggle' }),
-      ...partAttributes('date-field-leap-toggle', { selected: state.isLeapMonth }),
+      ...partAttributes('date-field-leap-toggle', {
+        selected: state.isLeapMonth,
+        disabled: isLeapMonthToggleDisabled,
+      }),
     }),
   };
 };
@@ -162,6 +182,8 @@ export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSe
 export const useDateFieldStore = (options: DateFieldStoreOptions): DateFieldStore => {
   const { settings, constraints, requestedEntryCalendarId } = options;
   const context = usePickerContext(settings, { constraints, commitMode: 'immediate', numberOfMonths: 1 });
+  const previousEntryCalendarRef = useRef<CalendarSystem>(gregory);
+  // Constraint: 로케일(칸 순서)이나 역법 구성이 바뀌면 이전 상태로 store를 다시 만듦. 역법 구성이 바뀐 렌더 안에서 바로 고쳐야 빠진 역법을 찾다가 렌더가 던지지 않음
   const { state, send } = useStoreInstance(
     (previous: DateFieldState | undefined) =>
       previous === undefined
@@ -169,10 +191,14 @@ export const useDateFieldStore = (options: DateFieldStoreOptions): DateFieldStor
             selected: options.initialSelected,
             entryCalendarId: options.initialEntryCalendarId,
           })
-        : reorderForLocale(previous, context),
+        : moveOffRemovedCalendar({
+            context,
+            previousEntryCalendar: previousEntryCalendarRef.current,
+            state: reorderForLocale(previous, context),
+          }),
     dateFieldReducer,
     context,
-    { resetKey: settings.locale.id },
+    { resetKey: [settings.locale.id, settings.calendarKey].join(RESET_KEY_SEPARATOR) },
   );
 
   // Constraint: 마운트 때 값의 역법과 entryCalendar가 달라도 값의 역법을 유지함. prop이 실제로 바뀔 때만 밀어 넣어야 마운트에서 값이 바뀌고 onValueChange가 불리지 않음
@@ -191,6 +217,10 @@ export const useDateFieldStore = (options: DateFieldStoreOptions): DateFieldStor
 
   // Goal: 입력 역법의 단일 출처는 store. 값 문자열·윤달 판단·data-calendar가 모두 같은 역법을 봄
   const entryCalendar = findCalendar(settings.calendars, state.entryCalendarId);
+  useLayoutEffect(() => {
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    previousEntryCalendarRef.current = entryCalendar;
+  });
   const result = useMemo(() => dateFieldResult(state, context), [state, context]);
   return { context, entryCalendar, result, send, state };
 };
@@ -234,6 +264,22 @@ const hasLeapMonthIn = (
   const { firstYear, lastYear } = supportedYearRange(calendar);
   const isYearSupported = year >= firstYear && year <= lastYear;
   return isMonthInRange && isYearSupported && calendar.monthsInYear(year).includes(toMonthCode(month, true));
+};
+
+// Goal: 앱이 calendars에서 지금 입력 역법을 빼면 양력으로 돌아감. 직전 입력 역법으로 구한 같은 날을 양력으로 다시 적음 (입력 역법을 바꿀 때와 같은 규칙)
+// Constraint: 직전 역법이 상태의 역법과 다르면(같은 렌더 안에서 역법이 두 번 바뀐 경우) 날짜를 구할 수 없어 비움
+const moveOffRemovedCalendar = ({ context, previousEntryCalendar, state }: CalendarRemovalInput): DateFieldState => {
+  const isProvided = context.calendars.some((calendar) => calendar.id === state.entryCalendarId);
+  if (isProvided) return state;
+  const canReadPreviousDay = previousEntryCalendar.id === state.entryCalendarId;
+  const { epochDay } = canReadPreviousDay
+    ? dateFieldResult(state, { ...context, calendars: [...context.calendars, previousEntryCalendar] })
+    : { epochDay: null };
+  const moved = createDateFieldState(context, {
+    selected: epochDay === null ? null : { epochDay, calendarId: gregory.id },
+    entryCalendarId: gregory.id,
+  });
+  return { ...moved, focusedIndex: state.focusedIndex };
 };
 
 // Goal: 로케일이 바뀌면 칸 순서만 새 로케일로 바꾸고 입력 중인 숫자·윤달·역법은 그대로 둠. 확정 값이 같아 onValueChange가 다시 불리지 않음 (preflight 3.5)

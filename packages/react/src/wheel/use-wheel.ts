@@ -59,7 +59,7 @@ type GesturePointerListeners = {
 };
 
 type NativeWheelHandlers = {
-  readonly isDisabled: boolean;
+  readonly canChange: boolean;
   readonly onSettle: () => void;
   readonly onWheel: (deltaPixels: number) => void;
 };
@@ -96,6 +96,8 @@ export interface UseWheelProps<Value> {
   readonly isEqual?: ((first: Value, second: Value) => boolean) | undefined;
   readonly label: string;
   readonly disabled?: boolean | undefined;
+  // Goal: 포커스와 읽기는 그대로 두고 끌기·키·마우스 휠·숫자 입력으로 값을 바꾸지 못하게 함
+  readonly readOnly?: boolean | undefined;
 }
 
 export interface WheelApi {
@@ -110,6 +112,8 @@ export interface WheelApi {
 // Goal: 끌기·관성·마우스 휠 중에는 CSS 변수만 움직이고, 멈춘 항목만 column store에 확정함 (스펙 6.2)
 export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   const isDisabled = props.disabled === true;
+  const isReadOnly = props.readOnly === true;
+  const canChange = !isDisabled && !isReadOnly;
   // Constraint: store는 처음 받은 리듀서를 계속 씀. isEqual은 마운트 때 값으로 고정됨
   const [reducer] = useState(() => columnReducer<Value>(props.isEqual ?? Object.is));
   const { state, send } = useStoreInstance(
@@ -147,10 +151,10 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
     [],
   );
 
-  // Goal: 숫자 입력 확정을 기다리는 사이 열이 비활성화되면 그 값을 확정하지 않음
+  // Goal: 숫자 입력 확정을 기다리는 사이 열이 비활성·읽기 전용이 되면 그 값을 확정하지 않음
   useEffect(() => {
-    if (isDisabled) clearTimeout(typeaheadTimerRef.current);
-  }, [isDisabled]);
+    if (!canChange) clearTimeout(typeaheadTimerRef.current);
+  }, [canChange]);
 
   // Goal: 위치가 그려진 창 중심에서 RECENTER_DISTANCE 넘게 벗어날 때만 다시 그림(항목 10개당 최대 한 번)
   // Constraint: 한 프레임에 수백 항목을 건너는 관성·Home/End에서도 그 프레임에 보이는 항목이 DOM에 있도록 바로 그림
@@ -210,7 +214,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   }, [selectedPosition, motion]);
 
   const wheelHandlers = useLatestRef<NativeWheelHandlers>({
-    isDisabled,
+    canChange,
     onWheel: (deltaPixels) => {
       clearTimeout(typeaheadTimerRef.current);
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
@@ -281,7 +285,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   });
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
-    if (isDisabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (!canChange || (event.pointerType === 'mouse' && event.button !== 0)) return;
     clearTimeout(typeaheadTimerRef.current);
     motion.stop();
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
@@ -323,7 +327,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const isModified = event.altKey || event.ctrlKey || event.metaKey;
-    if (isDisabled || isModified || event.nativeEvent.isComposing) return;
+    if (!canChange || isModified || event.nativeEvent.isComposing) return;
     const baseIndex = settlingIndexRef.current ?? state.selectedIndex;
     const targetIndex = keyboardTargetIndex(event.key, baseIndex, props.options.length);
     if (targetIndex === null) {
@@ -371,9 +375,10 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
       'aria-valuenow': state.selectedIndex >= 0 ? state.selectedIndex : undefined,
       'aria-valuetext': selectedOption?.label,
       'aria-disabled': isDisabled || undefined,
+      'aria-readonly': isReadOnly || undefined,
       onPointerDown,
       onKeyDown,
-      ...partAttributes('wheel-column', { disabled: isDisabled }),
+      ...partAttributes('wheel-column', { disabled: isDisabled, readonly: isReadOnly }),
     }),
     getTrackProps: () => ({ 'aria-hidden': true, ...partAttributes('wheel-track') }),
     getItemProps: (index) => {
@@ -436,7 +441,7 @@ const keyboardTargetIndex = (key: string, selectedIndex: number, itemCount: numb
 // Constraint: React의 onWheel은 passive라 preventDefault가 안 됨. 페이지가 같이 스크롤되지 않도록 비passive 리스너를 직접 붙임
 const listenToWheel = ({ column, handlers, settleTimerRef }: WheelListenerOptions): (() => void) => {
   const onWheel = (event: WheelEvent): void => {
-    if (handlers.current.isDisabled) return;
+    if (!handlers.current.canChange) return;
     event.preventDefault();
     handlers.current.onWheel(normalizeWheelDelta(event.deltaY, event.deltaMode, column.clientHeight));
     clearTimeout(settleTimerRef.current);

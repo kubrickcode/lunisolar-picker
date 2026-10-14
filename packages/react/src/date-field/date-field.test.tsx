@@ -1,12 +1,14 @@
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { en } from '@lunisolar-picker/core/locales/en';
 import { ko } from '@lunisolar-picker/core/locales/ko';
-import { useState } from 'react';
+import { createRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import { clickToFocus } from '../testing/click-to-focus';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { formElementOf } from '../testing/form-element';
 import { settleEffects } from '../testing/settle-effects';
 import { DateFieldContext } from './date-field-context';
 import * as DateField from './parts';
@@ -41,6 +43,7 @@ describe('DateField', () => {
       <DateField.Root aria-label="생년월일" locale={ko} name="birthDate" onValueChange={onValueChange} />,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
     await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('20261014');
 
@@ -53,6 +56,7 @@ describe('DateField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<DateField.Root aria-label="Date" onValueChange={onValueChange} />);
 
+    await clickToFocus(screen.getByRole('spinbutton').first());
     await screen.getByRole('spinbutton').first().click();
     await userEvent.keyboard('10142026');
 
@@ -73,6 +77,7 @@ describe('DateField', () => {
       <DateField.Root aria-label="Date" locale={ko} defaultValue="2026-10-14" onValueChange={onValueChange} />,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }));
     await screen.getByRole('spinbutton', { name: ko.labels.day }).click();
     await userEvent.keyboard('{ArrowUp}');
 
@@ -83,6 +88,7 @@ describe('DateField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<DateField.Root aria-label="Date" locale={ko} onValueChange={onValueChange} />);
     const year = screen.getByRole('spinbutton', { name: ko.labels.year });
+    await clickToFocus(year);
     await year.click();
 
     dispatchPaste(year.element(), '1990.3.15');
@@ -93,6 +99,7 @@ describe('DateField', () => {
   it('keeps aria-valuenow within the segment bounds when a paste overflows them', async () => {
     const screen = await render(<DateField.Root aria-label="Date" locale={ko} />);
     const year = screen.getByRole('spinbutton', { name: ko.labels.year });
+    await clickToFocus(year);
     await year.click();
 
     dispatchPaste(year.element(), '1990.13.40');
@@ -115,6 +122,7 @@ describe('DateField', () => {
       />,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
     await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('199005');
     await userEvent.keyboard('L');
@@ -135,6 +143,7 @@ describe('DateField', () => {
         onValueChange={onValueChange}
       />,
     );
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.month }));
     await screen.getByRole('spinbutton', { name: ko.labels.month }).click();
     await userEvent.keyboard('06');
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[1]?.validity.reasons).toContain('invalid-date');
@@ -158,6 +167,7 @@ describe('DateField', () => {
       />,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
     await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('20251229');
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).not.toBeNull();
@@ -174,6 +184,7 @@ describe('DateField', () => {
       <DateField.Root aria-label="Date" locale={ko} defaultValue="2026-10-14" onValueChange={onValueChange} />,
     );
     const day = screen.getByRole('spinbutton', { name: ko.labels.day });
+    await clickToFocus(day);
     await day.click();
     const dayElement = day.element();
 
@@ -340,6 +351,7 @@ describe('DateField', () => {
         onValueChange={onValueChange}
       />,
     );
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
     await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('199005');
 
@@ -357,6 +369,7 @@ describe('DateField', () => {
     const screen = await render(
       <DateField.Root aria-label="Date" locale={ko} readOnly defaultValue="2026-10-14" onValueChange={onValueChange} />,
     );
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
     await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
 
     await userEvent.keyboard('{ArrowRight}{ArrowUp}');
@@ -426,12 +439,92 @@ describe('DateField', () => {
       </>,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
     await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('{Tab}');
     expect(onBlur).not.toHaveBeenCalled();
     await screen.getByRole('button', { name: 'Next field' }).click();
 
     await expect.poll(() => onBlur.mock.calls.length).toBe(1);
+  });
+
+  it('focuses the first segment through the root ref', async () => {
+    const ref = createRef<{ focus(): void }>();
+    const screen = await render(<DateField.Root ref={ref} aria-label="Date" locale={ko} />);
+
+    ref.current?.focus();
+
+    await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year })).toHaveFocus();
+  });
+
+  it('marks the leap-month toggle as disabled while there is no leap month to toggle', async () => {
+    const screen = await render(
+      <DateField.Root aria-label="Date" locale={ko} calendars={[dangi]} defaultEntryCalendar="dangi" />,
+    );
+
+    await expect
+      .element(screen.getByRole('button', { name: ko.labels.leapMonth }))
+      .toHaveAttribute('data-disabled', '');
+  });
+
+  it('falls back to the Gregorian calendar when the entry calendar is removed from calendars', async () => {
+    const screen = await render(
+      <DateField.Root aria-label="Date" locale={ko} calendars={[dangi]} defaultValue="1990-06-23[u-ca=dangi]" />,
+    );
+
+    await screen.rerender(<DateField.Root aria-label="Date" locale={ko} defaultValue="1990-06-23[u-ca=dangi]" />);
+
+    await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'gregory');
+    await expect.element(screen.getByRole('group')).toHaveTextContent('1990. 06. 23');
+  });
+
+  describe('form reset', () => {
+    it('restores the default value', async () => {
+      const screen = await render(
+        <form aria-label="Profile">
+          <DateField.Root aria-label="Date" locale={ko} name="birthDate" defaultValue="2026-10-14" />
+        </form>,
+      );
+      const form = formElementOf(screen.getByRole('form'));
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }));
+      await userEvent.keyboard('{ArrowUp}');
+      await expect.poll(() => new FormData(form).get('birthDate')).toBe('2026-10-15');
+
+      form.reset();
+
+      await expect.poll(() => new FormData(form).get('birthDate')).toBe('2026-10-14');
+      await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 14');
+    });
+
+    it('leaves a controlled value to the parent', async () => {
+      const onValueChange = vi.fn();
+      const ControlledInForm = () => {
+        const [value, setValue] = useState('2026-10-15');
+        return (
+          <form aria-label="Profile">
+            <DateField.Root
+              aria-label="Date"
+              locale={ko}
+              name="birthDate"
+              value={value}
+              onValueChange={onValueChange}
+            />
+            <button type="button" onClick={() => setValue('2026-10-20')}>
+              Parent sets
+            </button>
+          </form>
+        );
+      };
+      const screen = await render(<ControlledInForm />);
+      await screen.getByRole('button', { name: 'Parent sets' }).click();
+      await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 20');
+
+      formElementOf(screen.getByRole('form')).reset();
+      await settleEffects();
+
+      await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 20');
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
   });
 
   it('hydrates without a mismatch', async () => {

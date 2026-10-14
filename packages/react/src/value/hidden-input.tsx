@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactElement } from 'react';
+import { type CSSProperties, type ReactElement, useEffect, useRef } from 'react';
+import { useLatestRef } from '../utilities/use-latest-ref';
 
 const VISUALLY_HIDDEN_STYLE: CSSProperties = {
   blockSize: 1,
@@ -18,6 +19,8 @@ export type HiddenInputProps = {
   readonly form?: string | undefined;
   readonly name?: string | undefined;
   readonly onFocusRequest: () => void;
+  // Goal: 소속 form이 reset되면 부품이 기본값으로 돌아가게 알림. 제어 모드인지는 부품이 판단함
+  readonly onFormReset?: (() => void) | undefined;
   readonly required?: boolean | undefined;
   readonly value: string;
 };
@@ -30,10 +33,25 @@ export const HiddenInput = ({
   required,
   disabled,
   onFocusRequest,
+  onFormReset,
 }: HiddenInputProps): ReactElement | null => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const onFormResetRef = useLatestRef(onFormReset);
+
+  // Constraint: form 속성으로 바깥 form에 속할 수도 있으므로 DOM이 정한 소속 form(input.form)에 붙임. name이 없으면 input이 없어 폼과 무관함
+  // biome-ignore lint/correctness/useExhaustiveDependencies: form·name이 바뀌면 소속 form이 바뀌거나 input이 생기고 사라지므로 다시 붙여야 함
+  useEffect(() => {
+    const owner = inputRef.current?.form;
+    if (!owner) return;
+    const resetField = (): void => onFormResetRef.current?.();
+    owner.addEventListener('reset', resetField);
+    return () => owner.removeEventListener('reset', resetField);
+  }, [form, name, onFormResetRef]);
+
   if (name === undefined) return null;
   return (
     <input
+      ref={inputRef}
       aria-hidden="true"
       autoComplete="off"
       tabIndex={-1}

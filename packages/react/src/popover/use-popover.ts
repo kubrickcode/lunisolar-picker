@@ -14,6 +14,7 @@ import {
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { focusInitialElement, trapTabKey } from '../focus/focusable-elements';
 import { useControllableState } from '../utilities/use-controllable-state';
+import { useLatestRef } from '../utilities/use-latest-ref';
 import { useMergedRefs } from '../utilities/use-merged-refs';
 
 const POPOVER_OFFSET_PIXELS = 8;
@@ -66,18 +67,22 @@ export const usePopover = ({
   const triggerRefCallback = useMergedRefs<HTMLButtonElement>(triggerRef, refs.setReference);
   const contentRefCallback = useMergedRefs<HTMLDivElement>(contentRef, refs.setFloating, setContentElement);
 
-  const closeAndRestoreFocus = useCallback(() => {
-    setOpen(false);
-    triggerRef.current?.focus({ preventScroll: true });
-  }, [setOpen]);
+  const isOpenRef = useLatestRef(isOpen);
+
+  // Constraint: 이름은 공개 API라 유지함. 포커스 복원은 닫히는 경로(Esc·바깥 클릭·Close·부모의 open=false)와 관계없이 아래 이펙트 정리에서 함
+  const closeAndRestoreFocus = useCallback(() => setOpen(false), [setOpen]);
 
   useEffect(() => {
     // Constraint: 하이드레이션 때는 콘텐츠가 클라이언트 마운트 뒤에 붙으므로 요소가 생긴 시점에 다시 실행돼야 함
     if (!isOpen || !contentElement) return;
     // Intentionally deferred - 포털 콘텐츠가 붙고 위치가 잡힌 뒤에 포커스를 옮겨야 스크롤이 튀지 않음
     const frame = requestAnimationFrame(() => focusInitialElement(contentElement));
-    return () => cancelAnimationFrame(frame);
-  }, [isOpen, contentElement]);
+    return () => {
+      cancelAnimationFrame(frame);
+      // Constraint: 정리는 닫힐 때뿐 아니라 열린 채 콘텐츠 요소가 바뀔 때도 돎. 이미 갱신된 최신 열림 상태로 닫힘인지 판단함
+      if (!isOpenRef.current) restoreFocusToTrigger(contentElement, triggerRef.current);
+    };
+  }, [isOpen, contentElement, isOpenRef]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -131,4 +136,11 @@ export const usePopover = ({
       ...partAttributes('popover', { open: isOpen }),
     }),
   };
+};
+
+// Goal: 포커스가 콘텐츠 안에 있었거나(콘텐츠가 빠지면 body로 감) 갈 곳을 잃었을 때만 트리거로 돌려줌. 사용자가 바깥 다른 요소로 옮긴 포커스는 빼앗지 않음
+const restoreFocusToTrigger = (content: HTMLElement, trigger: HTMLElement | null): void => {
+  const { activeElement } = content.ownerDocument;
+  const isFocusLost = activeElement === null || activeElement === content.ownerDocument.body;
+  if (isFocusLost || content.contains(activeElement)) trigger?.focus({ preventScroll: true });
 };

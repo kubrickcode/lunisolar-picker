@@ -1,12 +1,14 @@
 import { dangi } from '@lunisolar-picker/calendar/dangi';
 import { en } from '@lunisolar-picker/core/locales/en';
 import { ko } from '@lunisolar-picker/core/locales/ko';
-import { useState } from 'react';
+import { createRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import { clickToFocus } from '../testing/click-to-focus';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { formElementOf } from '../testing/form-element';
 import { settleEffects } from '../testing/settle-effects';
 import type { DateRangeInput } from '../value/parse-controlled-value';
 import { useDateRangeFieldContext } from './date-range-field-context';
@@ -48,6 +50,7 @@ describe('DateRangeField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} onValueChange={onValueChange} />);
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101320261017');
 
@@ -58,6 +61,7 @@ describe('DateRangeField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<DateRangeField.Root aria-label="Period" locale={en} onValueChange={onValueChange} />);
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: en.labels.month }).first());
     await screen.getByRole('spinbutton', { name: en.labels.month }).first().click();
     await userEvent.keyboard('1013202610172026');
 
@@ -68,6 +72,7 @@ describe('DateRangeField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} onValueChange={onValueChange} />);
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101720261013');
 
@@ -88,6 +93,7 @@ describe('DateRangeField', () => {
         <button type="button">Next</button>
       </>,
     );
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101720261005');
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toEqual({ start: '2026-10-05', end: '2026-10-17' });
@@ -110,6 +116,7 @@ describe('DateRangeField', () => {
       <DateRangeField.Root aria-label="기간" locale={ko} isOpenEndAllowed onValueChange={onValueChange} />,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20261013');
 
@@ -120,6 +127,7 @@ describe('DateRangeField', () => {
     const onValueChange = vi.fn();
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} onValueChange={onValueChange} />);
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20261013');
 
@@ -134,6 +142,7 @@ describe('DateRangeField', () => {
       <DateRangeField.Root aria-label="기간" locale={ko} maxDays={3} limitMode="flag" onValueChange={onValueChange} />,
     );
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101320261017');
 
@@ -152,8 +161,10 @@ describe('DateRangeField', () => {
   it('marks only the end whose own date is invalid', async () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} />);
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20260230');
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).last());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).last().click();
     await userEvent.keyboard('20261017');
 
@@ -170,8 +181,10 @@ describe('DateRangeField', () => {
   it('stays invalid while the other end is still being typed', async () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} />);
 
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20260230');
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).last());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).last().click();
     await userEvent.keyboard('2');
 
@@ -192,6 +205,7 @@ describe('DateRangeField', () => {
         <button type="button">Next</button>
       </>,
     );
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
     await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20261013');
     await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year }).last()).toHaveFocus();
@@ -352,6 +366,7 @@ describe('DateRangeField', () => {
       };
       const screen = await render(<EchoingParent />);
 
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }).last());
       await screen.getByRole('spinbutton', { name: ko.labels.day }).last().click();
       await userEvent.keyboard('{Backspace}');
 
@@ -468,6 +483,89 @@ describe('DateRangeField', () => {
         .poll(() => onValueChange.mock.calls.at(-1)?.[0])
         .toEqual({ start: '2026-10-13[u-ca=dangi]', end: '2026-10-17[u-ca=dangi]' });
     });
+  });
+
+  it('focuses the first start segment through the root ref', async () => {
+    const ref = createRef<{ focus(): void }>();
+    const screen = await render(<DateRangeField.Root ref={ref} aria-label="기간" locale={ko} />);
+
+    ref.current?.focus();
+
+    await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year }).first()).toHaveFocus();
+  });
+
+  describe('leap month', () => {
+    it('enters a lunar leap month in the start through the default toggle', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(
+        <DateRangeField.Root
+          aria-label="기간"
+          locale={ko}
+          calendars={[dangi]}
+          defaultEntryCalendar="dangi"
+          isOpenEndAllowed
+          onValueChange={onValueChange}
+        />,
+      );
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
+      await userEvent.keyboard('199005');
+
+      await screen.getByRole('button', { name: ko.labels.leapMonth }).first().click();
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }).first());
+      await userEvent.keyboard('01');
+
+      await expect
+        .poll(() => onValueChange.mock.calls.at(-1)?.[0])
+        .toEqual({ start: '1990-06-23[u-ca=dangi]', end: null });
+    });
+
+    it('enters a lunar leap month in the start with the L key', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(
+        <DateRangeField.Root
+          aria-label="기간"
+          locale={ko}
+          calendars={[dangi]}
+          defaultEntryCalendar="dangi"
+          isOpenEndAllowed
+          onValueChange={onValueChange}
+        />,
+      );
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
+      await userEvent.keyboard('199005');
+
+      await userEvent.keyboard('L01');
+
+      await expect
+        .poll(() => onValueChange.mock.calls.at(-1)?.[0])
+        .toEqual({ start: '1990-06-23[u-ca=dangi]', end: null });
+    });
+  });
+
+  it('marks the whole range as focused while either end has focus', async () => {
+    const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} />);
+
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).last());
+
+    await expect.element(screen.getByRole('group', { name: '기간' })).toHaveAttribute('data-focused', '');
+  });
+
+  it('restores the default range when the form resets', async () => {
+    const screen = await render(
+      <form aria-label="Report">
+        <DateRangeField.Root aria-label="기간" locale={ko} startName="from" endName="to" defaultValue={GREGORY_RANGE} />
+      </form>,
+    );
+    const form = formElementOf(screen.getByRole('form'));
+    await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }).first());
+    await userEvent.keyboard('{ArrowUp}');
+    await expect.poll(() => new FormData(form).get('from')).toBe('2026-10-14');
+
+    form.reset();
+
+    await expect
+      .poll(() => [new FormData(form).get('from'), new FormData(form).get('to')])
+      .toEqual(['2026-10-13', '2026-10-17']);
   });
 
   it('hydrates server-rendered markup without recoverable errors', async () => {

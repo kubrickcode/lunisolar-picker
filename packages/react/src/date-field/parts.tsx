@@ -6,6 +6,8 @@ import {
   type HTMLAttributes,
   type ReactElement,
   type ReactNode,
+  type Ref,
+  useImperativeHandle,
 } from 'react';
 import { mergeProps } from '../utilities/merge-props';
 import { type RenderProp, renderElement } from '../utilities/render-element';
@@ -31,6 +33,8 @@ export interface RootProps extends UseDateFieldProps {
   readonly 'aria-labelledby'?: string | undefined;
   readonly 'aria-describedby'?: string | undefined;
   readonly children?: ReactNode;
+  // Goal: ref.focus()가 첫 입력 칸에 포커스함 (스펙 7.6). react-hook-form이 검증 실패 칸으로 포커스를 옮길 때 씀
+  readonly ref?: Ref<{ focus(): void }> | undefined;
 }
 
 export interface SegmentProps {
@@ -45,6 +49,7 @@ export interface SeparatorProps extends HTMLAttributes<HTMLSpanElement> {
 
 export const Root = (props: RootProps): ReactElement => {
   const field = useDateField(props);
+  useImperativeHandle(props.ref, () => ({ focus: field.focus }), [field.focus]);
   const appProps = {
     className: props.className,
     style: props.style,

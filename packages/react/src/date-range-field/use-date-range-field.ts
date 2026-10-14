@@ -22,7 +22,7 @@ import {
   type Validity,
   validateEpochRange,
 } from '@lunisolar-picker/core';
-import { type FocusEvent, type HTMLAttributes, useLayoutEffect, useMemo, useState } from 'react';
+import { type FocusEvent, type HTMLAttributes, useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { type DateFieldCore, useDateFieldSegments, useDateFieldStore } from '../date-field/use-date-field-core';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
@@ -30,6 +30,7 @@ import { usePickerSettings } from '../settings/use-picker-settings';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
 import { formatOrNull } from '../value/format-or-null';
 import type { HiddenInputProps } from '../value/hidden-input';
+import { isVisiblyInvalid } from '../value/is-visibly-invalid';
 import { type DateRangeInput, parseOptionalRange } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
@@ -54,6 +55,8 @@ export interface DateRangeFieldApi {
   readonly value: DateRangeValue | null;
   readonly validity: Validity;
   readonly isInvalid: boolean;
+  readonly isDisabled: boolean;
+  readonly isReadOnly: boolean;
   readonly entryCalendarId: CalendarId;
   setEntryCalendar(calendarId: CalendarId): void;
   focus(): void;
@@ -136,15 +139,17 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     [rangeReasons, startStore.result, endStore.result],
   );
   // Constraint: 이유는 양 끝의 합집합이라, 한쪽이 입력 중(incomplete)이어도 다른 이유가 있으면 무효로 표시해야 함
-  const isInvalid = props.invalid === true || validity.reasons.some((reason) => reason !== INCOMPLETE_REASON);
+  const isInvalid = isVisiblyInvalid({ invalid: props.invalid === true, reasons: validity.reasons });
+  const isDisabled = props.disabled === true;
+  const isReadOnly = props.readOnly === true;
   const hasRangeLevelReason = rangeReasons?.some((reason) => RANGE_LEVEL_REASONS.has(reason)) ?? false;
 
   // Goal: 범위 전체의 무효(range-too-long 등)는 양 끝 칸의 aria-invalid·data-invalid로도 알림 (WCAG 1.3.1·3.3.1·4.1.2). 한 날짜의 이유는 그 끝에만 표시함(core가 자기 결과로 더함)
   const segmentsOptions = {
     settings,
     separator: props.separator,
-    isDisabled: props.disabled === true,
-    isReadOnly: props.readOnly === true,
+    isDisabled,
+    isReadOnly,
     isInvalidFromOwner: props.invalid === true || hasRangeLevelReason,
   };
   const isRequiredBySide: Readonly<Record<RangeSide, boolean>> = {
@@ -157,16 +162,18 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
 
   useMoveToEndWhenStartCompletes(start, end);
 
-  // Constraint: 부모가 다른 역법으로 적힌 범위를 주면 양 끝 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
+  // Constraint: 밖에서 정한 범위(부모 값·form reset의 기본값)가 다른 역법으로 적혀 있으면 양 끝 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
+  const syncRange = (next: DateRangeValue | null): void => {
+    const entryCalendarId = next === null ? startStore.state.entryCalendarId : calendarIdOf(next.start);
+    start.send({ type: 'value.sync', selected: selectedDayOf(next?.start ?? null), entryCalendarId });
+    end.send({ type: 'value.sync', selected: selectedDayOf(next?.end ?? null), entryCalendarId });
+  };
+
   useValueBridge<DateRangeValue>({
     committedValue: enteredRange,
     controlled,
     isEqual: isSameRange,
-    syncStore: (next) => {
-      const entryCalendarId = next === null ? startStore.state.entryCalendarId : calendarIdOf(next.start);
-      start.send({ type: 'value.sync', selected: selectedDayOf(next?.start ?? null), entryCalendarId });
-      end.send({ type: 'value.sync', selected: selectedDayOf(next?.end ?? null), entryCalendarId });
-    },
+    syncStore: syncRange,
     // Goal: 반쪽 범위는 열린 끝이 허용될 때만 공개 값. 부모가 되돌려 준 null이 store의 시작일을 지우지 않음
     toPublic: (next) => publicRangeOf(next, isOpenEndAllowed),
     onValueChange: (next) => props.onValueChange?.(next, { validity }),
@@ -194,7 +201,12 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     swapReversedEnds();
     props.onBlur?.();
   };
-  const focus = (): void => start.segmentedField.focusSegment(0);
+  const focusStartSegment = start.segmentedField.focusSegment;
+  const focus = useCallback(() => focusStartSegment(0), [focusStartSegment]);
+  // Goal: 비제어일 때만 form reset으로 처음 기본 범위로 돌아감. 양 끝 hidden input이 둘 다 알려도 같은 값으로 맞추므로 한 번 바뀐 것과 같음
+  const resetToDefault = (): void => {
+    if (!controlled.isControlled) syncRange(initialValue);
+  };
   // Constraint: DateField와 같은 정책. 사용자가 바꾼 역법은 부모가 제어해도 바로 반영하고 알림
   const setEntryCalendar = (calendarId: CalendarId): void => {
     if (calendarId === startStore.state.entryCalendarId) return;
@@ -210,6 +222,8 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     value,
     validity,
     isInvalid,
+    isDisabled,
+    isReadOnly,
     entryCalendarId: startStore.state.entryCalendarId,
     setEntryCalendar,
     focus,
@@ -219,8 +233,9 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
       onBlur: createFocusLeaveListener(onFocusLeave),
       ...partAttributes('date-range-field', {
         invalid: isInvalid,
-        disabled: props.disabled === true,
-        readonly: props.readOnly === true,
+        disabled: isDisabled,
+        readonly: isReadOnly,
+        focused: start.segmentedField.isFocusWithin || end.segmentedField.isFocusWithin,
         calendar: startStore.state.entryCalendarId,
       }),
     }),
@@ -232,6 +247,7 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
       required: isRequiredBySide[side],
       disabled: props.disabled,
       onFocusRequest: () => sideCores[side].segmentedField.focusSegment(0),
+      onFormReset: resetToDefault,
     }),
   };
 };

@@ -11,7 +11,7 @@ export type ControlledInput<Value> = {
 
 // Goal: 잘못된 제어 값을 던지지 않고 빈 값으로 다루며, 같은 입력에 대해 알림을 한 번만 보냄 (스펙 4.2)
 // Constraint: 범위처럼 객체로 오는 값은 매 렌더 새 참조일 수 있으므로 describeInput 문자열을 기준으로 다시 해석함
-// Constraint: parse는 인라인 함수라 참조로 비교할 수 없음. 해석 설정(역법 id 목록, 24:00 허용 여부)은 parseKey 문자열로 받아 바뀌면 다시 해석함
+// Constraint: parse는 인라인 함수라 참조로 비교할 수 없음. parse가 기대는 해석 설정(역법 구성 등)은 parseKey 문자열로 받아 바뀌면 다시 해석함
 export const useParsedValue = <Input, Value>(
   input: Input | null | undefined,
   parse: (input: Input | null | undefined) => ParsedControlledValue<Value>,

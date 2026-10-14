@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { DATA_ATTRIBUTES, PART_ATTRIBUTE, PART_NAMES } from '@lunisolar-picker/react/contract';
+import { DATA_ATTRIBUTES, PART_ATTRIBUTE, PART_NAMES, type PartName } from '@lunisolar-picker/react/contract';
 import { describe, expect, it } from 'vitest';
 
 const ALLOWED_CLASS_NAMES = ['dark'];
@@ -9,6 +9,24 @@ const CLASS_SELECTOR_PATTERN = /\.([a-zA-Z_][\w-]*)/g;
 const FORBIDDEN_SELECTOR_PATTERN = /\[\s*(aria-[a-z-]+|role)\b/g;
 const LAYER_OPENING = '@layer lunisolar-picker {';
 const MONO_FILE = '../src/mono.css';
+// Constraint: M4가 만들 달력·picker 부품이라 아직 규칙이 없음. M4는 부품에 스타일을 넣을 때 이 목록에서 지움(남겨 두면 아래 테스트가 실패함)
+// Constraint: M3 부품은 순수 래퍼까지 모두 규칙이 있어 이 목록에 없음. 규칙이 필요 없는 래퍼 부품을 새로 만들면 이유와 함께 여기에 더함
+const PARTS_WITHOUT_RULES: readonly PartName[] = [
+  'calendar',
+  'calendar-header',
+  'calendar-heading',
+  'calendar-nav-button',
+  'calendar-today-button',
+  'calendar-toggle',
+  'calendar-view-button',
+  'calendar-grid',
+  'calendar-head-cell',
+  'calendar-cell',
+  'calendar-month-grid',
+  'calendar-year-grid',
+  'picker-footer',
+  'picker-presets',
+];
 const PART_SELECTOR_PATTERN = /\[data-lsp-part\s*[~|^$*]?=\s*['"]?([a-z-]+)/g;
 const THEME_FILES = [MONO_FILE, '../src/bridge/shadcn.css'];
 
@@ -66,6 +84,15 @@ describe('theme selector contract', () => {
 
     expect(sources.every((css) => css.trim().length > 0)).toBe(true);
     expect(Array.from(monoCss.matchAll(PART_SELECTOR_PATTERN)).length).toBeGreaterThan(0);
+  });
+
+  it('gives every part a rule in mono.css except the listed parts M4 has yet to style', async () => {
+    const monoCss = await readCss(MONO_FILE);
+    const styledParts = new Set(Array.from(monoCss.matchAll(PART_SELECTOR_PATTERN), (match) => match[1]));
+    const partsWithoutRules = new Set<string>(PARTS_WITHOUT_RULES);
+
+    expect(PART_NAMES.filter((part) => !partsWithoutRules.has(part) && !styledParts.has(part))).toEqual([]);
+    expect(PARTS_WITHOUT_RULES.filter((part) => styledParts.has(part))).toEqual([]);
   });
 
   it('uses no class, aria or role selectors', async () => {

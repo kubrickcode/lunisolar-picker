@@ -85,9 +85,10 @@ export const useWheelMotion = ({ columnRef, initialPosition }: WheelMotionOption
     [setPosition, stop],
   );
 
+  // Constraint: 테마가 항목을 rotateX로 기울이므로 변형이 반영되는 getBoundingClientRect가 아니라 레이아웃 높이(offsetHeight)를 읽음
   const readItemSize = useCallback(() => {
     const item = columnRef.current?.querySelector<HTMLElement>(`[${PART_ATTRIBUTE}="wheel-item"]`);
-    const height = item?.getBoundingClientRect().height ?? 0;
+    const height = item?.offsetHeight ?? 0;
     return height > 0 ? height : DEFAULT_ITEM_SIZE_PIXELS;
   }, [columnRef]);
 

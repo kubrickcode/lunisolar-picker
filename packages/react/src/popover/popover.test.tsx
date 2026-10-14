@@ -5,6 +5,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { settleEffects } from '../testing/settle-effects';
 import * as Popover from './parts';
 
 const Example = ({ isOpenInitially = false }: { isOpenInitially?: boolean }) => (
@@ -52,6 +53,29 @@ const ControlledExample = () => {
         <Popover.Trigger>Choose date</Popover.Trigger>
         <Popover.Content aria-label="Calendar">
           <button type="button">Inside</button>
+        </Popover.Content>
+      </Popover.Root>
+    </>
+  );
+};
+
+// Goal: 팝오버 API를 거치지 않고 부모 상태만 바꿔 닫음. 닫는 키는 콘텐츠 안 버튼과 바깥 입력에서 누름
+const ParentClosingExample = () => {
+  const [isOpen, setIsOpen] = useState(true);
+  return (
+    <>
+      <input
+        aria-label="Note"
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') setIsOpen(false);
+        }}
+      />
+      <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+        <Popover.Trigger>Choose date</Popover.Trigger>
+        <Popover.Content aria-label="Calendar">
+          <button type="button" data-autofocus onClick={() => setIsOpen(false)}>
+            Apply
+          </button>
         </Popover.Content>
       </Popover.Root>
     </>
@@ -157,6 +181,32 @@ describe('Popover', () => {
 
     await expect.element(screen.getByRole('status')).toHaveTextContent('true');
     await expect.element(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  describe('focus return', () => {
+    it('returns focus to the trigger when the parent closes it while focus is inside', async () => {
+      const screen = await render(<ParentClosingExample />);
+      await expect.element(screen.getByRole('button', { name: 'Apply' })).toHaveFocus();
+
+      await userEvent.keyboard('{Enter}');
+
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+      await expect.element(screen.getByRole('button', { name: 'Choose date' })).toHaveFocus();
+    });
+
+    it('leaves focus where the user moved it outside when the parent closes it', async () => {
+      const screen = await render(<ParentClosingExample />);
+      const note = screen.getByRole('textbox', { name: 'Note' });
+      await expect.element(screen.getByRole('button', { name: 'Apply' })).toHaveFocus();
+      note.element().focus();
+      await expect.element(note).toHaveFocus();
+
+      await userEvent.keyboard('{Enter}');
+
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+      await settleEffects();
+      await expect.element(note).toHaveFocus();
+    });
   });
 
   it('has no accessibility violations while open', async () => {
