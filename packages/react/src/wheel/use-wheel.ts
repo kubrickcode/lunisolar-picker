@@ -30,6 +30,8 @@ const MAX_GESTURE_SAMPLES = 32;
 const PAGE_STEP = 5;
 const RECENTER_DISTANCE = 10;
 const RENDER_RADIUS = 30;
+// Goal: 숫자를 이어 치는 동안에는 보이기만 하고, 잠깐 멈췄을 때 한 번만 확정해 2026을 칠 때 2·20·202를 알리지 않음
+const TYPEAHEAD_COMMIT_DELAY_MILLISECONDS = 300;
 const TYPEAHEAD_RESET_MILLISECONDS = 1000;
 const WHEEL_INDEX_PROPERTY = '--lsp-wheel-index';
 const WHEEL_SETTLE_DELAY_MILLISECONDS = 120;
@@ -74,6 +76,11 @@ type PointerGesture = {
 type TypeaheadBuffer = {
   readonly text: string;
   readonly timeMs: number;
+};
+
+type TypeaheadMatchOptions<Value> = {
+  readonly options: readonly ColumnOption<Value>[];
+  readonly text: string;
 };
 
 type WheelListenerOptions = {
@@ -124,12 +131,21 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   const settlingIndexRef = useRef<number | null>(null);
   const typeaheadRef = useRef<TypeaheadBuffer>({ text: '', timeMs: Number.NEGATIVE_INFINITY });
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const typeaheadTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const detachWheelRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     send({ type: 'options.replace', options: props.options, preferredValue: props.value });
   }, [props.options, props.value, send]);
 
-  useEffect(() => () => clearTimeout(settleTimerRef.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(settleTimerRef.current);
+      clearTimeout(typeaheadTimerRef.current);
+      detachWheelRef.current?.();
+    },
+    [],
+  );
 
   // Goal: 위치가 그려진 창 중심에서 RECENTER_DISTANCE 넘게 벗어날 때만 다시 그림(항목 10개당 최대 한 번)
   // Constraint: 한 프레임에 수백 항목을 건너는 관성·Home/End에서도 그 프레임에 보이는 항목이 DOM에 있도록 바로 그림
@@ -165,6 +181,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
 
   const settleAt = useCallback(
     (position: number, durationMilliseconds?: number) => {
+      clearTimeout(typeaheadTimerRef.current);
       const targetIndex = nearestEnabledIndex(latest.current.props.options, position);
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
       settlingIndexRef.current = targetIndex;
@@ -190,6 +207,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   const wheelHandlers = useLatestRef<NativeWheelHandlers>({
     isDisabled,
     onWheel: (deltaPixels) => {
+      clearTimeout(typeaheadTimerRef.current);
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
       isInteractingRef.current = true;
       motion.stop();
@@ -259,6 +277,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
     if (isDisabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    clearTimeout(typeaheadTimerRef.current);
     motion.stop();
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     isInteractingRef.current = true;
@@ -274,17 +293,27 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   };
 
   // Goal: 9999개 연도 열에서도 숫자를 쳐서 바로 감 (스펙 10.3). 1초 동안 이어 친 글자를 접두어로 보고 처음 맞는 활성 항목으로 감
+  // Constraint: 공백은 버퍼에 넣지 않음. Space는 지금처럼 브라우저 기본 동작에 맡김
   const jumpToTypedOption = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key.length !== 1) return;
+    if (event.key.length !== 1 || event.key.trim() === '') return;
     const previous = typeaheadRef.current;
     const isContinuing = event.timeStamp - previous.timeMs < TYPEAHEAD_RESET_MILLISECONDS;
     const text = `${isContinuing ? previous.text : ''}${event.key}`;
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     typeaheadRef.current = { text, timeMs: event.timeStamp };
-    const matchIndex = typeaheadMatchIndex(props.options, text);
+    const matchIndex = typeaheadMatchIndex({ options: props.options, text });
     if (matchIndex === null) return;
     event.preventDefault();
-    settleAt(matchIndex);
+    previewTypedOption(matchIndex);
+  };
+
+  const previewTypedOption = (index: number): void => {
+    clearTimeout(typeaheadTimerRef.current);
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    settlingIndexRef.current = index;
+    motion.animateTo({ onFrame: recenterRenderWindow, onSettle: () => undefined, target: index });
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    typeaheadTimerRef.current = setTimeout(() => settleAt(index), TYPEAHEAD_COMMIT_DELAY_MILLISECONDS);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -303,18 +332,18 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
   };
 
   // Goal: 열 요소가 붙을 때마다 휠 리스너를 붙임. 나중에 열을 그리는 훅 사용자도 마우스 휠을 받음
-  // Constraint: 정착 타이머는 훅이 소유함. 앱 ref와 합쳐져 렌더마다 다시 붙어도 스크롤 뒤 정착이 취소되지 않음
+  // Constraint: 앱이 ref를 감싸면 React는 정리 함수 대신 null로 부름. 이전 리스너를 훅이 들고 있다가 매 호출 처음에 떼야 렌더마다 리스너가 쌓이지 않음
+  // Constraint: 정착 타이머는 훅이 소유함. 렌더마다 다시 붙어도 스크롤 뒤 정착이 취소되지 않음
   const attachColumn = useCallback(
     (node: HTMLDivElement | null) => {
+      detachWheelRef.current?.();
+      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+      detachWheelRef.current = null;
       // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
       columnRef.current = node;
-      if (node === null) return undefined;
-      const detachWheel = listenToWheel({ column: node, handlers: wheelHandlers, settleTimerRef });
-      return () => {
-        detachWheel();
-        // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
-        columnRef.current = null;
-      };
+      if (node === null) return;
+      // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+      detachWheelRef.current = listenToWheel({ column: node, handlers: wheelHandlers, settleTimerRef });
     },
     [wheelHandlers],
   );
@@ -413,7 +442,7 @@ const listenToWheel = ({ column, handlers, settleTimerRef }: WheelListenerOption
   return () => column.removeEventListener('wheel', onWheel);
 };
 
-const typeaheadMatchIndex = <Value>(options: readonly ColumnOption<Value>[], text: string): number | null => {
+const typeaheadMatchIndex = <Value>({ options, text }: TypeaheadMatchOptions<Value>): number | null => {
   const prefix = text.toLocaleLowerCase();
   const index = options.findIndex(
     (option) => !option.isDisabled && option.label.toLocaleLowerCase().startsWith(prefix),
@@ -421,7 +450,7 @@ const typeaheadMatchIndex = <Value>(options: readonly ColumnOption<Value>[], tex
   return index === -1 ? null : index;
 };
 
-// Constraint: setPointerCapture 대신 누른 동안만 문서에 캡처 단계 리스너를 붙임. 캡처를 쓰면 병렬로 도는 Firefox 테스트에서 다른 테스트의 마우스 입력이 이 열로 들어온 것으로 보였음(원인은 확정하지 못함)
+// Constraint: setPointerCapture 대신 누른 동안만 문서에 캡처 단계 리스너를 붙임. 포인터 캡처를 쓰면 병렬로 도는 Firefox 테스트에서 다른 테스트의 마우스 입력이 이 열로 들어온 것으로 보였음(원인은 확정하지 못함)
 // Constraint: 캡처 단계라 하위 요소의 stopPropagation에 막히지 않음. 문서 밖에서 버튼을 떼 pointerup을 놓친 마우스는 다음 move의 buttons === 0으로 끝냄
 const useDocumentPointerListeners = (listeners: GesturePointerListeners): ((options: FollowPointerOptions) => void) => {
   const latestListeners = useLatestRef(listeners);

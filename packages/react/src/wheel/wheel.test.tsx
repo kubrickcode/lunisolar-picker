@@ -94,6 +94,43 @@ const LateColumnYearWheel = ({ onValueChange }: { readonly onValueChange: (value
   );
 };
 
+// Goal: 앱이 ref를 인라인 함수로 감싸면 React는 렌더마다 이전 ref를 null로 부르고 새 ref를 부름
+const InlineRefYearWheel = ({ onValueChange }: { readonly onValueChange: (value: number) => void }) => {
+  const [renderCount, setRenderCount] = useState(0);
+  const [value, setValue] = useState(1990);
+  const wheel = useWheel({
+    label: 'Year',
+    options: years,
+    value,
+    onValueChange: (next) => {
+      setValue(next);
+      onValueChange(next);
+    },
+  });
+  const { ref, ...columnProps } = wheel.getColumnProps();
+  const { start, end } = wheel.renderedRange;
+  const indexes = Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
+  return (
+    <>
+      <button type="button" onClick={() => setRenderCount(renderCount + 1)}>
+        Rerender {renderCount}
+      </button>
+      <div
+        {...columnProps}
+        ref={(node) => {
+          ref(node);
+        }}
+      >
+        <div {...wheel.getTrackProps()}>
+          {indexes.map((index) => (
+            <Wheel.Item key={index} wheel={wheel} index={index} />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
 const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 
 const sampleEachFrame = async <Sample,>(read: () => Sample): Promise<readonly Sample[]> => {
@@ -214,6 +251,34 @@ describe('Wheel', () => {
         await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe(1950);
       });
 
+      it('reports only the final year when digits are typed quickly, even with reduced motion', async () => {
+        // Goal: 애니메이션이 없으면 글자마다 바로 정착하므로 확정을 미루지 않으면 2·20·202가 먼저 알려짐
+        const reducedMotion = vi.spyOn(window, 'matchMedia').mockReturnValue(window.matchMedia('(min-width: 0px)'));
+        try {
+          const onValueChange = vi.fn();
+          const screen = await render(<YearWheel onValueChange={onValueChange} />);
+          const column = screen.getByRole('spinbutton', { name: 'Year' }).element();
+
+          for (const key of ['2', '0', '2', '6']) pressKey(column, key);
+
+          await expect.poll(() => onValueChange.mock.calls.length).toBe(1);
+          await settleEffects();
+          expect(onValueChange.mock.calls).toEqual([[2026]]);
+        } finally {
+          reducedMotion.mockRestore();
+        }
+      });
+
+      it('leaves whitespace out of the typed prefix', async () => {
+        const onValueChange = vi.fn();
+        const screen = await render(<YearWheel onValueChange={onValueChange} />);
+        const column = screen.getByRole('spinbutton', { name: 'Year' }).element();
+
+        for (const key of ['1', '9', ' ', '5', '0']) pressKey(column, key);
+
+        await expect.poll(() => onValueChange.mock.calls).toEqual([[1950]]);
+      });
+
       it('ignores typed text that matches no option', async () => {
         const onValueChange = vi.fn();
         const screen = await render(<MonthWheel onValueChange={onValueChange} />);
@@ -263,6 +328,19 @@ describe('Wheel', () => {
       dispatchMousePointer(document, 'pointermove', { buttons: 0, clientY: startY - height * 3 });
 
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe(1993);
+    });
+
+    it('moves exactly one item per wheel notch after re-renders through an inline wrapper ref', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(<InlineRefYearWheel onValueChange={onValueChange} />);
+      for (const renderCount of [0, 1, 2, 3]) {
+        await screen.getByRole('button', { name: `Rerender ${renderCount}` }).click();
+      }
+      await expect.element(screen.getByRole('button', { name: 'Rerender 4' })).toBeInTheDocument();
+
+      await userEvent.wheel(screen.getByRole('spinbutton', { name: 'Year' }), { delta: { y: firstItemHeight() } });
+
+      await expect.poll(() => onValueChange.mock.calls, { timeout: 2000 }).toEqual([[1991]]);
     });
 
     it('listens to the mouse wheel on a column that mounts after the hook', async () => {
