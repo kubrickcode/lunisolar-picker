@@ -7,12 +7,33 @@
     --lsp-fg: var(--foreground);
     --lsp-muted: var(--muted-foreground);
     --lsp-subtle: var(--muted-foreground);
+    --lsp-placeholder: var(--muted-foreground);
     --lsp-border: var(--border);
     --lsp-accent: var(--primary);
     --lsp-accent-fg: var(--primary-foreground);
     --lsp-range-bg: var(--accent, var(--muted));
     --lsp-ring: var(--ring);
+    --lsp-focus: var(--foreground);
     --lsp-danger: var(--destructive);
     --lsp-radius: var(--radius);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :where([data-theme="system"]) {
+      --lsp-bg: var(--background);
+      --lsp-surface: var(--popover, var(--background));
+      --lsp-fg: var(--foreground);
+      --lsp-muted: var(--muted-foreground);
+      --lsp-subtle: var(--muted-foreground);
+      --lsp-placeholder: var(--muted-foreground);
+      --lsp-border: var(--border);
+      --lsp-accent: var(--primary);
+      --lsp-accent-fg: var(--primary-foreground);
+      --lsp-range-bg: var(--accent, var(--muted));
+      --lsp-ring: var(--ring);
+      --lsp-focus: var(--foreground);
+      --lsp-danger: var(--destructive);
+      --lsp-radius: var(--radius);
+    }
   }
 }

@@ -9,6 +9,9 @@
   "files": [
     "src"
   ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "exports": {
     "./mono.css": "./src/mono.css",
     "./bridge/shadcn.css": "./src/bridge/shadcn.css",

@@ -8,6 +8,12 @@ import * as DateField from '../date-field/parts';
 import * as TimeField from '../time-field/parts';
 import * as Wheel from '../wheel/parts';
 
+const months = Array.from({ length: 12 }, (_, index) => ({
+  isDisabled: false,
+  label: `${index + 1}월`,
+  value: index + 1,
+}));
+
 const THEMES = ['light', 'dark'] as const;
 
 type FrameProps = {
@@ -15,17 +21,19 @@ type FrameProps = {
   readonly theme: (typeof THEMES)[number];
 };
 
-const months = Array.from({ length: 12 }, (_, index) => ({
-  isDisabled: false,
-  label: `${index + 1}월`,
-  value: index + 1,
-}));
-
 const Frame = ({ theme, children }: FrameProps): ReactElement => (
   <div
     data-testid="frame"
     data-theme={theme}
-    style={{ padding: 24, background: 'var(--lsp-bg)', fontFamily: 'sans-serif' }}
+    style={{
+      alignItems: 'flex-start',
+      background: 'var(--lsp-bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'sans-serif',
+      gap: 12,
+      padding: 24,
+    }}
   >
     {children}
   </div>

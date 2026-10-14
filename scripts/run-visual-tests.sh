@@ -11,9 +11,12 @@ docker info >/dev/null 2>&1 || {
   exit 1
 }
 
+# Constraint: 루트 권한으로 실행함. 이름 있는 볼륨(node_modules)이 root 소유로 만들어져 비루트 사용자는 pnpm install에 실패함. Docker Desktop은 bind mount 파일 소유자를 호스트 사용자로 맞춰 줌
+# Goal: pnpm 저장소를 볼륨에 두어 실행마다 전체 의존성을 다시 받지 않음
 # node_modules를 볼륨으로 분리하는 이유: macOS용 네이티브 바이너리(esbuild 등)가 Linux 컨테이너에 섞이지 않게 함
 docker run --rm --ipc=host \
   -v "${REPOSITORY_ROOT}:/work" -w /work \
+  -v lsp-visual-pnpm-store:/pnpm-store -e npm_config_store_dir=/pnpm-store \
   -v lsp-visual-root-modules:/work/node_modules \
   -v lsp-visual-calendar-modules:/work/packages/calendar/node_modules \
   -v lsp-visual-core-modules:/work/packages/core/node_modules \
