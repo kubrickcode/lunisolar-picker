@@ -1,5 +1,4 @@
 import { type DangiYearRecord, isTruncated, monthCodesOf } from '../../src/dangi/year-record';
-import { LunisolarPickerError } from '../../src/errors';
 import { toMonthCode } from '../../src/month-code';
 import { isoDateToEpochDay } from './iso-date';
 import type { KasiMonthStart } from './kasi-types';
@@ -7,6 +6,7 @@ import type { KasiMonthStart } from './kasi-types';
 export const DANGI_FIRST_YEAR = 1900;
 
 export const buildYearRecords = (monthStarts: readonly KasiMonthStart[], firstYear: number): DangiYearRecord[] => {
+  assertContiguousMonthStarts(monthStarts);
   const monthsByYear = groupByLunarYear(monthStarts.filter((start) => start.lunarYear >= firstYear));
   const years = [...monthsByYear.keys()];
   assertConsecutiveYears(years, firstYear);
@@ -15,9 +15,19 @@ export const buildYearRecords = (monthStarts: readonly KasiMonthStart[], firstYe
 
 export const lastEpochDayOf = (monthStarts: readonly KasiMonthStart[]): number => {
   const lastMonth = monthStarts.at(-1);
-  if (!lastMonth) throw new LunisolarPickerError('no lunar months to measure');
+  if (!lastMonth) throw new Error('no lunar months to measure');
   return isoDateToEpochDay(lastMonth.solarStart) + lastMonth.days - 1;
 };
+
+const assertContiguousMonthStarts = (monthStarts: readonly KasiMonthStart[]): void =>
+  monthStarts.forEach((start, index) => {
+    const previous = monthStarts[index - 1];
+    if (!previous) return;
+    const expectedSolarStart = isoDateToEpochDay(previous.solarStart) + previous.days;
+    if (isoDateToEpochDay(start.solarStart) !== expectedSolarStart) {
+      throw new Error(`month start ${start.solarStart} does not follow ${previous.solarStart} + ${previous.days} days`);
+    }
+  });
 
 const groupByLunarYear = (monthStarts: readonly KasiMonthStart[]): Map<number, KasiMonthStart[]> =>
   monthStarts.reduce((monthsByYear, start) => {
@@ -28,7 +38,7 @@ const groupByLunarYear = (monthStarts: readonly KasiMonthStart[]): Map<number, K
 const assertConsecutiveYears = (years: readonly number[], firstYear: number): void => {
   years.forEach((year, index) => {
     if (year !== firstYear + index) {
-      throw new LunisolarPickerError(`expected lunar year ${firstYear + index}, found ${year}`);
+      throw new Error(`expected lunar year ${firstYear + index}, found ${year}`);
     }
   });
 };
@@ -36,10 +46,10 @@ const assertConsecutiveYears = (years: readonly number[], firstYear: number): vo
 const toYearRecord = (year: number, months: readonly KasiMonthStart[], isLastYear: boolean): DangiYearRecord => {
   const firstMonth = months[0];
   if (firstMonth?.lunarMonth !== 1 || firstMonth?.isLeapMonth) {
-    throw new LunisolarPickerError(`lunar year ${year} does not start with month 1`);
+    throw new Error(`lunar year ${year} does not start with month 1`);
   }
   const leapMonths = months.filter((month) => month.isLeapMonth);
-  if (leapMonths.length > 1) throw new LunisolarPickerError(`lunar year ${year} has ${leapMonths.length} leap months`);
+  if (leapMonths.length > 1) throw new Error(`lunar year ${year} has ${leapMonths.length} leap months`);
   const record: DangiYearRecord = {
     year,
     newYearEpochDay: isoDateToEpochDay(firstMonth.solarStart),
@@ -48,7 +58,7 @@ const toYearRecord = (year: number, months: readonly KasiMonthStart[], isLastYea
   };
   assertMonthOrder(record, months);
   if (!isLastYear && isTruncated(record)) {
-    throw new LunisolarPickerError(`lunar year ${year} has only ${months.length} months`);
+    throw new Error(`lunar year ${year} has only ${months.length} months`);
   }
   return record;
 };
@@ -57,6 +67,6 @@ const assertMonthOrder = (record: DangiYearRecord, months: readonly KasiMonthSta
   const actualCodes = months.map((month) => toMonthCode(month.lunarMonth, month.isLeapMonth));
   const expectedCodes = monthCodesOf(record);
   if (actualCodes.join() !== expectedCodes.join()) {
-    throw new LunisolarPickerError(`lunar year ${record.year} months are out of order: ${actualCodes.join(',')}`);
+    throw new Error(`lunar year ${record.year} months are out of order: ${actualCodes.join(',')}`);
   }
 };

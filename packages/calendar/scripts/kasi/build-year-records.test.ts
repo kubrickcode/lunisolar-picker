@@ -79,6 +79,28 @@ describe('buildYearRecords', () => {
     expect(() => buildYearRecords(monthStarts, 1900)).toThrow(/does not start with month 1/);
   });
 
+  it('fails when a leap month appears out of order inside the year', () => {
+    const regularYear = fullYear(1900);
+    const misplacedLeapMonth = { lunarYear: 1900, lunarMonth: 4, isLeapMonth: true, days: LEAP_MONTH_DAYS };
+    const year = [...regularYear.slice(0, 6), misplacedLeapMonth, ...regularYear.slice(6)];
+
+    expect(() => buildYearRecords(monthStartsFrom('1900-01-31', year), 1900)).toThrow(/out of order/);
+  });
+
+  it('fails when a whole lunar year is missing between two present years', () => {
+    const monthStarts = monthStartsFrom('1900-01-31', [...fullYear(1900), ...fullYear(1902)]);
+
+    expect(() => buildYearRecords(monthStarts, 1900)).toThrow(/expected lunar year 1901/);
+  });
+
+  it('fails when a hand-edited month start breaks the day-count chain', () => {
+    const monthStarts = monthStartsFrom('1900-01-31', fullYear(1900)).map((start, index) =>
+      index === 2 ? { ...start, solarStart: '1990-01-01' } : start,
+    );
+
+    expect(() => buildYearRecords(monthStarts, 1900)).toThrow(/month start 1990-01-01 does not follow/);
+  });
+
   it('fails when the first supported year is absent', () => {
     expect(() => buildYearRecords(monthStartsFrom('1901-02-19', fullYear(1901)), 1900)).toThrow(
       /expected lunar year 1900/,
