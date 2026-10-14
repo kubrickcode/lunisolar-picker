@@ -434,7 +434,7 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 
 `UseCalendarProps`: `SharedPickerProps & DateConstraints & { value?; defaultValue?; onValueChange?; commitMode?; numberOfMonths?; displayCalendar?; defaultDisplayCalendar?; onDisplayCalendarChange?; getCellLabel? }`
 
-- 표시 역법: `displayCalendar`·`defaultDisplayCalendar`가 없으면 값의 역법으로 연다(입력 부품의 "값의 역법이 이긴다"와 같은 규칙), 값도 없으면 양력 [M4 preflight 3.11]. 확인 모드 `commit()`은 호출 시점에 `onValueChange`를 부른다(같은 클릭에서 닫혀 언마운트돼도 값이 전달됨) [M4 preflight 1.4]. 콜백은 사용자 조작에만 불린다.
+- 표시 역법: `displayCalendar`·`defaultDisplayCalendar`가 없으면 값의 역법으로 연다(입력 부품의 "값의 역법이 이긴다"와 같은 규칙), 값도 없으면 양력 [M4 preflight 3.11]. 사용자 선택(즉시 모드)과 확인 모드 `commit()`은 호출 시점에 `onValueChange`를 부른다(같은 클릭에서 닫혀 언마운트돼도 값이 전달됨). 공개 `sendSelection`으로 직접 보낸 이벤트는 이펙트가 알린다 [M4 preflight 1.4, M4-T1 리뷰]. 범위 달력(M4-T4)도 `date.select`·`pointer.up`·`range.set`·`commit` 뒤에 같은 `reportCommitted`를 부른다. 콜백은 사용자 조작에만 불린다.
 
 ### 3.5 완성형 (`@lunisolar-picker/react/pickers`) [M4-T8~T10]
 
