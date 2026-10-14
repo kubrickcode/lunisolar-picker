@@ -1,0 +1,25 @@
+{
+  "name": "@lunisolar-picker/theme",
+  "version": "0.0.0",
+  "description": "Mono theme for lunisolar-picker parts",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "src"
+  ],
+  "exports": {
+    "./mono.css": "./src/mono.css",
+    "./bridge/shadcn.css": "./src/bridge/shadcn.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "package-check": "publint --strict"
+  },
+  "devDependencies": {
+    "@lunisolar-picker/react": "workspace:*"
+  }
+}

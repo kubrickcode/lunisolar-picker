@@ -37,3 +37,9 @@ size: build
 
 compare-intl:
     pnpm --filter @lunisolar-picker/calendar run compare:intl
+
+visual:
+    bash scripts/run-visual-tests.sh
+
+visual-update:
+    bash scripts/run-visual-tests.sh --update

@@ -1,0 +1,344 @@
+/* Mono 테마: 무채색, 가는 선, 8px 라운드 (스펙 8.3). 우선순위를 0으로 두려고 모드 선택자는 :where()로 감쌈 */
+@layer lunisolar-picker {
+  :where(:root) {
+    --lsp-bg: #ffffff;
+    --lsp-surface: #ffffff;
+    --lsp-fg: #09090b;
+    --lsp-muted: #71717a;
+    --lsp-subtle: #b4b4bb;
+    --lsp-border: #e4e4e7;
+    --lsp-accent: #09090b;
+    --lsp-accent-fg: #ffffff;
+    --lsp-range-bg: #f4f4f5;
+    --lsp-ring: rgb(9 9 11 / 0.18);
+    --lsp-danger: #dc2626;
+    --lsp-radius: 8px;
+    --lsp-cell-size: 36px;
+    --lsp-wheel-item-size: 36px;
+    --lsp-wheel-visible-count: 5;
+    --lsp-shadow-popover: 0 8px 24px -8px rgb(0 0 0 / 0.12);
+    --lsp-backdrop: rgb(9 9 11 / 0.4);
+    --lsp-duration: 140ms;
+    --lsp-color-scheme: light;
+  }
+
+  :where(.dark, [data-theme="dark"]) {
+    --lsp-bg: #09090b;
+    --lsp-surface: #111113;
+    --lsp-fg: #fafafa;
+    --lsp-muted: #a1a1aa;
+    --lsp-subtle: #52525b;
+    --lsp-border: #26262a;
+    --lsp-accent: #fafafa;
+    --lsp-accent-fg: #09090b;
+    --lsp-range-bg: #1d1d20;
+    --lsp-ring: rgb(250 250 250 / 0.25);
+    --lsp-danger: #f87171;
+    --lsp-shadow-popover: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+    --lsp-backdrop: rgb(0 0 0 / 0.6);
+    --lsp-color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :where([data-theme="system"]) {
+      --lsp-bg: #09090b;
+      --lsp-surface: #111113;
+      --lsp-fg: #fafafa;
+      --lsp-muted: #a1a1aa;
+      --lsp-subtle: #52525b;
+      --lsp-border: #26262a;
+      --lsp-accent: #fafafa;
+      --lsp-accent-fg: #09090b;
+      --lsp-range-bg: #1d1d20;
+      --lsp-ring: rgb(250 250 250 / 0.25);
+      --lsp-danger: #f87171;
+      --lsp-shadow-popover: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+      --lsp-backdrop: rgb(0 0 0 / 0.6);
+      --lsp-color-scheme: dark;
+    }
+  }
+
+  @media (pointer: coarse) {
+    :where(:root) {
+      --lsp-cell-size: 44px;
+      --lsp-wheel-item-size: 44px;
+    }
+  }
+
+  [data-lsp-part] {
+    box-sizing: border-box;
+  }
+
+  [data-lsp-part="date-field"],
+  [data-lsp-part="date-range-field"],
+  [data-lsp-part="time-field"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-block-size: 40px;
+    padding-inline: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font-variant-numeric: tabular-nums;
+    color-scheme: var(--lsp-color-scheme);
+    transition:
+      border-color var(--lsp-duration),
+      box-shadow var(--lsp-duration);
+  }
+
+  [data-lsp-part="date-range-field"] [data-lsp-part="date-field"] {
+    min-block-size: auto;
+    padding-inline: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  [data-lsp-part="date-field"]:focus-within,
+  [data-lsp-part="date-range-field"]:focus-within,
+  [data-lsp-part="time-field"]:focus-within {
+    border-color: var(--lsp-muted);
+    box-shadow: 0 0 0 3px var(--lsp-ring);
+  }
+
+  [data-lsp-part="date-range-field"] [data-lsp-part="date-field"]:focus-within {
+    box-shadow: none;
+  }
+
+  [data-lsp-part="date-field"][data-invalid],
+  [data-lsp-part="date-range-field"][data-invalid],
+  [data-lsp-part="time-field"][data-invalid] {
+    border-color: var(--lsp-danger);
+  }
+
+  [data-lsp-part="date-field"][data-disabled],
+  [data-lsp-part="date-range-field"][data-disabled],
+  [data-lsp-part="time-field"][data-disabled] {
+    opacity: 0.5;
+  }
+
+  [data-lsp-part="date-field"][data-readonly],
+  [data-lsp-part="date-range-field"][data-readonly],
+  [data-lsp-part="time-field"][data-readonly] {
+    background: var(--lsp-range-bg);
+  }
+
+  [data-lsp-part="date-field-segment"],
+  [data-lsp-part="time-field-segment"] {
+    padding-inline: 2px;
+    border-radius: 4px;
+    outline: none;
+    caret-color: transparent;
+    white-space: nowrap;
+  }
+
+  [data-lsp-part="date-field-segment"][data-placeholder],
+  [data-lsp-part="time-field-segment"][data-placeholder] {
+    color: var(--lsp-subtle);
+  }
+
+  [data-lsp-part="date-field-segment"][data-invalid],
+  [data-lsp-part="time-field-segment"][data-invalid] {
+    color: var(--lsp-danger);
+  }
+
+  [data-lsp-part="date-field-segment"][data-focused],
+  [data-lsp-part="time-field-segment"][data-focused] {
+    background: var(--lsp-range-bg);
+  }
+
+  [data-lsp-part="date-field-separator"],
+  [data-lsp-part="time-field-separator"] {
+    color: var(--lsp-muted);
+  }
+
+  [data-lsp-part="date-field-leap-toggle"] {
+    margin-inline-start: 6px;
+    padding: 2px 8px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    font-size: 0.8em;
+  }
+
+  [data-lsp-part="date-field-leap-toggle"][data-selected] {
+    border-color: var(--lsp-accent);
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="popover"] {
+    z-index: 50;
+    padding: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) + 4px);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    box-shadow: var(--lsp-shadow-popover);
+    color-scheme: var(--lsp-color-scheme);
+    outline: none;
+    animation: lsp-popover-in var(--lsp-duration) ease-out;
+  }
+
+  [data-lsp-part="sheet-backdrop"] {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: var(--lsp-backdrop);
+    animation: lsp-fade-in var(--lsp-duration) ease-out;
+  }
+
+  [data-lsp-part="sheet"] {
+    inline-size: 100%;
+    max-inline-size: 560px;
+    max-block-size: 85vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: Chrome 99는 dvh를 몰라 바로 위 vh 값으로 대체됨 (스펙 12장) */
+    max-block-size: 85dvh;
+    overflow: auto;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    border-start-start-radius: 16px;
+    border-start-end-radius: 16px;
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    color-scheme: var(--lsp-color-scheme);
+    outline: none;
+    animation: lsp-sheet-in 180ms ease-out;
+  }
+
+  [data-lsp-part="wheel"] {
+    position: relative;
+    display: flex;
+    block-size: calc(var(--lsp-wheel-item-size) * var(--lsp-wheel-visible-count));
+    overflow: hidden;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-muted);
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  }
+
+  [data-lsp-part="wheel-highlight"] {
+    position: absolute;
+    inset-inline: 6px;
+    inset-block-start: 50%;
+    block-size: var(--lsp-wheel-item-size);
+    transform: translateY(-50%);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: var(--lsp-range-bg);
+    pointer-events: none;
+  }
+
+  [data-lsp-part="wheel-column"] {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    overflow: hidden;
+    cursor: grab;
+    outline: none;
+    touch-action: none;
+    perspective: 600px;
+  }
+
+  [data-lsp-part="wheel-column"]:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--lsp-ring);
+  }
+
+  [data-lsp-part="wheel-column"][data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  [data-lsp-part="wheel-track"] {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(50% - var(--lsp-wheel-item-size) / 2);
+    transform: translateY(calc(var(--lsp-wheel-position, 0) * var(--lsp-wheel-item-size) * -1));
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  [data-lsp-part="wheel-item"] {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(var(--lsp-wheel-index) * var(--lsp-wheel-item-size));
+    display: grid;
+    place-items: center;
+    block-size: var(--lsp-wheel-item-size);
+    font-size: 15px;
+    transform: rotateX(clamp(-70deg, calc((var(--lsp-wheel-index) - var(--lsp-wheel-position, 0)) * -18deg), 70deg));
+    backface-visibility: hidden;
+  }
+
+  [data-lsp-part="wheel-item"][data-selected] {
+    color: var(--lsp-fg);
+    font-weight: 600;
+  }
+
+  [data-lsp-part="wheel-item"][data-disabled] {
+    color: var(--lsp-subtle);
+    text-decoration: line-through;
+  }
+
+  @keyframes lsp-popover-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+
+  @keyframes lsp-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes lsp-sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-lsp-part="popover"],
+    [data-lsp-part="sheet"],
+    [data-lsp-part="sheet-backdrop"] {
+      animation: none;
+    }
+
+    [data-lsp-part="date-field"],
+    [data-lsp-part="date-range-field"],
+    [data-lsp-part="time-field"] {
+      transition: none;
+    }
+
+    [data-lsp-part="wheel-item"] {
+      transform: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    [data-lsp-part="date-field-segment"][data-focused],
+    [data-lsp-part="time-field-segment"][data-focused] {
+      background: Highlight;
+      color: HighlightText;
+    }
+
+    [data-lsp-part="wheel-highlight"] {
+      border: 1px solid CanvasText;
+    }
+
+    [data-lsp-part="wheel-item"][data-selected] {
+      color: Highlight;
+    }
+  }
+}
