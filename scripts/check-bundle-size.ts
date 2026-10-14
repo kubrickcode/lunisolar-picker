@@ -6,6 +6,10 @@ const SIZE_BUDGETS: readonly SizeBudget[] = [
   { label: '@lunisolar-picker/calendar', entry: 'packages/calendar/dist/index.js', maxGzipBytes: 2048 },
   { label: '@lunisolar-picker/calendar/dangi', entry: 'packages/calendar/dist/dangi.js', maxGzipBytes: 3072 },
   { label: 'dangi table only', entry: 'packages/calendar/src/dangi/dangi-table.generated.ts', maxGzipBytes: 1024 },
+  { label: '@lunisolar-picker/core', entry: 'packages/core/dist/index.js', maxGzipBytes: 8192 },
+  { label: '@lunisolar-picker/core/locales/ko', entry: 'packages/core/dist/locales/ko.js', maxGzipBytes: 1536 },
+  { label: '@lunisolar-picker/core/locales/en', entry: 'packages/core/dist/locales/en.js', maxGzipBytes: 1536 },
+  { label: '@lunisolar-picker/core/locales/ja', entry: 'packages/core/dist/locales/ja.js', maxGzipBytes: 1536 },
 ];
 
 type BudgetResult = {
