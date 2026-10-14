@@ -359,7 +359,7 @@ export function useControllableState<Value>(controlled, defaultValue, onChange):
 |---|---|
 | `settings/use-picker-settings.ts` | `usePickerSettings(props): PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars; calendarKey }`, `withGregorian(calendars)` |
 | `settings/use-picker-context.ts` | `usePickerContext(settings, { constraints, commitMode, numberOfMonths }): PickerContext` (양력 기준 제약) |
-| `store/use-store-instance.ts` | `useStoreInstance(createInitialState: (previous: State \| undefined) => State, reducer, context, options?: { resetKey?: string }): { state; send }` — resetKey가 바뀌면 이전 상태를 넘겨 새 store를 만든다(확정 값 유지). 소비자는 객체가 아니라 `send`에 의존한다 (M3-T3 리뷰) |
+| `store/use-store-instance.ts` | `useStoreInstance(createInitialState: (previous: State \| undefined) => State, reducer, context, options?: { resetKey?: string }): { state; send }` — resetKey가 바뀌면 이전 상태를 넘겨 새 store를 만든다(확정 값 유지). 소비자는 객체가 아니라 `send`에 의존한다 (M3-T3 리뷰). `getSnapshot()`도 돌려준다: 렌더를 기다리지 않고 최신 상태를 읽는다(달력 `commit()`이 호출 시점에 값을 알릴 때 씀, M4-T1) |
 | `utilities/use-controllable-state.ts` | `useControllableState(controlled, defaultValue, onChange): [value, setValue]` |
 | `utilities/render-element.ts` | `renderElement(tagName, render, props, state)` |
 | `utilities/merge-props.ts` | `mergeProps(base, override)` (핸들러는 앱 먼저, `preventDefault`면 부품 동작 생략) |
@@ -413,7 +413,7 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 > **계약 변경(2026-10-14, M3 전체 리뷰)** — 위 표보다 이 목록이 우선한다.
 > 1. 공통 콜백 규칙: 모든 입력 부품의 `onValueChange`·`onEntryCalendarChange`는 사용자 조작에만 불린다. 마운트, 부모의 값 동기화와 되돌림(echo), locale·`calendars`·`isEndOfDayAllowed` 변경은 콜백을 보내지 않는다. 예외 두 가지: 값이 있을 때 부모가 `entryCalendar`를 바꾸면 명시적 요청으로 보고 다시 표기한 값을 알리며, 비제어 필드는 폼 `reset`에서 `defaultValue`로 돌아가며 알린다(React Aria와 같음). 폼 reset은 hidden input이 있어야 하므로 `name`(범위는 `startName`·`endName`)이 필요하다. 제어 필드는 reset을 무시한다.
 > 2. `useValueBridge(options)`에 선택 `toPublic`이 있다: 내부(store) 값과 공개 값이 다를 때(반쪽 범위, 허용되지 않는 24:00) 쓴다. 되돌림 판정은 "부모가 마지막으로 알고 있는 공개 값"(부모가 준 값 또는 보낸 값) 기준이다. `HiddenInputProps`에 `onFormReset`이 있다.
-> 3. DateField store의 `resetKey`는 `locale.id|calendarKey`라서 locale이나 역법 목록이 바뀌면 `send` 참조가 바뀐다. 달력(M4)처럼 `resetKey`를 안 쓰는 store의 `send`는 고정이다.
+> 3. DateField store의 `resetKey`는 `locale.id|calendarKey`라서 locale이나 역법 목록이 바뀌면 `send` 참조가 바뀐다. 달력(M4-T1)의 navigation·selection store도 `resetKey = calendarKey`라 역법 목록이 바뀌면 `send`가 바뀐다(빠진 역법에서 양력으로 옮기려면 store를 다시 만들어야 함: navigationReducer가 이벤트 처리 전에 현재 표시 역법을 찾음). 소비자는 `send`를 최신 ref로 읽거나 호출 시점에 쓴다.
 > 4. 필드 Root(`DateField`, `DateRangeField`, `TimeField`)는 `ref?: Ref<{ focus(): void }>`를 받고, `focus()`는 첫 칸(범위는 시작일 첫 칸)에 포커스한다(스펙 §7.6, react-hook-form 연동).
 > 5. 훅 API 모양 통일: `DateFieldApi`·`DateRangeFieldApi`·`TimeFieldApi`·`WheelDateApi`가 모두 `validity`, `isInvalid`, `isDisabled`, `isReadOnly`를 갖는다. `DateRangeField` 렌더 상태는 `{ isInvalid, isDisabled }`이고 Root는 `data-focused`를 낸다. `TimeField.HiddenInput`도 prop 덮어쓰기를 받는다. `DateFieldCore.isLeapMonthAvailable()`은 제거했다.
 > 6. 윤달: `DateRangeField`의 기본 시작·종료 칸도 윤달 토글을 그린다(이름에 쪽 라벨이 붙음). 토글은 비활성일 때 `data-disabled`를 낸다. 쓰던 입력 역법이 `calendars`에서 빠지면 양력으로 넘어간다: 비제어는 값을 양력으로 다시 표기하고, 제어는 칸을 비우고 `onInvalidValue`로 알린다.
@@ -433,6 +433,8 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 | `type CellRenderInfo = MonthGridCell & CellState` | `CellState { isSelected; isToday; isDisabled; isOutsideMonth; isInRange; isRangeStart; isRangeEnd; isPreview; isFocused }` |
 
 `UseCalendarProps`: `SharedPickerProps & DateConstraints & { value?; defaultValue?; onValueChange?; commitMode?; numberOfMonths?; displayCalendar?; defaultDisplayCalendar?; onDisplayCalendarChange?; getCellLabel? }`
+
+- 표시 역법: `displayCalendar`·`defaultDisplayCalendar`가 없으면 값의 역법으로 연다(입력 부품의 "값의 역법이 이긴다"와 같은 규칙), 값도 없으면 양력 [M4 preflight 3.11]. 확인 모드 `commit()`은 호출 시점에 `onValueChange`를 부른다(같은 클릭에서 닫혀 언마운트돼도 값이 전달됨) [M4 preflight 1.4]. 콜백은 사용자 조작에만 불린다.
 
 ### 3.5 완성형 (`@lunisolar-picker/react/pickers`) [M4-T8~T10]
 
