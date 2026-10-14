@@ -314,7 +314,7 @@ type ValidationReason =
 
 ### 8.1 토큰
 
-`--lsp-bg`, `--lsp-surface`, `--lsp-fg`, `--lsp-muted`, `--lsp-subtle`, `--lsp-border`, `--lsp-accent`, `--lsp-accent-fg`, `--lsp-range-bg`, `--lsp-ring`, `--lsp-danger`, `--lsp-radius`, `--lsp-cell-size`, `--lsp-shadow-popover`, `--lsp-duration`
+`--lsp-bg`, `--lsp-surface`, `--lsp-fg`, `--lsp-muted`, `--lsp-subtle`, `--lsp-border`, `--lsp-accent`, `--lsp-accent-fg`, `--lsp-range-bg`, `--lsp-ring`, `--lsp-focus`, `--lsp-placeholder`, `--lsp-danger`, `--lsp-radius`, `--lsp-cell-size`, `--lsp-shadow-popover`, `--lsp-duration`
 
 ### 8.2 모드
 
@@ -328,6 +328,7 @@ type ValidationReason =
 - 무채색, 가는 선, 모서리 8px, 선택은 잉크색 채움, 날짜 칸 36px(터치 기기 44px)
 - `tabular-nums`. 글꼴은 앱 글꼴을 상속하고 라이브러리가 싣지 않는다.
 - 음력 표시는 `--lsp-subtle` 회색의 작은 숫자뿐이다. 별도 강조색은 없다.
+- `--lsp-focus`는 포커스 테두리 전용으로 배경 대비 3:1 이상, `--lsp-placeholder`는 입력 안내 글자 전용으로 4.5:1 이상을 지킨다. `--lsp-subtle`은 대비가 낮아 음력 보조 숫자에만 쓴다 (M3-T10 리뷰).
 - 모션: 월 전환 슬라이드 180ms, 팝오버 페이드·확대 140ms, 휠 관성. `prefers-reduced-motion`이면 모두 끈다.
 - 논리 속성만 쓴다(RTL 대비). `forced-colors`에서는 시스템 색을 쓴다.
 - 토·일 색은 기본 테마에 넣지 않는다. 앱이 `data-weekday`로 칠한다.
