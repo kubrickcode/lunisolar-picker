@@ -7,6 +7,8 @@ type KeyedStore<State, Event> = {
 };
 
 export type StoreInstance<State, Event> = {
+  // Goal: 이벤트를 보낸 직후 다시 렌더되기 전의 상태를 읽음. 확인 버튼이 commit 뒤 같은 클릭에서 달력을 닫아도 확정 값을 알릴 수 있게 함 (M4 preflight 1.4)
+  readonly getSnapshot: () => State;
   readonly send: (event: Event) => void;
   readonly state: State;
 };
@@ -40,5 +42,5 @@ export const useStoreInstance = <State, Event, Context>(
   if (current !== keyedStore) setKeyedStore(current);
   const { store } = current;
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-  return { state, send: store.send };
+  return { getSnapshot: store.getSnapshot, send: store.send, state };
 };

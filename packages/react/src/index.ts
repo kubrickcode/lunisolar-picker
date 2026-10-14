@@ -18,6 +18,8 @@ export { resolvePresentation, usePresentation } from './presentation/use-present
 export type { LunisolarProviderProps } from './settings/lunisolar-provider';
 export { LunisolarProvider } from './settings/lunisolar-provider';
 export type { SharedPickerProps, ValueChangeDetails } from './settings/shared-picker-props';
+export type { PickerSettings } from './settings/use-picker-settings';
+export { usePickerSettings } from './settings/use-picker-settings';
 export * as Sheet from './sheet/parts';
 export { useSheetContext } from './sheet/sheet-context';
 export type { SheetApi, UseSheetProps } from './sheet/use-sheet';
@@ -28,6 +30,7 @@ export type { TimeFieldApi, UseTimeFieldProps } from './time-field/use-time-fiel
 export { useTimeField } from './time-field/use-time-field';
 export { useToday } from './today/use-today';
 export type { RenderProp } from './utilities/render-element';
+export { useControllableState } from './utilities/use-controllable-state';
 export type { DateRangeInput } from './value/parse-controlled-value';
 export * as Wheel from './wheel/parts';
 export type { UseWheelProps, WheelApi } from './wheel/use-wheel';

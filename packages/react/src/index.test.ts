@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type DateRangeInput, useSheetContext } from './index';
+import {
+  type DateRangeInput,
+  type PickerSettings,
+  useControllableState,
+  usePickerSettings,
+  useSheetContext,
+} from './index';
 
 describe('package entry', () => {
   it('exposes the sheet context hook and the range input type that M4 pickers import', () => {
@@ -8,5 +14,14 @@ describe('package entry', () => {
 
     expect(typeof useSheetContext).toBe('function');
     expect(openRange.end).toBeNull();
+  });
+
+  it('exposes the settings and controllable-state hooks that completed pickers build on', () => {
+    // Goal: 완성형 picker를 앱에 복사해도 컴파일되도록 공개 API만으로 설정·제어 상태를 다룸 (ADR-0001, preflight 4.12)
+    const readWeekStart = (settings: PickerSettings): number => settings.weekStartsOn;
+
+    expect(typeof usePickerSettings).toBe('function');
+    expect(typeof useControllableState).toBe('function');
+    expect(typeof readWeekStart).toBe('function');
   });
 });

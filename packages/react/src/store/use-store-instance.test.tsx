@@ -14,6 +14,8 @@ type LocalizedFieldState = { readonly locale: string; readonly value: string | n
 
 type PickEvent = { readonly type: 'pick'; readonly value: string };
 
+type SnapshotCounterProps = { readonly onIncrement: (count: number) => void };
+
 const counterReducer: Reducer<number, CounterEvent, { readonly step: number }> = (count, _event, context) =>
   count + context.step;
 
@@ -35,6 +37,21 @@ const Counter = (): ReactElement => {
         Use step 5
       </button>
     </>
+  );
+};
+
+const SnapshotCounter = ({ onIncrement }: SnapshotCounterProps): ReactElement => {
+  const counter = useStoreInstance(() => 10, counterReducer, { step: 1 });
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        counter.send({ type: 'increment' });
+        onIncrement(counter.getSnapshot());
+      }}
+    >
+      Increment
+    </button>
   );
 };
 
@@ -112,6 +129,15 @@ describe('useStoreInstance', () => {
 
     await expect.element(screen.getByRole('status').first()).toHaveTextContent('11');
     await expect.element(screen.getByRole('status').last()).toHaveTextContent('10');
+  });
+
+  it('reads the state right after an event, before React renders it', async () => {
+    const onIncrement = vi.fn();
+    const screen = await render(<SnapshotCounter onIncrement={onIncrement} />);
+
+    await screen.getByRole('button', { name: 'Increment' }).click();
+
+    expect(onIncrement).toHaveBeenCalledWith(11);
   });
 
   it('renders the initial state on the server', () => {

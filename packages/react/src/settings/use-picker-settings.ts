@@ -8,7 +8,7 @@ import type { SharedPickerProps } from './shared-picker-props';
 
 const CALENDAR_KEY_SEPARATOR = ',';
 
-export type PickerSettings = {
+export interface PickerSettings {
   // Goal: 역법 구성의 동일성을 나타내는 문자열. 렌더마다 새 배열이 와도 같은 구성이면 같음 (useParsedValue의 parseKey 등)
   readonly calendarKey: string;
   readonly calendars: readonly CalendarSystem[];
@@ -16,7 +16,7 @@ export type PickerSettings = {
   readonly timeZone: string | undefined;
   readonly todayEpochDay: EpochDay;
   readonly weekStartsOn: Weekday;
-};
+}
 
 export const usePickerSettings = (props: SharedPickerProps): PickerSettings => {
   const provided = useContext(LunisolarSettingsContext);
