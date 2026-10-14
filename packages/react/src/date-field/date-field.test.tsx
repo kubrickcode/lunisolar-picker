@@ -7,11 +7,10 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { settleEffects } from '../testing/settle-effects';
 import { DateFieldContext } from './date-field-context';
 import * as DateField from './parts';
 import { type UseDateFieldProps, useDateField } from './use-date-field';
-
-const SETTLE_FRAMES = 2;
 
 const CalendarSwitchingField = (props: UseDateFieldProps) => {
   const field = useDateField(props);
@@ -27,13 +26,6 @@ const CalendarSwitchingField = (props: UseDateFieldProps) => {
       </button>
     </DateFieldContext>
   );
-};
-
-// Goal: 부정 단언 전에 늦게 도는 passive effect의 알림까지 기다림
-const settleEffects = async (): Promise<void> => {
-  for (let frame = 0; frame < SETTLE_FRAMES; frame += 1) {
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-  }
 };
 
 const dispatchPaste = (element: Element, text: string): void => {
