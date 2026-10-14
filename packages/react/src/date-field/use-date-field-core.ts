@@ -70,6 +70,8 @@ export type DateFieldStoreOptions = {
   // Constraint: 초기 값이 있으면 무시됨. 값이 있으면 값의 역법이 입력 역법이 됨 (계약 §2.7 ②)
   readonly initialEntryCalendarId: CalendarId;
   readonly initialSelected: SelectedDay | null;
+  // Constraint: 제어 중인 필드는 역법이 빠져도 값을 다시 적지 않고 비움. 콜백은 사용자 행동만 알리므로 부모가 만든 변화에서 onValueChange를 내지 않음
+  readonly isControlled: boolean;
   // Goal: 앱이 제어하는 entryCalendar. 마운트 뒤 바뀔 때만 store로 밀어 넣음
   readonly requestedEntryCalendarId: CalendarId | undefined;
   readonly settings: PickerSettings;
@@ -100,6 +102,7 @@ export type DateFieldRootProps = HTMLAttributes<HTMLDivElement> &
 
 type CalendarRemovalInput = {
   readonly context: PickerContext;
+  readonly isControlled: boolean;
   // Constraint: 직전 렌더의 입력 역법. 앱이 calendars에서 뺀 뒤에는 context에 없으므로 여기서만 날짜를 구할 수 있음
   readonly previousEntryCalendar: CalendarSystem;
   readonly state: DateFieldState;
@@ -193,6 +196,7 @@ export const useDateFieldStore = (options: DateFieldStoreOptions): DateFieldStor
           })
         : moveOffRemovedCalendar({
             context,
+            isControlled: options.isControlled,
             previousEntryCalendar: previousEntryCalendarRef.current,
             state: reorderForLocale(previous, context),
           }),
@@ -266,12 +270,18 @@ const hasLeapMonthIn = (
   return isMonthInRange && isYearSupported && calendar.monthsInYear(year).includes(toMonthCode(month, true));
 };
 
-// Goal: 앱이 calendars에서 지금 입력 역법을 빼면 양력으로 돌아감. 직전 입력 역법으로 구한 같은 날을 양력으로 다시 적음 (입력 역법을 바꿀 때와 같은 규칙)
+// Goal: 앱이 calendars에서 지금 입력 역법을 빼면 양력으로 돌아감. 비제어면 직전 입력 역법으로 구한 같은 날을 양력으로 다시 적음 (입력 역법을 바꿀 때와 같은 규칙)
+// Constraint: 제어 중이면 부모의 값이 해석 불가가 되어 onInvalidValue로 알려지므로 칸을 비움. 같은 날을 다시 적으면 부모가 고르지 않은 값을 알리게 됨
 // Constraint: 직전 역법이 상태의 역법과 다르면(같은 렌더 안에서 역법이 두 번 바뀐 경우) 날짜를 구할 수 없어 비움
-const moveOffRemovedCalendar = ({ context, previousEntryCalendar, state }: CalendarRemovalInput): DateFieldState => {
+const moveOffRemovedCalendar = ({
+  context,
+  isControlled,
+  previousEntryCalendar,
+  state,
+}: CalendarRemovalInput): DateFieldState => {
   const isProvided = context.calendars.some((calendar) => calendar.id === state.entryCalendarId);
   if (isProvided) return state;
-  const canReadPreviousDay = previousEntryCalendar.id === state.entryCalendarId;
+  const canReadPreviousDay = !isControlled && previousEntryCalendar.id === state.entryCalendarId;
   const { epochDay } = canReadPreviousDay
     ? dateFieldResult(state, { ...context, calendars: [...context.calendars, previousEntryCalendar] })
     : { epochDay: null };

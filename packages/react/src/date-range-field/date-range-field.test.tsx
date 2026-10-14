@@ -51,7 +51,6 @@ describe('DateRangeField', () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} onValueChange={onValueChange} />);
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101320261017');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toEqual({ start: '2026-10-13', end: '2026-10-17' });
@@ -62,7 +61,6 @@ describe('DateRangeField', () => {
     const screen = await render(<DateRangeField.Root aria-label="Period" locale={en} onValueChange={onValueChange} />);
 
     await clickToFocus(screen.getByRole('spinbutton', { name: en.labels.month }).first());
-    await screen.getByRole('spinbutton', { name: en.labels.month }).first().click();
     await userEvent.keyboard('1013202610172026');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toEqual({ start: '2026-10-13', end: '2026-10-17' });
@@ -73,7 +71,6 @@ describe('DateRangeField', () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} onValueChange={onValueChange} />);
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101720261013');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toEqual({ start: '2026-10-13', end: '2026-10-17' });
@@ -94,7 +91,6 @@ describe('DateRangeField', () => {
       </>,
     );
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101720261005');
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toEqual({ start: '2026-10-05', end: '2026-10-17' });
 
@@ -117,7 +113,6 @@ describe('DateRangeField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20261013');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toEqual({ start: '2026-10-13', end: null });
@@ -128,7 +123,6 @@ describe('DateRangeField', () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} onValueChange={onValueChange} />);
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20261013');
 
     await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year }).last()).toHaveFocus();
@@ -143,7 +137,6 @@ describe('DateRangeField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('2026101320261017');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[1]?.validity.reasons).toContain('range-too-long');
@@ -162,10 +155,8 @@ describe('DateRangeField', () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} />);
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20260230');
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).last());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).last().click();
     await userEvent.keyboard('20261017');
 
     await expect.element(screen.getByRole('group', { name: '기간' })).toHaveAttribute('data-invalid', '');
@@ -182,10 +173,8 @@ describe('DateRangeField', () => {
     const screen = await render(<DateRangeField.Root aria-label="기간" locale={ko} />);
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20260230');
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).last());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).last().click();
     await userEvent.keyboard('2');
 
     await expect.element(screen.getByRole('group', { name: '기간' })).toHaveAttribute('data-invalid', '');
@@ -206,7 +195,6 @@ describe('DateRangeField', () => {
       </>,
     );
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).first().click();
     await userEvent.keyboard('20261013');
     await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year }).last()).toHaveFocus();
     expect(onBlur).not.toHaveBeenCalled();
@@ -343,6 +331,23 @@ describe('DateRangeField', () => {
       expect(onEntryCalendarChange.mock.calls).toEqual([['dangi']]);
     });
 
+    it('names each leap toggle with its side label', async () => {
+      const screen = await render(
+        <DateRangeField.Root aria-label="기간" locale={ko} calendars={[dangi]} entryCalendar="dangi">
+          <DateRangeField.Start />
+          <DateRangeField.Separator />
+          <DateRangeField.End />
+        </DateRangeField.Root>,
+      );
+
+      await expect
+        .element(screen.getByRole('button', { name: `${ko.labels.rangeStart} ${ko.labels.leapMonth}` }))
+        .toBeVisible();
+      await expect
+        .element(screen.getByRole('button', { name: `${ko.labels.rangeEnd} ${ko.labels.leapMonth}` }))
+        .toBeVisible();
+    });
+
     it('keeps the start when the parent echoes the null emitted for an erased end', async () => {
       const onValueChange = vi.fn();
       const EchoingParent = () => {
@@ -367,7 +372,6 @@ describe('DateRangeField', () => {
       const screen = await render(<EchoingParent />);
 
       await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }).last());
-      await screen.getByRole('spinbutton', { name: ko.labels.day }).last().click();
       await userEvent.keyboard('{Backspace}');
 
       await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBeNull();
@@ -510,7 +514,10 @@ describe('DateRangeField', () => {
       await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }).first());
       await userEvent.keyboard('199005');
 
-      await screen.getByRole('button', { name: ko.labels.leapMonth }).first().click();
+      await screen
+        .getByRole('button', { name: `${ko.labels.rangeStart} ${ko.labels.leapMonth}` })
+        .first()
+        .click();
       await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }).first());
       await userEvent.keyboard('01');
 

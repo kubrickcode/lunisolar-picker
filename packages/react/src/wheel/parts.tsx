@@ -30,6 +30,7 @@ export interface RootProps extends HTMLAttributes<HTMLDivElement> {
   readonly children: ReactNode;
   // Goal: 안의 모든 열을 한꺼번에 막음. 열마다 준 disabled·readOnly와 합쳐짐
   readonly disabled?: boolean | undefined;
+  // Goal: Root의 data-invalid와 함께 안의 모든 열에 aria-invalid를 달아 보조기술에도 알림
   readonly invalid?: boolean | undefined;
   readonly readOnly?: boolean | undefined;
   readonly ref?: Ref<HTMLDivElement> | undefined;
@@ -38,10 +39,11 @@ export interface RootProps extends HTMLAttributes<HTMLDivElement> {
 export const Root = ({ children, disabled, invalid, readOnly, ...props }: RootProps): ReactElement => {
   const isDisabled = disabled === true;
   const isReadOnly = readOnly === true;
-  const rootState = useMemo(() => ({ isDisabled, isReadOnly }), [isDisabled, isReadOnly]);
+  const isInvalid = invalid === true;
+  const rootState = useMemo(() => ({ isDisabled, isInvalid, isReadOnly }), [isDisabled, isInvalid, isReadOnly]);
   const rootAttributes = partAttributes('wheel', {
     disabled: isDisabled,
-    invalid: invalid === true,
+    invalid: isInvalid,
     readonly: isReadOnly,
   });
   return (
@@ -56,6 +58,7 @@ export const Column = <Value,>({ className, style, renderItem, ...props }: Colum
   const wheel = useWheel({
     ...props,
     disabled: props.disabled === true || root.isDisabled,
+    invalid: props.invalid === true || root.isInvalid,
     readOnly: props.readOnly === true || root.isReadOnly,
   });
   const { start, end } = wheel.renderedRange;

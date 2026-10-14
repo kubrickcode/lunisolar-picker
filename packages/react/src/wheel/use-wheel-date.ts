@@ -86,7 +86,7 @@ export interface WheelDateApi {
   selectDay(day: number): void;
   setEntryCalendar(calendarId: CalendarId): void;
   focus(): void;
-  getRootProps(): WheelDateRootProps;
+  getWheelRootProps(): WheelDateRootProps;
   getHiddenInputProps(): HiddenInputProps;
 }
 
@@ -122,7 +122,17 @@ export const useWheelDate = (props: UseWheelDateProps): WheelDateApi => {
   const rootRef = useRef<HTMLElement | null>(null);
   const context = usePickerContext(settings, { constraints: props, commitMode: 'immediate', numberOfMonths: 1 });
   // Constraint: 앱이 calendars에서 지금 역법을 빼도 렌더 중에 던지지 않고 양력으로 보여 줌. 위치는 epochDay라 같은 날을 양력으로 다시 적음
-  const calendar = settings.calendars.find((candidate) => candidate.id === position.calendarId) ?? gregory;
+  const providedCalendar = settings.calendars.find((candidate) => candidate.id === position.calendarId);
+  const calendar = providedCalendar ?? gregory;
+  // Constraint: 위치의 역법도 양력으로 맞춰 둠. 그대로 두면 앱이 역법을 다시 넣을 때 아무도 고르지 않은 값으로 되돌아가 알림이 나감
+  // Constraint: 제어 중이면 위치를 비움. 부모의 값이 해석 불가가 되어 onInvalidValue로 알려지고, 같은 날을 다시 적으면 부모가 고르지 않은 값을 알리게 됨
+  if (providedCalendar === undefined) {
+    setPosition(
+      controlled.isControlled
+        ? { calendarId: gregory.id, epochDay: null, hasSelection: false }
+        : { ...position, calendarId: gregory.id },
+    );
+  }
   const bounds = useMemo(() => boundsFor(calendar, context.constraints), [calendar, context.constraints]);
   // Constraint: 제약이 입력 역법 범위와 겹치지 않으면 고를 날이 없음. 자른 날이 역법 범위 밖이라 fieldsOf가 던지므로 역법 첫날을 보여줌 (preflight 3.8)
   const hasSelectableDay = bounds.min <= bounds.max;
@@ -215,7 +225,7 @@ export const useWheelDate = (props: UseWheelDateProps): WheelDateApi => {
     setEntryCalendar,
     focus,
     // Constraint: 열 사이 이동은 휠 안이므로 휠 전체를 벗어날 때만 onBlur를 알림
-    getRootProps: () => ({
+    getWheelRootProps: () => ({
       ref: attachRoot,
       disabled: isDisabled,
       readOnly: isReadOnly,

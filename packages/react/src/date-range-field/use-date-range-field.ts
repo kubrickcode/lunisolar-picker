@@ -107,6 +107,7 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
   const storeOptions = {
     settings,
     constraints: props,
+    isControlled: controlled.isControlled,
     initialEntryCalendarId,
     requestedEntryCalendarId: props.entryCalendar,
   };

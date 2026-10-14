@@ -96,6 +96,7 @@ export interface UseWheelProps<Value> {
   readonly isEqual?: ((first: Value, second: Value) => boolean) | undefined;
   readonly label: string;
   readonly disabled?: boolean | undefined;
+  readonly invalid?: boolean | undefined;
   // Goal: 포커스와 읽기는 그대로 두고 끌기·키·마우스 휠·숫자 입력으로 값을 바꾸지 못하게 함
   readonly readOnly?: boolean | undefined;
 }
@@ -376,6 +377,7 @@ export const useWheel = <Value>(props: UseWheelProps<Value>): WheelApi => {
       'aria-valuetext': selectedOption?.label,
       'aria-disabled': isDisabled || undefined,
       'aria-readonly': isReadOnly || undefined,
+      'aria-invalid': props.invalid === true || undefined,
       onPointerDown,
       onKeyDown,
       ...partAttributes('wheel-column', { disabled: isDisabled, readonly: isReadOnly }),

@@ -36,6 +36,11 @@ const dispatchPaste = (element: Element, text: string): void => {
   element.dispatchEvent(event);
 };
 
+type ControlledHandlers = {
+  readonly onInvalidValue: () => void;
+  readonly onValueChange: () => void;
+};
+
 describe('DateField', () => {
   it('fills a Korean date from eight typed digits and reports it once complete', async () => {
     const onValueChange = vi.fn();
@@ -44,7 +49,6 @@ describe('DateField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('20261014');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('2026-10-14');
@@ -57,7 +61,6 @@ describe('DateField', () => {
     const screen = await render(<DateField.Root aria-label="Date" onValueChange={onValueChange} />);
 
     await clickToFocus(screen.getByRole('spinbutton').first());
-    await screen.getByRole('spinbutton').first().click();
     await userEvent.keyboard('10142026');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('2026-10-14');
@@ -78,7 +81,6 @@ describe('DateField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.day }));
-    await screen.getByRole('spinbutton', { name: ko.labels.day }).click();
     await userEvent.keyboard('{ArrowUp}');
 
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('2026-10-15');
@@ -89,7 +91,6 @@ describe('DateField', () => {
     const screen = await render(<DateField.Root aria-label="Date" locale={ko} onValueChange={onValueChange} />);
     const year = screen.getByRole('spinbutton', { name: ko.labels.year });
     await clickToFocus(year);
-    await year.click();
 
     dispatchPaste(year.element(), '1990.3.15');
 
@@ -100,7 +101,6 @@ describe('DateField', () => {
     const screen = await render(<DateField.Root aria-label="Date" locale={ko} />);
     const year = screen.getByRole('spinbutton', { name: ko.labels.year });
     await clickToFocus(year);
-    await year.click();
 
     dispatchPaste(year.element(), '1990.13.40');
 
@@ -123,7 +123,6 @@ describe('DateField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('199005');
     await userEvent.keyboard('L');
     await userEvent.keyboard('01');
@@ -144,7 +143,6 @@ describe('DateField', () => {
       />,
     );
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.month }));
-    await screen.getByRole('spinbutton', { name: ko.labels.month }).click();
     await userEvent.keyboard('06');
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[1]?.validity.reasons).toContain('invalid-date');
 
@@ -168,7 +166,6 @@ describe('DateField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('20251229');
     await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).not.toBeNull();
     await userEvent.keyboard('{Backspace}{Backspace}30');
@@ -185,7 +182,6 @@ describe('DateField', () => {
     );
     const day = screen.getByRole('spinbutton', { name: ko.labels.day });
     await clickToFocus(day);
-    await day.click();
     const dayElement = day.element();
 
     dayElement.textContent = '14garbage';
@@ -352,7 +348,6 @@ describe('DateField', () => {
       />,
     );
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('199005');
 
     screen
@@ -370,7 +365,6 @@ describe('DateField', () => {
       <DateField.Root aria-label="Date" locale={ko} readOnly defaultValue="2026-10-14" onValueChange={onValueChange} />,
     );
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
 
     await userEvent.keyboard('{ArrowRight}{ArrowUp}');
 
@@ -440,7 +434,6 @@ describe('DateField', () => {
     );
 
     await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
-    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
     await userEvent.keyboard('{Tab}');
     expect(onBlur).not.toHaveBeenCalled();
     await screen.getByRole('button', { name: 'Next field' }).click();
@@ -476,6 +469,38 @@ describe('DateField', () => {
 
     await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'gregory');
     await expect.element(screen.getByRole('group')).toHaveTextContent('1990. 06. 23');
+  });
+
+  describe('removed entry calendar', () => {
+    const renderControlled = (calendars: UseDateFieldProps['calendars'], handlers: ControlledHandlers) => (
+      <DateField.Root
+        aria-label="Date"
+        locale={ko}
+        calendars={calendars}
+        value="1990-06-23[u-ca=dangi]"
+        onValueChange={handlers.onValueChange}
+        onInvalidValue={handlers.onInvalidValue}
+      />
+    );
+
+    it('empties a controlled field without reporting a change, and stays quiet when the calendar returns', async () => {
+      const handlers = { onValueChange: vi.fn(), onInvalidValue: vi.fn() };
+      const screen = await render(renderControlled([dangi], handlers));
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'dangi');
+
+      await screen.rerender(renderControlled([], handlers));
+      await settleEffects();
+
+      await expect.element(screen.getByRole('group')).toHaveTextContent('YYYY. MM. DD');
+      expect(handlers.onInvalidValue).toHaveBeenCalledTimes(1);
+      expect(handlers.onValueChange).not.toHaveBeenCalled();
+
+      await screen.rerender(renderControlled([dangi], handlers));
+      await settleEffects();
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'dangi');
+      expect(handlers.onValueChange).not.toHaveBeenCalled();
+    });
   });
 
   describe('form reset', () => {

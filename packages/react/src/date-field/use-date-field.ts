@@ -43,6 +43,7 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
   const core = useDateFieldCore({
     settings,
     constraints: props,
+    isControlled: controlled.isControlled,
     initialSelected:
       initialValue === null ? null : { epochDay: epochDayOf(initialValue), calendarId: calendarIdOf(initialValue) },
     initialEntryCalendarId: props.entryCalendar ?? props.defaultEntryCalendar ?? gregory.id,

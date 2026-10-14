@@ -16,6 +16,11 @@ import { type UseWheelDateProps, useWheelDate } from './use-wheel-date';
 const SNAP_WAIT_MILLISECONDS = 600;
 const TODAY_CHECK_INTERVAL_MILLISECONDS = 60_000;
 
+type ControlledHandlers = {
+  readonly onInvalidValue: () => void;
+  readonly onValueChange: () => void;
+};
+
 type ControlledProbeProps = Omit<UseWheelDateProps, 'value'> & {
   readonly initialValue: string | null;
   readonly resetValue?: string | null | undefined;
@@ -79,7 +84,7 @@ const WheelDateColumns = (props: UseWheelDateProps) => {
   const wheelDate = useWheelDate(props);
   return (
     <>
-      <Wheel.Root aria-label="Date" {...wheelDate.getRootProps()}>
+      <Wheel.Root aria-label="Date" {...wheelDate.getWheelRootProps()}>
         <Wheel.Column
           label={wheelDate.labels.year}
           options={wheelDate.columns.years}
@@ -325,6 +330,25 @@ describe('useWheelDate', () => {
     });
   });
   describe('state props', () => {
+    it('marks every column aria-invalid when the wheel is invalid', async () => {
+      const screen = await render(<WheelDateColumns invalid defaultValue="1990-03-15" today="2026-10-14" />);
+
+      const columns = screen.getByRole('spinbutton').all();
+      expect(columns).toHaveLength(3);
+      for (const column of columns) {
+        await expect.element(column).toHaveAttribute('aria-invalid', 'true');
+      }
+    });
+
+    it('leaves the columns without aria-invalid when the wheel is valid', async () => {
+      const screen = await render(<WheelDateColumns defaultValue="1990-03-15" today="2026-10-14" />);
+
+      await expect.element(screen.getByRole('spinbutton', { name: en.labels.year })).toBeVisible();
+      await expect
+        .element(screen.getByRole('spinbutton', { name: en.labels.year }))
+        .not.toHaveAttribute('aria-invalid');
+    });
+
     it('keeps a disabled wheel still on drag and keys', async () => {
       const onValueChange = vi.fn();
       const screen = await render(
@@ -426,6 +450,59 @@ describe('useWheelDate', () => {
       const snapshot = await readProbe(screen);
       expect(snapshot.entryCalendarId).toBe('gregory');
       expect(snapshot.fields).toEqual({ year: 1990, monthCode: 'M06', day: 23 });
+    });
+  });
+
+  describe('removed entry calendar', () => {
+    const controlledElement = (calendars: UseWheelDateProps['calendars'], handlers: ControlledHandlers) => (
+      <WheelDateProbe
+        calendars={calendars}
+        value="1990-06-23[u-ca=dangi]"
+        today="2026-10-14"
+        onValueChange={handlers.onValueChange}
+        onInvalidValue={handlers.onInvalidValue}
+      />
+    );
+
+    it('empties the wheel without reporting a change, and stays quiet when the calendar returns', async () => {
+      const handlers = { onValueChange: vi.fn(), onInvalidValue: vi.fn() };
+      const screen = await render(controlledElement([dangi], handlers));
+      await expect.poll(async () => (await readProbe(screen)).value).toBe('1990-06-23[u-ca=dangi]');
+
+      await screen.rerender(controlledElement([], handlers));
+      await settleEffects();
+
+      const emptied = await readProbe(screen);
+      expect(emptied.entryCalendarId).toBe('gregory');
+      expect(emptied.value).toBeNull();
+      expect(handlers.onInvalidValue).toHaveBeenCalledTimes(1);
+      expect(handlers.onValueChange).not.toHaveBeenCalled();
+
+      await screen.rerender(controlledElement([dangi], handlers));
+      await settleEffects();
+
+      expect((await readProbe(screen)).entryCalendarId).toBe('dangi');
+      expect(handlers.onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('does not flip an uncontrolled wheel back to the removed calendar when it returns', async () => {
+      const onValueChange = vi.fn();
+      const screen = await render(
+        <WheelDateProbe calendars={[dangi]} defaultValue="1990-06-23[u-ca=dangi]" onValueChange={onValueChange} />,
+      );
+      await screen.rerender(<WheelDateProbe defaultValue="1990-06-23[u-ca=dangi]" onValueChange={onValueChange} />);
+      await settleEffects();
+      const callsAfterRemoval = onValueChange.mock.calls.length;
+
+      await screen.rerender(
+        <WheelDateProbe calendars={[dangi]} defaultValue="1990-06-23[u-ca=dangi]" onValueChange={onValueChange} />,
+      );
+      await settleEffects();
+
+      const snapshot = await readProbe(screen);
+      expect(snapshot.entryCalendarId).toBe('gregory');
+      expect(snapshot.value).toBe('1990-06-23');
+      expect(onValueChange.mock.calls).toHaveLength(callsAfterRemoval);
     });
   });
 

@@ -88,12 +88,13 @@ const Side = ({ side, children, className }: SideProps & { readonly side: RangeS
   const range = useDateRangeFieldContext();
   const core = range[side];
   const { labels } = core.context.locale;
+  const sideLabel = side === 'start' ? labels.rangeStart : labels.rangeEnd;
   return (
     <DateFieldContext value={core}>
       <div
         {...mergeProps(core.getRootProps(), {
           className,
-          'aria-label': side === 'start' ? labels.rangeStart : labels.rangeEnd,
+          'aria-label': sideLabel,
         })}
       >
         {children ?? (
@@ -104,7 +105,7 @@ const Side = ({ side, children, className }: SideProps & { readonly side: RangeS
                 <Segment index={index} />
               </Fragment>
             ))}
-            <LeapMonthToggle />
+            <LeapMonthToggle aria-label={`${sideLabel} ${labels.leapMonth}`} />
           </>
         )}
         <HiddenInput {...range.getHiddenInputProps(side)} />
