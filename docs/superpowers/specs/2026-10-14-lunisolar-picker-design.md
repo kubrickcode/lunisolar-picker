@@ -29,7 +29,7 @@
 - 중국 농력, 베트남 음력. 역법 인터페이스는 공개하므로 나중에 구현체만 추가하면 된다.
 - 12시진, "시간 모름", 사주 전용 라벨
 - 공휴일 데이터 조회, 국가 선택 UI
-- 영구송출 배지 같은 앱 고유 표시. 라이브러리는 종료일 없는 범위(`allowOpenEnd`)만 지원한다.
+- 영구송출 배지 같은 앱 고유 표시. 라이브러리는 종료일 없는 범위(`isOpenEndAllowed`)만 지원한다.
 - 요일별 시간대 편성기 (web-console `TimePicker`)
 - URL 쿼리 동기화. 제어 컴포넌트로 앱이 처리한다.
 - 여러 날짜 선택, 주·분기 선택, 직전 기간 비교, 초 단위, 12시간제, 날짜+시간 한 칸 입력
@@ -53,7 +53,7 @@
 ### 2.2 공통 기능
 
 - 제약: `min`, `max`, `isDateDisabled(date)`. 역법 지원 범위는 자동으로 합쳐진다.
-- 범위 제약: `minDays`, `maxDays`, `limitMode: 'block' | 'flag'`, `allowOpenEnd`
+- 범위 제약: `minDays`, `maxDays`, `limitMode: 'block' | 'flag'`, `isOpenEndAllowed`
 - 확정 방식: `commitMode: 'immediate' | 'confirm'`. confirm이면 임시 선택과 확정 값을 분리한다. 확정하지 않고 닫으면 임시 값을 버린다.
 - 프리셋 지원 API: 범위를 넣어 선택, `validateRange`, `isSameRange`. 프리셋 버튼 UI와 라벨은 앱 몫이다.
 - 오늘로 이동. "오늘"은 IANA `timeZone` 기준으로 계산하거나 `today`로 직접 주입한다.
@@ -113,7 +113,7 @@ react: useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) → Conte
 | 날짜 (양력 입력) | `YYYY-MM-DD` | `'2026-10-14'` |
 | 날짜 (음력 입력) | `YYYY-MM-DD[u-ca=dangi]`. 앞부분은 같은 날의 양력 ISO 날짜 | `'2026-10-14[u-ca=dangi]'` |
 | 범위 | `{ start: DateString; end: DateString \| null } \| null` | |
-| 시간 | `HH:mm`. `24:00`은 `allow24` 옵션일 때만 | `'14:30'` |
+| 시간 | `HH:mm`. `24:00`은 `isEndOfDayAllowed` 옵션일 때만 | `'14:30'` |
 | 월 | `YYYY-MM` | `'2026-10'` |
 
 - Temporal(`Temporal.PlainDate.from`)이 그대로 읽을 수 있는 형식이다.
@@ -126,8 +126,8 @@ react: useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) → Conte
 - **입구 한 곳에서만 해석한다.** `value`/`defaultValue`는 일반 `string`도 받는다. 경계에서 한 번 해석하고, 내부는 epoch day 정수만 다룬다. 잘못된 값은 `null`로 취급하고, 개발 모드 경고와 `onInvalidValue` 콜백으로 알린다.
 - **정규 형식은 하나다.** 출력은 항상 0을 채운 형식이고, 역법 표기는 `[u-ca=dangi]` 하나뿐이다. 입력도 같은 엄격한 형식만 받는다(`'2026-1-5'`는 거부). 그래서 같은 날짜·같은 역법은 항상 `===`로 같다.
 - **같은 날 비교**: 입력 역법이 달라도 같은 날인지는 `isSameDay(a, b)`로 비교한다.
-- **범위 불변식**: `start ≤ end`이며, 어긋나면 store가 순서를 바꾼다. `end: null`은 선택 중이거나 `allowOpenEnd`일 때만 허용한다. 양 끝은 같은 역법을 쓴다.
-- **시간 불변식**: `24:00`은 `allow24`이고 분이 0일 때만 허용한다. 날짜와 함께 쓸 때 다음 날로 바꾸지 않는다.
+- **범위 불변식**: `start ≤ end`이며, 어긋나면 store가 순서를 바꾼다. `end: null`은 선택 중이거나 `isOpenEndAllowed`일 때만 허용한다. 양 끝은 같은 역법을 쓴다.
+- **시간 불변식**: `24:00`은 `isEndOfDayAllowed`이고 분이 0일 때만 허용한다. 날짜와 함께 쓸 때 다음 날로 바꾸지 않는다.
 
 ### 4.3 내부 표현
 
@@ -214,7 +214,7 @@ type ValidationReason =
 | selection (range) | 확정 범위, 임시 범위, 시작점(anchor), 미리보기 끝점, 잡은 끝점 | 누름, 칸 진입(날짜), 뗌, 끝점 잡기, 범위 넣기, 확정, 취소, 지우기 |
 | field | 칸 배열(로케일 순서), 타이핑 버퍼 | 숫자 입력, 지우기, 칸 이동, 붙여넣기, 증감 |
 | column | 항목 목록(값 기준), 선택 값 | 선택, 항목 목록 교체(없어진 값은 가장 가까운 값으로 맞춤) |
-| time | 시·분 | 분 간격, `allow24`. 입력 칸과 휠이 함께 쓴다 |
+| time | 시·분 | 분 간격, `isEndOfDayAllowed`. 입력 칸과 휠이 함께 쓴다 |
 
 - 범위 드래그는 좌표가 아니라 "어느 날짜 칸에 들어왔는지"만 store로 보낸다.
 - 휠 관성은 `gestures`의 순수 함수로 계산한다. 애니메이션 루프는 바인딩이 돌리고 ref로 직접 transform을 갱신한다. store에는 멈췄을 때만 반영한다.
