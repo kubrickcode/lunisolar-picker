@@ -1,4 +1,4 @@
-import { LunisolarPickerError } from '@lunisolar-picker/calendar';
+import { LunisolarPickerError, type TimeString } from '@lunisolar-picker/calendar';
 import { describe, expect, it } from 'vitest';
 import { reduceEvents } from '../testing/reduce-events';
 import { timeString } from '../testing/time-string';
@@ -121,5 +121,33 @@ describe('time field', () => {
 
   it('rejects a minuteStep that does not divide an hour', () => {
     expect(() => createTimeFieldState(null, { isEndOfDayAllowed: false, minuteStep: 7 })).toThrow(LunisolarPickerError);
+  });
+
+  describe('24:00 while end of day is disallowed', () => {
+    it('keeps hour 24 from the initial value and reports invalid-time', () => {
+      const state = createTimeFieldState(timeString('24:00'), FIVE_MINUTES);
+
+      expect(state.segments.map((segment) => segment.value)).toEqual([24, 0]);
+      expect(state.segments[0]?.maxValue).toBe(23);
+      expect(timeFieldResult(state, FIVE_MINUTES)).toMatchObject({
+        time: null,
+        validity: { reasons: ['invalid-time'] },
+      });
+    });
+
+    it('keeps hour 24 when the value is synced', () => {
+      const emptyState = createTimeFieldState(null, FIVE_MINUTES);
+
+      const synced = timeFieldReducer(emptyState, { type: 'value.sync', time: timeString('24:00') }, FIVE_MINUTES);
+
+      expect(synced.segments.map((segment) => segment.value)).toEqual([24, 0]);
+      expect(timeFieldResult(synced, FIVE_MINUTES).validity.reasons).toEqual(['invalid-time']);
+    });
+
+    it('leaves the segments empty for a malformed value', () => {
+      const state = createTimeFieldState('25:61' as TimeString, END_OF_DAY); // as: 형식이 틀린 값에도 칸이 비는지 보려고 브랜드 없이 넘김
+
+      expect(state.segments.map((segment) => segment.value)).toEqual([null, null]);
+    });
   });
 });

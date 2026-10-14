@@ -38,7 +38,8 @@ export interface TimeFieldState extends SegmentGroup<TimeSegmentKind> {}
 
 export const createTimeFieldState = (initial: TimeString | null, context: TimeFieldContext): TimeFieldState => {
   assertMinuteStep(context.minuteStep);
-  const parsed = initial === null ? null : parseTime(initial, { isEndOfDayAllowed: context.isEndOfDayAllowed });
+  // Constraint: 올바른 형식의 24:00은 허용 여부와 상관없이 칸에 담음. 허용되지 않으면 값을 지우지 않고 timeFieldResult가 invalid-time으로 알림
+  const parsed = initial === null ? null : parseTime(initial, { isEndOfDayAllowed: true });
   const time = parsed?.isOk ? parsed.value : null;
   return {
     focusedIndex: null,

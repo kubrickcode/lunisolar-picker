@@ -68,6 +68,29 @@ const EndOfDayHarness = ({
   );
 };
 
+const EchoingParent = ({
+  onInvalidValue,
+  onValueChange,
+}: Pick<EndOfDayHarnessProps, 'onInvalidValue' | 'onValueChange'>) => {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <>
+      <TimeField.Root
+        aria-label="Time"
+        value={value}
+        onInvalidValue={onInvalidValue}
+        onValueChange={(next) => {
+          onValueChange(next);
+          setValue(next);
+        }}
+      />
+      <button type="button" onClick={() => setValue('24:00')}>
+        Parent sets 24:00
+      </button>
+    </>
+  );
+};
+
 const clearBothSegments = async (screen: Awaited<ReturnType<typeof render>>): Promise<void> => {
   for (const name of ['Hour', 'Minute']) {
     await screen.getByRole('spinbutton', { name }).click();
@@ -266,6 +289,30 @@ describe('TimeField', () => {
       await expect.element(screen.getByRole('group')).not.toHaveAttribute('data-invalid');
       expect(screen.getByRole('group').element().textContent).toBe('HH:mm');
     });
+  });
+
+  it('shows a 24:00 the parent sets after mount while disallowed, and again after the user clears it', async () => {
+    const onValueChange = vi.fn();
+    const onInvalidValue = vi.fn();
+    const screen = await render(<EchoingParent onInvalidValue={onInvalidValue} onValueChange={onValueChange} />);
+
+    await screen.getByRole('button', { name: 'Parent sets 24:00' }).click();
+
+    await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveAttribute('aria-valuetext', '24');
+    await expect.element(screen.getByRole('group')).toHaveAttribute('data-invalid');
+    await settleEffects();
+    expect(onValueChange.mock.calls).toEqual([]);
+    expect(onInvalidValue.mock.calls).toEqual([]);
+
+    await screen.getByRole('spinbutton', { name: 'Hour' }).click();
+    await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveFocus();
+    await userEvent.keyboard('{Backspace}');
+    await expect.poll(() => onValueChange.mock.calls.map(([value]) => value)).toEqual([null]);
+
+    await screen.getByRole('button', { name: 'Parent sets 24:00' }).click();
+
+    await expect.element(screen.getByRole('spinbutton', { name: 'Hour' })).toHaveAttribute('aria-valuetext', '24');
+    await expect.element(screen.getByRole('group')).toHaveAttribute('data-invalid');
   });
 
   it('empties the field when the parent sets null after the flip', async () => {

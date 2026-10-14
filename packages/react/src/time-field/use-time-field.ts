@@ -62,7 +62,7 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
   // Goal: 시 칸 최댓값(23 또는 24)은 store 생성 때 고정되므로 24:00 허용 여부가 바뀌면 store를 새로 만듦. 이전 칸 값은 유지해 onValueChange가 불리지 않음 (preflight 3.9)
   const { state, send } = useStoreInstance(
     (previous: TimeFieldState | undefined) =>
-      rebuildWithContext(previous ?? createTimeFieldState(initialValue, withEndOfDayAllowed(context)), context),
+      previous === undefined ? createTimeFieldState(initialValue, context) : rebuildWithContext(previous, context),
     timeFieldReducer,
     context,
     { resetKey: String(isEndOfDayAllowed) },
@@ -92,13 +92,7 @@ export const useTimeField = (props: UseTimeFieldProps): TimeFieldApi => {
     committedValue: storeTime,
     controlled,
     isEqual: Object.is,
-    // Constraint: value.sync는 허용되지 않은 24:00을 비우므로, 허용되지 않을 때는 붙여넣기로 칸에 그대로 넣음
-    syncStore: (next) =>
-      send(
-        next === END_OF_DAY && !isEndOfDayAllowed
-          ? { type: 'text.paste', text: END_OF_DAY }
-          : { type: 'value.sync', time: next },
-      ),
+    syncStore: (next) => send({ type: 'value.sync', time: next }),
     // Goal: 허용되지 않는 24:00은 제약 위반으로 화면에 남기되 부모에게는 빈 값으로 알림
     toPublic: (time) => (time === END_OF_DAY && !isEndOfDayAllowed ? null : time),
     onValueChange: (next) => props.onValueChange?.(next, { validity: result.validity }),
