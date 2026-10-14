@@ -18,19 +18,6 @@ import { useMergedRefs } from '../utilities/use-merged-refs';
 const POPOVER_OFFSET_PIXELS = 8;
 const VIEWPORT_PADDING_PIXELS = 8;
 
-export interface UsePopoverProps {
-  readonly open?: boolean | undefined;
-  readonly defaultOpen?: boolean | undefined;
-  readonly onOpenChange?: ((open: boolean) => void) | undefined;
-  readonly placement?: Placement | undefined;
-}
-
-export type PopoverTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> &
-  DataAttributeProps & { readonly ref: RefCallback<HTMLButtonElement> };
-
-export type PopoverContentProps = HTMLAttributes<HTMLDivElement> &
-  DataAttributeProps & { readonly ref: RefCallback<HTMLDivElement>; readonly style: CSSProperties };
-
 export interface PopoverApi {
   readonly isOpen: boolean;
   readonly contentId: string;
@@ -38,6 +25,19 @@ export interface PopoverApi {
   closeAndRestoreFocus(): void;
   getTriggerProps(): PopoverTriggerProps;
   getContentProps(): PopoverContentProps;
+}
+
+export type PopoverContentProps = HTMLAttributes<HTMLDivElement> &
+  DataAttributeProps & { readonly ref: RefCallback<HTMLDivElement>; readonly style: CSSProperties };
+
+export type PopoverTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  DataAttributeProps & { readonly ref: RefCallback<HTMLButtonElement> };
+
+export interface UsePopoverProps {
+  readonly open?: boolean | undefined;
+  readonly defaultOpen?: boolean | undefined;
+  readonly onOpenChange?: ((open: boolean) => void) | undefined;
+  readonly placement?: Placement | undefined;
 }
 
 export const usePopover = ({
@@ -90,12 +90,19 @@ export const usePopover = ({
     return () => document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
   }, [isOpen, setOpen]);
 
-  const onContentKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
+  useEffect(() => {
+    if (!isOpen) return;
+    // Goal: 포커스가 아직 안 옮겨졌거나 body에 있어도 Esc로 닫히게 함
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
       event.preventDefault();
       closeAndRestoreFocus();
-      return;
-    }
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, closeAndRestoreFocus]);
+
+  const onContentKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (contentRef.current) trapTabKey(event, contentRef.current);
   };
 

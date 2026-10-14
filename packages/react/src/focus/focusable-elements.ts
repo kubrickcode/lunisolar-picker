@@ -2,12 +2,12 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 const AUTOFOCUS_SELECTOR = '[data-autofocus]';
 const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([tabindex="-1"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[contenteditable="true"]',
+  'a[href]:not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
+  'input:not([disabled]):not([type="hidden"]):not([tabindex="-1"])',
+  'select:not([disabled]):not([tabindex="-1"])',
+  'textarea:not([disabled]):not([tabindex="-1"])',
+  '[contenteditable="true"]:not([tabindex="-1"])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
@@ -20,7 +20,7 @@ export const focusInitialElement = (container: HTMLElement): void => {
 
 export const getFocusableElements = (container: HTMLElement): HTMLElement[] =>
   Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (element) => !element.closest('[inert]'),
+    (element) => !element.closest('[inert]') && isRendered(element),
   );
 
 export const trapTabKey = (event: KeyboardEvent | ReactKeyboardEvent, container: HTMLElement): void => {
@@ -30,11 +30,16 @@ export const trapTabKey = (event: KeyboardEvent | ReactKeyboardEvent, container:
   const last = focusableElements.at(-1);
   if (!first || !last) {
     event.preventDefault();
+    container.focus({ preventScroll: true });
     return;
   }
-  const isLeavingStart = event.shiftKey && document.activeElement === first;
-  const isLeavingEnd = !event.shiftKey && document.activeElement === last;
+  const isTabbableFocused = focusableElements.includes(document.activeElement as HTMLElement); // as: activeElement는 목록 비교용 요소임
+  const isLeavingStart = event.shiftKey && (!isTabbableFocused || document.activeElement === first);
+  const isLeavingEnd = !event.shiftKey && (!isTabbableFocused || document.activeElement === last);
   if (!isLeavingStart && !isLeavingEnd) return;
   event.preventDefault();
   (isLeavingStart ? last : first).focus();
 };
+
+// Constraint: display:none 요소는 클라이언트 사각형이 없음. checkVisibility는 WebKit 지원이 늦어 사용하지 않음
+const isRendered = (element: HTMLElement): boolean => element.getClientRects().length > 0;

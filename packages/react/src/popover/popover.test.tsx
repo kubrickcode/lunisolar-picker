@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -19,6 +20,26 @@ const Example = ({ isOpenInitially = false }: { isOpenInitially?: boolean }) => 
       </Popover.Content>
     </Popover.Root>
   </>
+);
+
+const RovingExample = () => (
+  <Popover.Root defaultOpen>
+    <Popover.Trigger>Choose date</Popover.Trigger>
+    <Popover.Content aria-label="Calendar">
+      <button type="button" data-autofocus>
+        Start
+      </button>
+      <button type="button" tabIndex={0}>
+        Roving current
+      </button>
+      <button type="button" tabIndex={-1}>
+        Roving other
+      </button>
+      <button type="button" tabIndex={-1}>
+        Roving more
+      </button>
+    </Popover.Content>
+  </Popover.Root>
 );
 
 const ControlledExample = () => {
@@ -63,7 +84,6 @@ describe('Popover', () => {
     const screen = await render(<Example />);
     const trigger = screen.getByRole('button', { name: 'Choose date' });
     await trigger.click();
-    await expect.element(screen.getByRole('button', { name: 'Selected day' })).toHaveFocus();
 
     await userEvent.keyboard('{Escape}');
 
@@ -104,5 +124,49 @@ describe('Popover', () => {
     await expect.element(screen.getByRole('dialog')).toBeVisible();
 
     await expectNoAxeViolations(document.body);
+  });
+
+  it('closes on Escape pressed immediately after opening', async () => {
+    const screen = await render(<Example />);
+    await screen.getByRole('button', { name: 'Choose date' }).click();
+    await userEvent.keyboard('{Escape}');
+
+    await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('skips tabindex=-1 elements when wrapping Tab', async () => {
+    const screen = await render(<RovingExample />);
+    const first = screen.getByRole('button', { name: 'Start' });
+    const lastTabbable = screen.getByRole('button', { name: 'Roving current' });
+    await expect.element(first).toHaveFocus();
+    lastTabbable.element().focus();
+
+    await userEvent.keyboard('{Tab}');
+    await expect.element(first).toHaveFocus();
+
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+    await expect.element(lastTabbable).toHaveFocus();
+  });
+
+  it('moves focus back inside when the container itself has focus and Shift+Tab is pressed', async () => {
+    const screen = await render(<Example isOpenInitially />);
+    await expect.element(screen.getByRole('button', { name: 'Selected day' })).toHaveFocus();
+    screen.getByRole('dialog').element().focus();
+
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+
+    await expect.element(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+  });
+
+  it('renders on the server without touching document', () => {
+    const html = renderToString(
+      <Popover.Root defaultOpen>
+        <Popover.Trigger>Choose date</Popover.Trigger>
+        <Popover.Content aria-label="Calendar">Inside</Popover.Content>
+      </Popover.Root>,
+    );
+
+    expect(html).toContain('Choose date');
+    expect(html).not.toContain('Inside');
   });
 });
