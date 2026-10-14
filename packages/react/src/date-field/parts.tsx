@@ -71,7 +71,7 @@ export const HiddenInput = (props: Partial<HiddenInputProps>): ReactElement | nu
   return <HiddenInputElement {...field.getHiddenInputProps()} {...props} />;
 };
 
-// Goal: 윤달이 있는 역법으로 입력할 때만 보임. 그해 해당 달에 윤달이 없으면 비활성 (스펙 2.1, 계약 §2.7 ⑧)
+// Goal: 윤달이 있는 역법으로 입력할 때만 보임. 그해 해당 달에 윤달이 없으면 비활성이지만, 윤달 표시가 켜져 있는 동안은 끌 수 있게 활성으로 둠 (스펙 2.1, 계약 §2.7 ⑧)
 export const LeapMonthToggle = ({ render, children, ...props }: LeapMonthToggleProps): ReactElement | null => {
   const field = useDateFieldContext();
   if (!hasLeapMonths(field.entryCalendar)) return null;

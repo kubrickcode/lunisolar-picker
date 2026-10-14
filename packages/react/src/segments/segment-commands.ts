@@ -7,6 +7,8 @@ const DELETE_INPUT_TYPES: ReadonlySet<string> = new Set([
   'deleteWordBackward',
 ]);
 const DIGIT_PATTERN = /^\d$/;
+const LEAP_MONTH_KEY_CODE = 'KeyL';
+const LEAP_MONTH_KEYS: ReadonlySet<string> = new Set(['L', 'l']);
 const SEPARATOR_CHARACTERS: ReadonlySet<string> = new Set(['.', '-', '/', ':', ' ', ',']);
 const TEXT_INPUT_TYPES: ReadonlySet<string> = new Set(['insertCompositionText', 'insertReplacementText', 'insertText']);
 
@@ -18,6 +20,8 @@ export type SegmentCommand =
 
 export type SegmentKeyOptions = {
   readonly canToggleLeapMonth: boolean;
+  // Goal: 한글 입력 상태에서는 L 자리 키의 key가 'ㅣ'라서 물리 키 위치(code)로도 윤달 단축키를 알아봄
+  readonly code?: string | undefined;
   readonly isRightToLeft: boolean;
 };
 
@@ -29,6 +33,9 @@ export const commandsFromInput = (inputType: string, data: string | null): reado
 };
 
 export const commandFromKey = (key: string, options: SegmentKeyOptions): SegmentCommand | null => {
+  if (LEAP_MONTH_KEYS.has(key) || options.code === LEAP_MONTH_KEY_CODE) {
+    return options.canToggleLeapMonth ? { type: 'leapMonth.toggle' } : null;
+  }
   const backward = options.isRightToLeft ? 1 : -1;
   switch (key) {
     case 'ArrowUp':
@@ -42,13 +49,13 @@ export const commandFromKey = (key: string, options: SegmentKeyOptions): Segment
     case 'Backspace':
     case 'Delete':
       return { type: 'segment.erase' };
-    case 'l':
-    case 'L':
-      return options.canToggleLeapMonth ? { type: 'leapMonth.toggle' } : null;
     default:
       return null;
   }
 };
+
+// Goal: 읽기 전용이어도 칸 사이 이동은 허용하고 값을 바꾸는 명령만 막음
+export const isNavigationCommand = (command: SegmentCommand): boolean => command.type === 'focus.shift';
 
 export const readPastedText = (event: ClipboardEvent): string => event.clipboardData?.getData('text/plain') ?? '';
 

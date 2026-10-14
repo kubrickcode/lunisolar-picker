@@ -2,7 +2,13 @@ import { type HTMLAttributes, type KeyboardEvent, type RefCallback, useCallback,
 import { type DataAttributeProps, type PartName, partAttributes } from '../contract/data-attributes';
 import { escapeHtml } from '../utilities/escape-html';
 import { useLatestRef } from '../utilities/use-latest-ref';
-import { commandFromKey, commandsFromInput, readPastedText, type SegmentCommand } from './segment-commands';
+import {
+  commandFromKey,
+  commandsFromInput,
+  isNavigationCommand,
+  readPastedText,
+  type SegmentCommand,
+} from './segment-commands';
 
 export type SegmentDescription = {
   readonly canToggleLeapMonth: boolean;
@@ -29,7 +35,6 @@ export type SegmentedFieldOptions = {
   readonly isInvalid: boolean;
   readonly isReadOnly: boolean;
   readonly isRequired: boolean;
-  readonly segmentCount: number;
   readonly segmentPart: PartName;
   readonly sendCommand: (command: SegmentCommand) => void;
 };
@@ -104,12 +109,15 @@ export const useSegmentedField = (options: SegmentedFieldOptions): SegmentedFiel
     const description = options.describeSegment(index);
     const isEditable = !options.isDisabled && !options.isReadOnly;
     const onKeyDown = (event: KeyboardEvent<HTMLSpanElement>): void => {
+      // Constraint: IME 조합 중인 키는 조합 입력의 몫. 여기서 막으면 조합이 깨짐
+      if (event.nativeEvent.isComposing || options.isDisabled) return;
       const isRightToLeft = getComputedStyle(event.currentTarget).direction === 'rtl';
       const command = commandFromKey(event.key, {
         isRightToLeft,
         canToggleLeapMonth: description.canToggleLeapMonth,
+        code: event.code,
       });
-      if (command === null || !isEditable) return;
+      if (command === null || (!isEditable && !isNavigationCommand(command))) return;
       event.preventDefault();
       options.sendCommand(command);
     };
@@ -134,7 +142,13 @@ export const useSegmentedField = (options: SegmentedFieldOptions): SegmentedFiel
       'aria-disabled': options.isDisabled || undefined,
       'aria-required': options.isRequired || undefined,
       onKeyDown,
-      onFocus: () => options.sendCommand({ type: 'segment.focus', index }),
+      // Constraint: tabIndex -1이어도 클릭하면 포커스가 감. 비활성 칸은 포커스·포커스 표시를 받지 않게 함
+      onMouseDown: (event) => {
+        if (options.isDisabled) event.preventDefault();
+      },
+      onFocus: () => {
+        if (!options.isDisabled) options.sendCommand({ type: 'segment.focus', index });
+      },
       onBlur: (event) => {
         const nextFocus = event.relatedTarget instanceof Node ? event.relatedTarget : null;
         if (!rootRef.current?.contains(nextFocus)) options.sendCommand({ type: 'segment.blur' });

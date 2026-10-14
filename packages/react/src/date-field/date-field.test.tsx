@@ -7,7 +7,34 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { DateFieldContext } from './date-field-context';
 import * as DateField from './parts';
+import { type UseDateFieldProps, useDateField } from './use-date-field';
+
+const SETTLE_FRAMES = 2;
+
+const CalendarSwitchingField = (props: UseDateFieldProps) => {
+  const field = useDateField(props);
+  return (
+    <DateFieldContext value={field}>
+      <div role="group" aria-label="Date" {...field.getRootProps()}>
+        {field.state.segments.map((segment, index) => (
+          <DateField.Segment key={segment.kind} index={index} />
+        ))}
+      </div>
+      <button type="button" onClick={() => field.setEntryCalendar('dangi')}>
+        Lunar entry
+      </button>
+    </DateFieldContext>
+  );
+};
+
+// Goal: 부정 단언 전에 늦게 도는 passive effect의 알림까지 기다림
+const settleEffects = async (): Promise<void> => {
+  for (let frame = 0; frame < SETTLE_FRAMES; frame += 1) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+};
 
 const dispatchPaste = (element: Element, text: string): void => {
   const event = new Event('paste', { bubbles: true, cancelable: true });
@@ -184,6 +211,7 @@ describe('DateField', () => {
     await screen.getByRole('button', { name: 'Next year' }).click();
 
     await expect.element(screen.getByRole('group')).toMatchTextContent('2027');
+    await settleEffects();
     expect(onValueChange).not.toHaveBeenCalled();
   });
 
@@ -214,7 +242,8 @@ describe('DateField', () => {
 
     await expect.element(screen.getByRole('group')).toMatchTextContent('1990. 윤05. 01');
     await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'dangi');
-    expect(onEntryCalendarChange).toHaveBeenCalledWith('dangi');
+    await settleEffects();
+    expect(onEntryCalendarChange).not.toHaveBeenCalled();
     expect(onValueChange).not.toHaveBeenCalled();
   });
 
@@ -229,7 +258,154 @@ describe('DateField', () => {
     );
 
     await expect.element(screen.getByRole('group')).toHaveTextContent('10/14/2026');
+    await settleEffects();
     expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  describe('entry calendar', () => {
+    it('keeps the calendar of a controlled value over defaultEntryCalendar on mount without callbacks', async () => {
+      const onValueChange = vi.fn();
+      const onEntryCalendarChange = vi.fn();
+      const screen = await render(
+        <DateField.Root
+          aria-label="Date"
+          locale={ko}
+          calendars={[dangi]}
+          value="2026-10-14"
+          defaultEntryCalendar="dangi"
+          onValueChange={onValueChange}
+          onEntryCalendarChange={onEntryCalendarChange}
+        />,
+      );
+
+      await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 14');
+      await settleEffects();
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(onEntryCalendarChange).not.toHaveBeenCalled();
+    });
+
+    it('keeps the calendar of a controlled value over a controlled entryCalendar on mount without callbacks', async () => {
+      const onValueChange = vi.fn();
+      const onEntryCalendarChange = vi.fn();
+      const screen = await render(
+        <DateField.Root
+          aria-label="Date"
+          locale={ko}
+          calendars={[dangi]}
+          value="2026-10-14"
+          entryCalendar="dangi"
+          onValueChange={onValueChange}
+          onEntryCalendarChange={onEntryCalendarChange}
+        />,
+      );
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'gregory');
+      await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 14');
+      await settleEffects();
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(onEntryCalendarChange).not.toHaveBeenCalled();
+    });
+
+    it('enters in defaultEntryCalendar when there is no value', async () => {
+      const screen = await render(
+        <DateField.Root aria-label="Date" locale={ko} calendars={[dangi]} defaultEntryCalendar="dangi" />,
+      );
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'dangi');
+      await expect.element(screen.getByRole('button', { name: ko.labels.leapMonth })).toBeInTheDocument();
+    });
+
+    it('applies a user calendar switch even when the parent keeps a controlled entryCalendar', async () => {
+      const onEntryCalendarChange = vi.fn();
+      const onValueChange = vi.fn();
+      const screen = await render(
+        <CalendarSwitchingField
+          locale={ko}
+          calendars={[dangi]}
+          defaultValue="1990-06-23"
+          entryCalendar="gregory"
+          onEntryCalendarChange={onEntryCalendarChange}
+          onValueChange={onValueChange}
+        />,
+      );
+
+      await screen.getByRole('button', { name: 'Lunar entry' }).click();
+
+      await expect.element(screen.getByRole('group')).toHaveAttribute('data-calendar', 'dangi');
+      expect(onEntryCalendarChange).toHaveBeenCalledWith('dangi');
+      await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('1990-06-23[u-ca=dangi]');
+    });
+  });
+
+  it('toggles the leap month from the L key position while a Korean IME is active', async () => {
+    const onValueChange = vi.fn();
+    const screen = await render(
+      <DateField.Root
+        aria-label="Date"
+        locale={ko}
+        calendars={[dangi]}
+        defaultEntryCalendar="dangi"
+        onValueChange={onValueChange}
+      />,
+    );
+    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
+    await userEvent.keyboard('199005');
+
+    screen
+      .getByRole('spinbutton', { name: ko.labels.day })
+      .element()
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'ㅣ', code: 'KeyL', bubbles: true, cancelable: true }));
+    await userEvent.keyboard('01');
+
+    await expect.poll(() => onValueChange.mock.calls.at(-1)?.[0]).toBe('1990-06-23[u-ca=dangi]');
+  });
+
+  it('moves between segments but keeps the value while read-only', async () => {
+    const onValueChange = vi.fn();
+    const screen = await render(
+      <DateField.Root aria-label="Date" locale={ko} readOnly defaultValue="2026-10-14" onValueChange={onValueChange} />,
+    );
+    await screen.getByRole('spinbutton', { name: ko.labels.year }).click();
+
+    await userEvent.keyboard('{ArrowRight}{ArrowUp}');
+
+    await expect.element(screen.getByRole('spinbutton', { name: ko.labels.month })).toHaveFocus();
+    await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 14');
+    await settleEffects();
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['disabled', { disabled: true }],
+    ['read-only', { readOnly: true }],
+  ])('ignores a paste while %s', async (_, flags) => {
+    const onValueChange = vi.fn();
+    const screen = await render(
+      <DateField.Root
+        aria-label="Date"
+        locale={ko}
+        defaultValue="2026-10-14"
+        onValueChange={onValueChange}
+        {...flags}
+      />,
+    );
+
+    dispatchPaste(screen.getByRole('spinbutton', { name: ko.labels.year }).element(), '1990.3.15');
+
+    await settleEffects();
+    await expect.element(screen.getByRole('group')).toHaveTextContent('2026. 10. 14');
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it('does not take focus from a click while disabled', async () => {
+    const screen = await render(<DateField.Root aria-label="Date" locale={ko} disabled defaultValue="2026-10-14" />);
+    const year = screen.getByRole('spinbutton', { name: ko.labels.year });
+
+    await userEvent.click(year, { force: true });
+
+    await settleEffects();
+    await expect.element(year).not.toHaveFocus();
+    await expect.element(year).not.toHaveAttribute('data-focused');
   });
 
   it('cannot be edited or focused while disabled', async () => {

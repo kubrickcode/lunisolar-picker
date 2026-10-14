@@ -1,10 +1,4 @@
-import {
-  type CalendarId,
-  type CalendarSystem,
-  type EpochDay,
-  LunisolarPickerError,
-  toMonthCode,
-} from '@lunisolar-picker/calendar';
+import { type CalendarId, type CalendarSystem, LunisolarPickerError, toMonthCode } from '@lunisolar-picker/calendar';
 import {
   createDateFieldState,
   type DateConstraints,
@@ -16,6 +10,9 @@ import {
   dateFieldResult,
   findCalendar,
   type PickerContext,
+  type Segment,
+  type SelectedDay,
+  supportedYearRange,
 } from '@lunisolar-picker/core';
 import {
   type ButtonHTMLAttributes,
@@ -24,6 +21,7 @@ import {
   type RefCallback,
   useEffect,
   useMemo,
+  useRef,
 } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { type SegmentDescription, type SegmentedField, useSegmentedField } from '../segments/use-segmented-field';
@@ -32,20 +30,21 @@ import type { PickerSettings } from '../settings/use-picker-settings';
 import { useStoreInstance } from '../store/use-store-instance';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
 
-const FIRST_MONTH = 1;
-const LAST_MONTH = 12;
 const MONTH_DAY_DIGITS = 2;
 const YEAR_DIGITS = 4;
 
 export type DateFieldCoreOptions = {
   readonly constraints: DateConstraints;
-  readonly entryCalendarId: CalendarId;
-  readonly initialEpochDay: EpochDay | null;
+  // Constraint: 초기 값이 있으면 무시됨. 값이 있으면 값의 역법이 입력 역법이 됨 (계약 §2.7 ②)
+  readonly initialEntryCalendarId: CalendarId;
+  readonly initialSelected: SelectedDay | null;
   readonly isDisabled: boolean;
   readonly isInvalidFromApp: boolean;
   readonly isReadOnly: boolean;
   readonly isRequired: boolean;
   readonly onFocusLeave?: (() => void) | undefined;
+  // Goal: 앱이 제어하는 entryCalendar. 마운트 뒤 바뀔 때만 store로 밀어 넣음
+  readonly requestedEntryCalendarId: CalendarId | undefined;
   readonly separator: string | undefined;
   readonly settings: PickerSettings;
 };
@@ -81,17 +80,14 @@ type DescribeDateSegmentInput = {
 };
 
 export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore => {
-  const { settings, constraints, entryCalendarId } = options;
+  const { settings, constraints, requestedEntryCalendarId } = options;
   const context = usePickerContext(settings, { constraints, commitMode: 'immediate', numberOfMonths: 1 });
   const { state, send } = useStoreInstance(
     (previous: DateFieldState | undefined) =>
       previous === undefined
         ? createDateFieldState(context, {
-            selected:
-              options.initialEpochDay === null
-                ? null
-                : { epochDay: options.initialEpochDay, calendarId: entryCalendarId },
-            entryCalendarId,
+            selected: options.initialSelected,
+            entryCalendarId: options.initialEntryCalendarId,
           })
         : reorderForLocale(previous, context),
     dateFieldReducer,
@@ -99,25 +95,34 @@ export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore =
     { resetKey: settings.locale.id },
   );
 
+  // Constraint: 마운트 때 값의 역법과 entryCalendar가 달라도 값의 역법을 유지함. prop이 실제로 바뀔 때만 밀어 넣어야 마운트에서 값이 바뀌고 onValueChange가 불리지 않음
+  const lastRequestedEntryCalendarIdRef = useRef(requestedEntryCalendarId);
   useEffect(() => {
-    if (state.entryCalendarId !== entryCalendarId) send({ type: 'calendar.set', calendarId: entryCalendarId });
-  }, [entryCalendarId, state.entryCalendarId, send]);
+    if (
+      requestedEntryCalendarId === undefined ||
+      requestedEntryCalendarId === lastRequestedEntryCalendarIdRef.current
+    ) {
+      return;
+    }
+    // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
+    lastRequestedEntryCalendarIdRef.current = requestedEntryCalendarId;
+    send({ type: 'calendar.set', calendarId: requestedEntryCalendarId });
+  }, [requestedEntryCalendarId, send]);
 
-  // Goal: 값 문자열과 윤달 판단은 store의 입력 역법을 따름. 부모가 다른 역법 값을 넣은 렌더에서 React 쪽 역법이 한 박자 늦어도 값이 바뀐 것처럼 보이지 않게 함 (preflight 3.1)
+  // Goal: 입력 역법의 단일 출처는 store. 값 문자열·윤달 판단·data-calendar가 모두 같은 역법을 봄
   const entryCalendar = findCalendar(settings.calendars, state.entryCalendarId);
   const result = useMemo(() => dateFieldResult(state, context), [state, context]);
   const isInvalid =
     options.isInvalidFromApp || (!result.validity.isValid && !result.validity.reasons.includes('incomplete'));
   const separator = options.separator ?? settings.locale.field.separator;
   const isLeapMonthInEnteredYear = hasLeapMonthIn(entryCalendar, {
-    year: segmentValueOf(state, 'year'),
-    month: segmentValueOf(state, 'month'),
+    year: segmentOf(state, 'year')?.value ?? null,
+    monthSegment: segmentOf(state, 'month'),
   });
   // Goal: 그해에 없는 윤달 표시가 남아 있으면 끌 수 있어야 함. 막으면 사용자가 invalid-date에서 빠져나올 수 없음
   const canToggleLeapMonth = isLeapMonthInEnteredYear || state.isLeapMonth;
 
   const segmentedField = useSegmentedField({
-    segmentCount: state.segments.length,
     focusedIndex: state.focusedIndex,
     describeSegment: (index) => describeDateSegment({ state, index, settings, canToggleLeapMonth }),
     sendCommand: send,
@@ -192,16 +197,17 @@ const describeDateSegment = ({
   };
 };
 
-// Constraint: 윤달 여부는 역법 id가 아니라 그해 실제 달 목록에서 판정함 (계약 §2.7 ⑧)
+// Constraint: 윤달 여부는 역법 id가 아니라 그해 실제 달 목록에서 판정함 (계약 §2.7 ⑧). 월 범위는 칸 한계를 단일 출처로 씀
 const hasLeapMonthIn = (
   calendar: CalendarSystem,
-  { year, month }: { readonly year: number | null; readonly month: number | null },
+  { year, monthSegment }: { readonly year: number | null; readonly monthSegment: Segment<DateSegmentKind> | undefined },
 ): boolean => {
-  if (year === null || month === null || !Number.isInteger(month) || month < FIRST_MONTH || month > LAST_MONTH) {
-    return false;
-  }
-  const isYearSupported = calendar.toEpochDay({ year, monthCode: toMonthCode(FIRST_MONTH, false), day: 1 }).isOk;
-  return isYearSupported && calendar.monthsInYear(year).includes(toMonthCode(month, true));
+  const month = monthSegment?.value ?? null;
+  if (year === null || monthSegment === undefined || month === null) return false;
+  const isMonthInRange = Number.isInteger(month) && month >= monthSegment.minValue && month <= monthSegment.maxValue;
+  const { firstYear, lastYear } = supportedYearRange(calendar);
+  const isYearSupported = year >= firstYear && year <= lastYear;
+  return isMonthInRange && isYearSupported && calendar.monthsInYear(year).includes(toMonthCode(month, true));
 };
 
 // Goal: 로케일이 바뀌면 칸 순서만 새 로케일로 바꾸고 입력 중인 숫자·윤달·역법은 그대로 둠. 확정 값이 같아 onValueChange가 다시 불리지 않음 (preflight 3.5)
@@ -214,5 +220,5 @@ const reorderForLocale = (previous: DateFieldState, context: PickerContext): Dat
   return { ...previous, segments: reordered, focusedIndex: focusedIndex < 0 ? null : focusedIndex };
 };
 
-const segmentValueOf = (state: DateFieldState, kind: DateSegmentKind): number | null =>
-  state.segments.find((segment) => segment.kind === kind)?.value ?? null;
+const segmentOf = (state: DateFieldState, kind: DateSegmentKind): Segment<DateSegmentKind> | undefined =>
+  state.segments.find((segment) => segment.kind === kind);

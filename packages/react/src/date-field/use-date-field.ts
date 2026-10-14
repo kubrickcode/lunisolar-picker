@@ -3,7 +3,6 @@ import type { DateConstraints } from '@lunisolar-picker/core';
 import { useMemo, useState } from 'react';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
-import { useControllableState } from '../utilities/use-controllable-state';
 import { formatOrNull } from '../value/format-or-null';
 import type { HiddenInputProps } from '../value/hidden-input';
 import { parseOptionalDate } from '../value/parse-controlled-value';
@@ -44,16 +43,13 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
   const [initialValue] = useState(
     () => controlled.value ?? parseOptionalDate(props.defaultValue, settings.calendars).value,
   );
-  const [entryCalendarId, setEntryCalendar] = useControllableState(
-    props.entryCalendar,
-    props.defaultEntryCalendar ?? (initialValue === null ? gregory.id : calendarIdOf(initialValue)),
-    props.onEntryCalendarChange,
-  );
   const core = useDateFieldCore({
     settings,
     constraints: props,
-    initialEpochDay: initialValue === null ? null : epochDayOf(initialValue),
-    entryCalendarId,
+    initialSelected:
+      initialValue === null ? null : { epochDay: epochDayOf(initialValue), calendarId: calendarIdOf(initialValue) },
+    initialEntryCalendarId: props.entryCalendar ?? props.defaultEntryCalendar ?? gregory.id,
+    requestedEntryCalendarId: props.entryCalendar,
     separator: props.separator,
     isDisabled: props.disabled === true,
     isReadOnly: props.readOnly === true,
@@ -67,8 +63,7 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
   );
   const { validity } = core.result;
 
-  // Constraint: 부모가 다른 역법으로 적힌 값을 주면 store가 그 역법으로 바뀜. React 쪽 입력 역법도 같은 배치에서 맞춰야 다음 이펙트가 옛 역법으로 되돌리지 않음 (preflight 3.1)
-  // Side effect: 그때 onEntryCalendarChange가 불림. 부모가 entryCalendar를 제어하며 거부하면 필드는 entryCalendar를 따름
+  // Constraint: 부모가 다른 역법으로 적힌 값을 주면 store의 입력 역법도 그 역법이 됨(값의 역법 우선). 부모가 한 일이라 onEntryCalendarChange는 부르지 않음
   useValueBridge<DateString>({
     committedValue: value,
     controlled,
@@ -77,19 +72,24 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
       core.send({
         type: 'value.sync',
         selected: next === null ? null : { epochDay: epochDayOf(next), calendarId: calendarIdOf(next) },
-        entryCalendarId: next === null ? entryCalendarId : calendarIdOf(next),
+        entryCalendarId: next === null ? core.state.entryCalendarId : calendarIdOf(next),
       });
-      if (next !== null) setEntryCalendar(calendarIdOf(next));
     },
     onValueChange: (next) => props.onValueChange?.(next, { validity }),
   });
 
   const focus = (): void => core.segmentedField.focusSegment(0);
+  // Constraint: 입력 칸은 부모가 거부해도 되돌리지 않음(useValueBridge와 같은 정책). 사용자가 바꾼 역법은 바로 반영하고 알림. 제어 prop은 다음에 바뀔 때 다시 밀어 넣음
+  const setEntryCalendar = (calendarId: CalendarId): void => {
+    if (calendarId === core.state.entryCalendarId) return;
+    core.send({ type: 'calendar.set', calendarId });
+    props.onEntryCalendarChange?.(calendarId);
+  };
 
   return {
     ...core,
     value,
-    entryCalendarId,
+    entryCalendarId: core.state.entryCalendarId,
     setEntryCalendar,
     focus,
     getHiddenInputProps: () => ({
