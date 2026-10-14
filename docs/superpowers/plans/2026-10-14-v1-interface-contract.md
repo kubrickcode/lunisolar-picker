@@ -173,6 +173,8 @@ listYearPage(calendar, pageStart: number, pageSize: number): readonly number[]  
 
 > 계약 변경(2026-10-14, M2 전체 리뷰): `shiftVisibleMonth`는 그 연도에 없는 `monthCode`를 받으면 `LunisolarPickerError`를 던진다. 호출자는 `constrainDateFields`·`visibleMonthOf`로 맞춘 월을 넘긴다.
 
+> 계약 변경(2026-10-14, M2 수정 재검토): 지원 범위 밖 칸(0001-01·9999-12 격자의 앞뒤 칸)은 경계 날짜로 고정한 `date`를 받고 `isOutsideSupportedRange`로 표시된다. 여러 칸이 같은 `date`를 가질 수 있으므로 바인딩은 칸을 `epochDay`로 key 하고, 표시는 `cell.day`를 쓴다.
+
 ### 2.5 navigation store [M2-T6]
 
 ```ts
@@ -189,6 +191,8 @@ navigationReducer: Reducer<NavigationState, NavigationEvent, PickerContext>
 ```
 
 > 계약 변경(2026-10-14, M2 전체 리뷰): ① `year.pick`은 고른 연도 안으로 포커스를 옮긴다(`constrainDateFields`로 맞춘 뒤 `boundsFor`로 자름). 보이는 달도 새 포커스에서 다시 정하므로 이후 `month.shift`가 그 연도에서 이어진다. ② `numberOfMonths > 1`인 `month.shift`는 마지막 보이는 달이 지원하는 마지막 달을(시작 쪽은 첫 달을) 넘지 않게 자른다. 같은 달 창이 중복해서 보이는 일이 없다.
+
+> 계약 변경(2026-10-14, M2 수정 재검토): 보이는 첫 달 상한(마지막 지원 달을 넘지 않음)은 `month.shift`뿐 아니라 초기 상태, `today.go`, `calendar.set`, `month.pick`, `year.pick`에 모두 적용된다.
 
 ### 2.6 selection store [M2-T7]
 
@@ -228,7 +232,8 @@ rangeSelectionReducer; displayedRange(state): EpochRange | null; rangeValidity(s
 >
 > 바인딩 주의점: (a) 그리기는 `displayedRange`로 하고, "선택 중"은 `anchor !== null`로 판단한다(`draft.end === null`이 아님). (b) `rangeValidity`는 표시·미리보기 범위의 유효성이다. `aria-invalid`는 committed 값의 유효성을 쓴다. (c) `value.sync`는 값 문자열이 바뀔 때만 보낸다. 진행 중인 anchor와 confirm 모드의 임시 draft가 지워진다. (d) 핸들을 잡은 뒤 start/end가 뒤바뀌어도 `grabbedHandle`은 처음 이름을 유지한다. (e) confirm 모드에서 닫을 때는 `cancel`을 보낸다(변화 없는 `commit`은 anchor를 남긴다).
 
-### 2.7 field store [M2-T8]
+> 계약 변경(2026-10-14, M2 수정 재검토): `commit`은 모드와 무관하게 `pointerPhase !== 'idle'`이거나 끝점을 잡고 있는 동안 아무 일도 하지 않는다. 바인딩은 `pointercancel`·`lostpointercapture`를 `pointer.up`으로 보내야 한다.
+
 ### 2.7 field store [M2-T8]
 
 ```ts
@@ -263,6 +268,8 @@ timeFieldReducer: Reducer<TimeFieldState, TimeFieldEvent, TimeFieldContext>; tim
 - 타이핑 중에는 날짜를 고치지 않는다. 결과가 유효하지 않으면 `'invalid-date'` 또는 `'incomplete'`.
 
 > 계약 변경(2026-10-14, M2 전체 리뷰): ① 붙여넣기 뒤 세그먼트 `value`가 `maxValue`를 넘을 수 있다. aria 값으로 쓰기 전에 자른다. ② `value.sync`의 `entryCalendarId`는 `selected`가 null일 때만 적용된다. ③ 세그먼트 순서는 생성 시점에 고정된다. 로케일이 바뀌면 새 상태를 만든다. ④ 입력 역법에서 표현할 수 없는 `selected`는 던지지 않고 빈 세그먼트가 된다. ⑤ `value.sync`는 값이 바뀔 때만 보낸다. ⑥ 시간 필드에 `"930"`을 붙여넣으면 09:30이다(3자리 한 덩어리 = 시 + 분, 4자리는 HHMM). ⑦ 연·월이 정해져 있으면 일 ↑/↓는 그 달의 일수 안에서, 연 ↑/↓는 지원 연도 범위 안에서 돈다. ⑧ 윤달 여부 판단은 역법 id 분기가 아니라 CalendarSystem에서 유도한다.
+
+> 계약 변경(2026-10-14, M2 수정 재검토): 윤달 표기 인식은 설정된 역법 중 윤달이 있는 역법의 표기만 쓴다(양력만 설정한 picker는 "Leap"를 읽지 않음). 증감은 먼저 그 달 범위로 값을 맞춘 뒤 돈다(2월에서 31 ↓ → 27). `hasLeapMonths`는 역법별 최초 1회 지원 연도를 훑어 캐시한다(양력 약 25ms, 저사양 기기는 더 걸릴 수 있음 — 후속 후보: CalendarSystem에 O(1) 플래그).
 
 ### 2.8 column store와 휠 모델 [M2-T9]
 
