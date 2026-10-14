@@ -33,9 +33,10 @@ describe('HiddenInput', () => {
       </form>,
     );
 
-    (screen.container.querySelector('input') as HTMLInputElement).focus(); // as: 바로 위에서 그린 input 하나
+    // Constraint: Firefox는 병렬 실행 중 창에 포커스가 없으면 .focus()의 focus 이벤트를 보내지 않을 때가 있어, 브라우저가 검증 메시지용으로 보내는 focusin을 직접 발생시킴
+    screen.container.querySelector('input')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 
-    await expect.poll(() => onFocusRequest.mock.calls.length).toBe(1);
+    expect(onFocusRequest).toHaveBeenCalledOnce();
   });
 
   it('renders nothing without a name', async () => {
