@@ -400,8 +400,8 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 | `TimeField.{Root, Segment({ index }), Separator, HiddenInput}`, `useTimeField` | `minuteStep`, `isEndOfDayAllowed` |
 | `Wheel.{Root, Column, Item, Highlight}`, `useWheel` | `Wheel.Column`은 `useWheel` props(`options`, `value`, `onValueChange`, `isEqual?`, `label`, `disabled?`)와 `renderItem?`을 받음 |
 | `useWheelDate(props): WheelDateApi` | `{ fields; columns: WheelDateColumns; value; entryCalendarId; labels: { year; month; day }; selectYear; selectMonth; selectDay; setEntryCalendar }` |
-| `Popover.{Root, Trigger, Content, Close}`, `usePopover`, `usePopoverContext` | Content는 닫히면 언마운트. `Close`에 `onClick`을 주면 앱 핸들러가 먼저 돈 뒤 닫힘 |
-| `Sheet.{Root, Content, Close}`, `useSheet`, `useSheetContext` | Trigger 없음(열림은 앱이 `open`으로 제어). Content는 닫히면 언마운트 |
+| `Popover.{Root, Trigger, Content, Close}`, `usePopover`, `usePopoverContext` | Content는 닫히면 언마운트되고, 마운트 후에만 포털을 그린다(SSR 안전). `Close`에 `onClick`을 주면 앱 핸들러가 먼저 돈 뒤 닫힘. Esc는 열린 동안 `document`에서 받되 `defaultPrevented`·`isComposing`이면 무시한다. 포커스 가두기는 레이아웃 기반이라 jsdom에서는 동작하지 않는다(M5 문서) |
+| `Sheet.{Root, Content, Close}`, `useSheet`, `useSheetContext` | Trigger 없음(열림은 앱이 `open`으로 제어). Content는 닫히면 언마운트. `SheetApi`에 `titleId`는 없다. 이름은 `Content`의 `aria-label`로 준다. 스크롤 잠금과 형제 inert는 참조 계수라 겹쳐 열어도 닫는 순서와 무관하다 |
 | `usePresentation(presentation)`, `resolvePresentation`, `type Presentation = 'auto' \| 'popover' \| 'sheet'` | |
 
 ### 3.4 달력 부품 [M4-T1~T7]
