@@ -6,7 +6,13 @@ import { en } from '../locales/en';
 import { ja } from '../locales/ja';
 import { createTestContext } from '../testing/create-test-context';
 import { reduceEvents } from '../testing/reduce-events';
-import { createDateFieldState, type DateFieldEvent, dateFieldReducer, dateFieldResult } from './date-field';
+import {
+  createDateFieldState,
+  type DateFieldEvent,
+  dateFieldReducer,
+  dateFieldResult,
+  hasLeapMonths,
+} from './date-field';
 
 function typed(digits: string): DateFieldEvent[] {
   return [
@@ -436,5 +442,12 @@ describe('date field', () => {
 
       expect(dateFieldReducer(focused, { type: 'segment.step', amount: 1 }, lateContext).segments[0]?.value).toBe(2050);
     });
+  });
+});
+
+describe('hasLeapMonths', () => {
+  it('derives leap month support from the calendar data', () => {
+    expect(hasLeapMonths(dangi)).toBe(true);
+    expect(hasLeapMonths(gregory)).toBe(false);
   });
 });

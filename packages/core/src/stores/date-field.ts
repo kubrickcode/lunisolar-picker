@@ -164,6 +164,19 @@ export const dateFieldResult = (state: DateFieldState, context: PickerContext): 
   return { epochDay: epochDay.value, validity: validateEpochDay(epochDay.value, context.constraints) };
 };
 
+// Constraint: 윤달 지원 여부는 역법 id가 아니라 역법 데이터로 판정함 (스펙 3.2 — core는 역법 종류로 분기하지 않음)
+export const hasLeapMonths = (calendar: CalendarSystem): boolean => {
+  const cached = LEAP_MONTH_SUPPORT_CACHE.get(calendar);
+  if (cached !== undefined) return cached;
+  const { firstYear, lastYear } = supportedYearRange(calendar);
+  const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
+  const hasLeap = years.some((year) =>
+    calendar.monthsInYear(year).some((monthCode) => parseMonthCode(monthCode).isLeapMonth),
+  );
+  LEAP_MONTH_SUPPORT_CACHE.set(calendar, hasLeap);
+  return hasLeap;
+};
+
 // Goal: 윤달이 없는 역법에서 붙여넣기로 남은 윤달 표시는 월 칸을 고치면 풀림. 토글이 막혀 있어도 유효한 날짜로 돌아올 수 있게 함
 const clearStaleLeapFlag = ({ edited, event, scope }: StaleLeapFlagInput): DateFieldState => {
   const focused = focusedSegmentOf(scope.state);
@@ -180,19 +193,6 @@ const focusedSegmentOf = (state: DateFieldState): Segment<DateSegmentKind> | und
 
 const entryCalendarOf = ({ context, state }: DateFieldScope): CalendarSystem =>
   findCalendar(context.calendars, state.entryCalendarId);
-
-// Constraint: 윤달 지원 여부는 역법 id가 아니라 역법 데이터로 판정함 (스펙 3.2 — core는 역법 종류로 분기하지 않음)
-const hasLeapMonths = (calendar: CalendarSystem): boolean => {
-  const cached = LEAP_MONTH_SUPPORT_CACHE.get(calendar);
-  if (cached !== undefined) return cached;
-  const { firstYear, lastYear } = supportedYearRange(calendar);
-  const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index);
-  const hasLeap = years.some((year) =>
-    calendar.monthsInYear(year).some((monthCode) => parseMonthCode(monthCode).isLeapMonth),
-  );
-  LEAP_MONTH_SUPPORT_CACHE.set(calendar, hasLeap);
-  return hasLeap;
-};
 
 const partsOfFields = (fields: DateFields): DatePartsOfDay => {
   const { month, isLeapMonth } = parseMonthCode(fields.monthCode);

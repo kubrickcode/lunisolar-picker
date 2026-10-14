@@ -47,7 +47,7 @@ export { defineLocale } from './locales/locale-data';
 export type { ColumnEvent, ColumnOption, ColumnState } from './stores/column';
 export { columnReducer, createColumnState, selectedColumnValue } from './stores/column';
 export type { DateFieldEvent, DateFieldResult, DateFieldState } from './stores/date-field';
-export { createDateFieldState, dateFieldReducer, dateFieldResult } from './stores/date-field';
+export { createDateFieldState, dateFieldReducer, dateFieldResult, hasLeapMonths } from './stores/date-field';
 export type { CalendarView, FocusUnit, NavigationEvent, NavigationState } from './stores/navigation';
 export { createNavigationState, navigationReducer, YEAR_PAGE_SIZE } from './stores/navigation';
 export type {

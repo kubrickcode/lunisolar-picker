@@ -1,5 +1,10 @@
 export type { DataAttribute, DataAttributeProps, PartName } from './contract/data-attributes';
 export { DATA_ATTRIBUTES, PART_NAMES } from './contract/data-attributes';
+export { useDateFieldContext } from './date-field/date-field-context';
+export * as DateField from './date-field/parts';
+export type { DateFieldApi, UseDateFieldProps } from './date-field/use-date-field';
+export { useDateField } from './date-field/use-date-field';
+export type { DateFieldCore } from './date-field/use-date-field-core';
 export * as Popover from './popover/parts';
 export { usePopoverContext } from './popover/popover-context';
 export type { PopoverApi, UsePopoverProps } from './popover/use-popover';
