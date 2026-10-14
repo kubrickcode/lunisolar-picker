@@ -26,6 +26,5 @@ export interface CalendarSystem {
   fromEpochDay(epochDay: EpochDay): Result<DateFields, ValidationReason>;
 }
 
-export function isWithinSupportedRange(calendar: CalendarSystem, epochDay: EpochDay): boolean {
-  return epochDay >= calendar.supportedRange.min && epochDay <= calendar.supportedRange.max;
-}
+export const isWithinSupportedRange = (calendar: CalendarSystem, epochDay: EpochDay): boolean =>
+  epochDay >= calendar.supportedRange.min && epochDay <= calendar.supportedRange.max;

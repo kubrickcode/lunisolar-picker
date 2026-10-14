@@ -1,23 +1,17 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  brandEpochDay,
   civilFromEpochDay,
   daysInGregorianMonth,
-  type EpochDay,
   epochDayFromCivil,
   isGregorianLeapYear,
   weekdayOf,
 } from './epoch-day';
 
-const MILLISECONDS_PER_DAY = 86_400_000;
 const FIRST_SUPPORTED_EPOCH_DAY = -719_162;
 const LAST_SUPPORTED_EPOCH_DAY = 2_932_896;
-
-function platformEpochDay(year: number, month: number, day: number): number {
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  return Math.round(date.getTime() / MILLISECONDS_PER_DAY);
-}
+const MILLISECONDS_PER_DAY = 86_400_000;
 
 describe('epoch-day', () => {
   describe('epochDayFromCivil', () => {
@@ -48,13 +42,13 @@ describe('epoch-day', () => {
 
   describe('civilFromEpochDay', () => {
     it('reads negative epoch days before 1970 as the matching civil date', () => {
-      expect(civilFromEpochDay(-25_567 as EpochDay)).toEqual({ year: 1900, month: 1, day: 1 });
+      expect(civilFromEpochDay(brandEpochDay(-25_567))).toEqual({ year: 1900, month: 1, day: 1 });
     });
 
     it('round-trips every epoch day between year 1 and 9999', () => {
       fc.assert(
         fc.property(fc.integer({ min: FIRST_SUPPORTED_EPOCH_DAY, max: LAST_SUPPORTED_EPOCH_DAY }), (value) => {
-          const { year, month, day } = civilFromEpochDay(value as EpochDay);
+          const { year, month, day } = civilFromEpochDay(brandEpochDay(value));
           return epochDayFromCivil(year, month, day) === value;
         }),
       );
@@ -69,7 +63,7 @@ describe('epoch-day', () => {
       [20_740, 3],
       [LAST_SUPPORTED_EPOCH_DAY, 5],
     ])('returns weekday %i → %i with Sunday as 0', (epochDay, expected) => {
-      expect(weekdayOf(epochDay as EpochDay)).toBe(expected);
+      expect(weekdayOf(brandEpochDay(epochDay))).toBe(expected);
     });
   });
 
@@ -93,3 +87,9 @@ describe('epoch-day', () => {
     });
   });
 });
+
+const platformEpochDay = (year: number, month: number, day: number): number => {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return Math.round(date.getTime() / MILLISECONDS_PER_DAY);
+};

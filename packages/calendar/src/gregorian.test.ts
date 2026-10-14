@@ -1,9 +1,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { type EpochDay, epochDayFromCivil } from './epoch-day';
+import { brandEpochDay, epochDayFromCivil } from './epoch-day';
 import { LunisolarPickerError } from './errors';
 import { gregory } from './gregorian';
 import type { MonthCode } from './month-code';
+
+// as: deliberately invalid month codes are needed to exercise the rejection path of toEpochDay
+const asUnvalidatedMonthCode = (monthCode: string): MonthCode => monthCode as MonthCode;
 
 describe('gregory', () => {
   it('spans 0001-01-01 through 9999-12-31', () => {
@@ -49,11 +52,11 @@ describe('gregory', () => {
     });
 
     it.each([
-      [{ year: 2026, monthCode: 'M02' as MonthCode, day: 29 }],
-      [{ year: 2026, monthCode: 'M02L' as MonthCode, day: 1 }],
-      [{ year: 2026, monthCode: 'M13' as MonthCode, day: 1 }],
-      [{ year: 2026, monthCode: 'M01' as MonthCode, day: 0 }],
-      [{ year: 2026, monthCode: 'M01' as MonthCode, day: 1.5 }],
+      [{ year: 2026, monthCode: asUnvalidatedMonthCode('M02'), day: 29 }],
+      [{ year: 2026, monthCode: asUnvalidatedMonthCode('M02L'), day: 1 }],
+      [{ year: 2026, monthCode: asUnvalidatedMonthCode('M13'), day: 1 }],
+      [{ year: 2026, monthCode: asUnvalidatedMonthCode('M01'), day: 0 }],
+      [{ year: 2026, monthCode: asUnvalidatedMonthCode('M01'), day: 1.5 }],
     ])('reports invalid-date for %o', (fields) => {
       expect(gregory.toEpochDay(fields)).toEqual({ isOk: false, error: 'invalid-date' });
     });
@@ -68,14 +71,14 @@ describe('gregory', () => {
 
   describe('fromEpochDay', () => {
     it('reports outside-calendar-range one day past 9999-12-31', () => {
-      const pastLastDay = (gregory.supportedRange.max + 1) as EpochDay;
+      const pastLastDay = brandEpochDay(gregory.supportedRange.max + 1);
       expect(gregory.fromEpochDay(pastLastDay)).toEqual({ isOk: false, error: 'outside-calendar-range' });
     });
 
     it('round-trips every supported epoch day', () => {
       fc.assert(
         fc.property(fc.integer({ min: gregory.supportedRange.min, max: gregory.supportedRange.max }), (value) => {
-          const fields = gregory.fromEpochDay(value as EpochDay);
+          const fields = gregory.fromEpochDay(brandEpochDay(value));
           if (!fields.isOk) return false;
           const back = gregory.toEpochDay(fields.value);
           return back.isOk && back.value === value;
