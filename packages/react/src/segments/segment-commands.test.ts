@@ -50,6 +50,11 @@ describe('commandFromKey', () => {
     expect(commandFromKey('ㅣ', { ...leftToRight, code: 'KeyL' })).toEqual({ type: 'leapMonth.toggle' });
   });
 
+  it('leaves browser shortcuts such as Cmd+L and Ctrl+ArrowLeft to the browser', () => {
+    expect(commandFromKey('l', { ...leftToRight, code: 'KeyL', hasShortcutModifier: true })).toBeNull();
+    expect(commandFromKey('ArrowLeft', { ...leftToRight, hasShortcutModifier: true })).toBeNull();
+  });
+
   it('ignores the leap month key where no leap month applies and lets Tab pass', () => {
     expect(commandFromKey('l', { isRightToLeft: false, canToggleLeapMonth: false })).toBeNull();
     expect(commandFromKey('Tab', leftToRight)).toBeNull();

@@ -116,6 +116,7 @@ export const useSegmentedField = (options: SegmentedFieldOptions): SegmentedFiel
         isRightToLeft,
         canToggleLeapMonth: description.canToggleLeapMonth,
         code: event.code,
+        hasShortcutModifier: event.ctrlKey || event.metaKey || event.altKey,
       });
       if (command === null || (!isEditable && !isNavigationCommand(command))) return;
       event.preventDefault();

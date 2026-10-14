@@ -22,6 +22,8 @@ export type SegmentKeyOptions = {
   readonly canToggleLeapMonth: boolean;
   // Goal: 한글 입력 상태에서는 L 자리 키의 key가 'ㅣ'라서 물리 키 위치(code)로도 윤달 단축키를 알아봄
   readonly code?: string | undefined;
+  // Goal: Ctrl·Cmd·Alt 조합(주소창 이동 Cmd+L 등)은 브라우저 단축키라 가로채지 않음
+  readonly hasShortcutModifier?: boolean | undefined;
   readonly isRightToLeft: boolean;
 };
 
@@ -33,6 +35,7 @@ export const commandsFromInput = (inputType: string, data: string | null): reado
 };
 
 export const commandFromKey = (key: string, options: SegmentKeyOptions): SegmentCommand | null => {
+  if (options.hasShortcutModifier) return null;
   if (LEAP_MONTH_KEYS.has(key) || options.code === LEAP_MONTH_KEY_CODE) {
     return options.canToggleLeapMonth ? { type: 'leapMonth.toggle' } : null;
   }
