@@ -9,6 +9,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
 } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { focusInitialElement, trapTabKey } from '../focus/focusable-elements';
@@ -50,6 +51,7 @@ export const usePopover = ({
   const contentId = useId();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
   const { refs, floatingStyles } = useFloating({
     open: isOpen,
     placement,
@@ -62,7 +64,7 @@ export const usePopover = ({
     whileElementsMounted: autoUpdate,
   });
   const triggerRefCallback = useMergedRefs<HTMLButtonElement>(triggerRef, refs.setReference);
-  const contentRefCallback = useMergedRefs<HTMLDivElement>(contentRef, refs.setFloating);
+  const contentRefCallback = useMergedRefs<HTMLDivElement>(contentRef, refs.setFloating, setContentElement);
 
   const closeAndRestoreFocus = useCallback(() => {
     setOpen(false);
@@ -70,13 +72,12 @@ export const usePopover = ({
   }, [setOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    // Constraint: 하이드레이션 때는 콘텐츠가 클라이언트 마운트 뒤에 붙으므로 요소가 생긴 시점에 다시 실행돼야 함
+    if (!isOpen || !contentElement) return;
     // Intentionally deferred - 포털 콘텐츠가 붙고 위치가 잡힌 뒤에 포커스를 옮겨야 스크롤이 튀지 않음
-    const frame = requestAnimationFrame(() => {
-      if (contentRef.current) focusInitialElement(contentRef.current);
-    });
+    const frame = requestAnimationFrame(() => focusInitialElement(contentElement));
     return () => cancelAnimationFrame(frame);
-  }, [isOpen]);
+  }, [isOpen, contentElement]);
 
   useEffect(() => {
     if (!isOpen) return;

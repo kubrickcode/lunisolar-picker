@@ -127,7 +127,7 @@ describe('Popover', () => {
     );
 
     expect(recoverableErrors).toEqual([]);
-    expect(document.activeElement?.textContent).toBe('Selected day');
+    await expect.poll(() => document.activeElement?.textContent).toBe('Selected day');
     unmount();
   });
 

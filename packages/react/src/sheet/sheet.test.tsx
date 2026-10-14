@@ -112,7 +112,7 @@ describe('Sheet', () => {
     expect(recoverableErrors).toEqual([]);
     expect(document.body.style.position).toBe('fixed');
     expect(container.inert).toBe(true);
-    expect(document.activeElement?.textContent).toBe('Wheel');
+    await expect.poll(() => document.activeElement?.textContent).toBe('Wheel');
 
     unmount();
     expect(document.body.style.position).toBe('');
