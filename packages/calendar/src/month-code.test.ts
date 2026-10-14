@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LunisolarPickerError } from './errors';
-import { isMonthCode, parseMonthCode, toMonthCode } from './month-code';
+import { isMonthCode, type MonthCode, parseMonthCode, toMonthCode } from './month-code';
 
 describe('month-code', () => {
   describe('toMonthCode', () => {
@@ -25,6 +25,12 @@ describe('month-code', () => {
     it.each(['M00', 'M13', 'M1', 'm01', 'M01l', 'M01LL', ' M01'])('rejects %s', (value) => {
       expect(isMonthCode(value)).toBe(false);
     });
+  });
+
+  it('rejects parsing an invalid month code as a programmer error', () => {
+    const invalidMonthCode = 'M13' as MonthCode; // as: 잘못된 코드를 넘겼을 때의 거부 경로를 검증하려고 브랜드 타입으로 강제함
+
+    expect(() => parseMonthCode(invalidMonthCode)).toThrow(LunisolarPickerError);
   });
 
   it('parses a leap month code back into its parts', () => {

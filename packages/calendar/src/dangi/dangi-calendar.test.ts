@@ -38,6 +38,8 @@ const calendar = createDangiCalendar({
 describe('createDangiCalendar', () => {
   it('spans from the first lunar new year to the last known day', () => {
     expect(calendar.supportedRange).toEqual({ min: year2000.newYearEpochDay, max: lastEpochDay });
+    expect(calendar.fromEpochDay(calendar.supportedRange.min).isOk).toBe(true);
+    expect(calendar.fromEpochDay(calendar.supportedRange.max).isOk).toBe(true);
   });
 
   it('places the leap month right after its regular month', () => {

@@ -47,7 +47,7 @@ const formatParsedTime = (hour: number, minute: number, options: TimeOptions): R
   const isEndOfDayAllowed = options.isEndOfDayAllowed === true;
   if (!isValidTime({ hour, isEndOfDayAllowed, minute })) return err('invalid-time');
   const value = `${padNumber(hour, TIME_PART_DIGITS)}:${padNumber(minute, TIME_PART_DIGITS)}`;
-  return ok({ hour, minute, value: value as TimeString }); // as: brand — value is built from integer parts validated by isValidTime
+  return ok({ hour, minute, value: value as TimeString }); // as: brand — value는 isValidTime으로 검증한 정수 부분들로 조립함
 };
 
 // Constraint: 24:00은 하루의 끝을 뜻하는 표기라 분이 0일 때만 허용하고 다음 날로 바꾸지 않음 (스펙 4.2)

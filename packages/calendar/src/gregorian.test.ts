@@ -5,7 +5,7 @@ import { LunisolarPickerError } from './errors';
 import { gregory } from './gregorian';
 import type { MonthCode } from './month-code';
 
-// as: deliberately invalid month codes are needed to exercise the rejection path of toEpochDay
+// as: toEpochDay의 거부 경로를 검증하려고 일부러 잘못된 월 코드를 넘김
 const asUnvalidatedMonthCode = (monthCode: string): MonthCode => monthCode as MonthCode;
 
 describe('gregory', () => {

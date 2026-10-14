@@ -34,5 +34,5 @@ const toParsedMonth = (year: number, month: number): Result<ParsedMonth, Validat
   const isValidMonth = Number.isInteger(month) && month >= 1 && month <= 12;
   if (!isValidYear || !isValidMonth) return err('invalid-date');
   const value = `${padNumber(year, YEAR_DIGITS)}-${padNumber(month, MONTH_DIGITS)}`;
-  return ok({ year, month, value: value as MonthString }); // as: brand — value is built from integer parts validated above
+  return ok({ year, month, value: value as MonthString }); // as: brand — value는 위에서 검증한 정수 부분들로 조립함
 };

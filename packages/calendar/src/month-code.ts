@@ -19,7 +19,7 @@ export const toMonthCode = (month: number, isLeapMonth: boolean): MonthCode => {
     throw new LunisolarPickerError(`month must be an integer from 1 to 12, received ${month}`);
   }
   const value = `M${String(month).padStart(2, '0')}${isLeapMonth ? 'L' : ''}`;
-  return value as MonthCode; // as: template literal — the padded month and optional L suffix match MonthCode by construction
+  return value as MonthCode; // as: 템플릿 리터럴 — 두 자리 월과 선택적 L 접미사가 구조상 MonthCode와 일치함
 };
 
 export const isMonthCode = (value: string): value is MonthCode => MONTH_CODE_PATTERN.test(value);

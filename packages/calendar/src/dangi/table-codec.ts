@@ -52,7 +52,9 @@ export const decodeDangiYear = (year: number, encoded: number): DangiYearRecord 
 
 const assertEncodable = (record: DangiYearRecord, newYearOffset: number): void => {
   const problems = [
-    newYearOffset < 0 || newYearOffset > NEW_YEAR_OFFSET_MASK ? `new year offset ${newYearOffset} is outside 0-63` : '',
+    !Number.isInteger(newYearOffset) || newYearOffset < 0 || newYearOffset > NEW_YEAR_OFFSET_MASK
+      ? `new year offset ${newYearOffset} is outside 0-63`
+      : '',
     !Number.isInteger(record.leapMonth) || record.leapMonth < 0 || record.leapMonth > LAST_LEAP_MONTH
       ? `leap month ${record.leapMonth} is outside 0-12`
       : '',

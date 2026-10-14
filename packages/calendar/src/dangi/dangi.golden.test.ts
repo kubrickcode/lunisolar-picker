@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import kasiData from '../../data/kasi-dangi-months.json';
-import { buildYearRecords, DANGI_FIRST_YEAR } from '../../scripts/kasi/build-year-records';
+import { buildYearRecords, DANGI_FIRST_YEAR, lastEpochDayOf } from '../../scripts/kasi/build-year-records';
 import { isoDateToEpochDay } from '../../scripts/kasi/iso-date';
 import type { KasiDataFile } from '../../scripts/kasi/kasi-types';
 import { brandEpochDay, epochDayFromCivil } from '../epoch-day';
@@ -25,6 +25,14 @@ describe('dangi against KASI data', () => {
       const lastDay = brandEpochDay(firstDay + start.days - 1);
 
       expect(dangi.toEpochDay({ year: start.lunarYear, monthCode, day: 1 })).toEqual({ isOk: true, value: firstDay });
+      expect(dangi.fromEpochDay(firstDay)).toEqual({
+        isOk: true,
+        value: { year: start.lunarYear, monthCode, day: 1 },
+      });
+      expect(dangi.toEpochDay({ year: start.lunarYear, monthCode, day: start.days })).toEqual({
+        isOk: true,
+        value: lastDay,
+      });
       expect(dangi.fromEpochDay(lastDay)).toEqual({
         isOk: true,
         value: { year: start.lunarYear, monthCode, day: start.days },
@@ -72,6 +80,10 @@ describe('dangi against KASI data', () => {
       isOk: false,
       error: 'outside-calendar-range',
     });
+  });
+
+  it('ends the supported range at the last KASI day', () => {
+    expect(dangi.supportedRange.max).toBe(lastEpochDayOf(dataFile.monthStarts));
   });
 
   it('rejects the day after the last KASI day', () => {

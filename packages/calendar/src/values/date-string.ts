@@ -67,7 +67,7 @@ export const addDays = (
 export const calendarIdOf = (value: DateString): CalendarId => {
   if (value.length === ISO_DATE_LENGTH) return gregory.id;
   const calendarId = value.slice(ISO_DATE_LENGTH + ANNOTATION_PREFIX_LENGTH, -1);
-  return calendarId as CalendarId; // as: brand — formatDate and parseDate only emit annotations for registered calendar ids
+  return calendarId as CalendarId; // as: brand — formatDate와 parseDate는 등록된 캘린더 id만 표기로 내보냄
 };
 
 export const epochDayOf = (value: DateString): EpochDay =>
@@ -95,7 +95,7 @@ export const isSameDay = (first: DateString, second: DateString): boolean =>
 const annotatedCalendarIdOf = (value: DateString): string | undefined =>
   value.length === ISO_DATE_LENGTH ? undefined : calendarIdOf(value);
 
-// as: brand — callers pass only strings already checked against DATE_STRING_PATTERN or produced by formatDate
+// as: brand — 호출부는 DATE_STRING_PATTERN 검증을 마쳤거나 formatDate가 만든 문자열만 넘김
 const brandDateString = (value: string): DateString => value as DateString;
 
 const isoPartsToEpochDay = (year: number, month: number, day: number): Result<EpochDay, ValidationReason> => {
