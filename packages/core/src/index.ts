@@ -41,6 +41,29 @@ export { defineLocale } from './locales/locale-data';
 export type { CalendarView, FocusUnit, NavigationEvent, NavigationState } from './stores/navigation';
 export { createNavigationState, navigationReducer, YEAR_PAGE_SIZE } from './stores/navigation';
 export type {
+  RangeHandle,
+  RangePointerPhase,
+  RangeSelectionEvent,
+  RangeSelectionState,
+  SelectedRange,
+} from './stores/range-selection';
+export {
+  createRangeSelectionState,
+  displayedRange,
+  rangeSelectionReducer,
+  rangeValidity,
+  rangeValue,
+} from './stores/range-selection';
+export type { SelectedDay } from './stores/selectable';
+export { isSelectableDay } from './stores/selectable';
+export type { SingleSelectionEvent, SingleSelectionState } from './stores/single-selection';
+export {
+  createSingleSelectionState,
+  formatSelectedDay,
+  singleSelectionReducer,
+  singleValue,
+} from './stores/single-selection';
+export type {
   CommitMode,
   DateSegmentKind,
   EpochRange,
