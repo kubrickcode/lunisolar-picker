@@ -91,6 +91,28 @@ describe('Popover', () => {
     await expect.element(trigger).toHaveFocus();
   });
 
+  it('stays open when a child already handled Escape', async () => {
+    const screen = await render(
+      <Popover.Root defaultOpen>
+        <Popover.Trigger>Choose date</Popover.Trigger>
+        <Popover.Content aria-label="Calendar">
+          <input
+            aria-label="Search"
+            data-autofocus
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') event.preventDefault();
+            }}
+          />
+        </Popover.Content>
+      </Popover.Root>,
+    );
+    await expect.element(screen.getByRole('textbox', { name: 'Search' })).toHaveFocus();
+
+    await userEvent.keyboard('{Escape}');
+
+    await expect.element(screen.getByRole('dialog')).toBeVisible();
+  });
+
   it('closes when the pointer goes down outside', async () => {
     const screen = await render(<Example />);
     await screen.getByRole('button', { name: 'Choose date' }).click();
