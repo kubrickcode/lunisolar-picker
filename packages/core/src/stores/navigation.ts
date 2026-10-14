@@ -24,11 +24,25 @@ import {
 } from '../grid/visible-month';
 import type { VisibleMonth } from '../types';
 
-export const YEAR_PAGE_SIZE = 12;
 const DAYS_PER_WEEK = 7;
+export const YEAR_PAGE_SIZE = 12;
 
 export type CalendarView = 'days' | 'months' | 'years';
 export type FocusUnit = 'day' | 'week' | 'month' | 'year';
+
+type KeepFocusVisibleOptions = {
+  readonly calendar: CalendarSystem;
+  readonly focusedEpochDay: EpochDay;
+  readonly numberOfMonths: number;
+  readonly visibleMonth: VisibleMonth;
+};
+
+type MovedEpochDayOptions = {
+  readonly amount: number;
+  readonly calendar: CalendarSystem;
+  readonly epochDay: EpochDay;
+  readonly unit: FocusUnit;
+};
 
 export interface NavigationState {
   readonly displayCalendarId: CalendarId;
@@ -42,7 +56,7 @@ export type NavigationEvent =
   | { readonly type: 'calendar.set'; readonly calendarId: CalendarId }
   | { readonly type: 'focus.move'; readonly unit: FocusUnit; readonly amount: number }
   | { readonly type: 'focus.set'; readonly epochDay: EpochDay }
-  | { readonly type: 'focus.weekEdge'; readonly edge: 'start' | 'end' }
+  | { readonly type: 'focus.weekEdge'; readonly edge: WeekEdge }
   | { readonly type: 'month.pick'; readonly month: VisibleMonth }
   | { readonly type: 'month.shift'; readonly amount: number }
   | { readonly type: 'today.go' }
@@ -54,6 +68,14 @@ type NavigationScope = {
   readonly calendar: CalendarSystem;
   readonly context: PickerContext;
   readonly state: NavigationState;
+};
+
+type WeekEdge = 'start' | 'end';
+
+type WeekEdgeOptions = {
+  readonly context: PickerContext;
+  readonly edge: WeekEdge;
+  readonly epochDay: EpochDay;
 };
 
 export const createNavigationState = (
@@ -92,7 +114,7 @@ export const navigationReducer: Reducer<NavigationState, NavigationEvent, Picker
         movedEpochDay({ amount: event.amount, calendar, epochDay: state.focusedEpochDay, unit: event.unit }),
       );
     case 'focus.weekEdge':
-      return focusOn(scope, weekEdgeOf(state.focusedEpochDay, event.edge, context));
+      return focusOn(scope, weekEdgeOf({ context, edge: event.edge, epochDay: state.focusedEpochDay }));
     case 'view.set':
       return mergeNavigation(state, {
         view: event.view,
@@ -129,13 +151,6 @@ const focusAsFirstMonth = (
   return { focusedEpochDay, visibleMonth: visibleMonthOf(calendar, focusedEpochDay) };
 };
 
-type KeepFocusVisibleOptions = {
-  readonly calendar: CalendarSystem;
-  readonly focusedEpochDay: EpochDay;
-  readonly numberOfMonths: number;
-  readonly visibleMonth: VisibleMonth;
-};
-
 // Goal: 여러 달을 보여 줄 때 포커스가 보이는 달 안에서 움직이면 화면을 흔들지 않음
 const keepFocusVisible = ({
   calendar,
@@ -167,13 +182,6 @@ const shiftMonths = ({ calendar, context, state }: NavigationScope, amount: numb
   });
 };
 
-type MovedEpochDayOptions = {
-  readonly amount: number;
-  readonly calendar: CalendarSystem;
-  readonly epochDay: EpochDay;
-  readonly unit: FocusUnit;
-};
-
 const movedEpochDay = ({ amount, calendar, epochDay, unit }: MovedEpochDayOptions): EpochDay => {
   if (unit === 'day') return brandEpochDay(epochDay + amount);
   if (unit === 'week') return brandEpochDay(epochDay + amount * DAYS_PER_WEEK);
@@ -185,7 +193,7 @@ const movedEpochDay = ({ amount, calendar, epochDay, unit }: MovedEpochDayOption
   return epochDayOfFields(calendar, constrainDateFields(calendar, { ...targetMonth, day: fields.day }));
 };
 
-const weekEdgeOf = (epochDay: EpochDay, edge: 'start' | 'end', context: PickerContext): EpochDay => {
+const weekEdgeOf = ({ context, edge, epochDay }: WeekEdgeOptions): EpochDay => {
   const offsetFromStart = (weekdayOf(epochDay) - context.weekStartsOn + DAYS_PER_WEEK) % DAYS_PER_WEEK;
   const weekStart = epochDay - offsetFromStart;
   return brandEpochDay(edge === 'start' ? weekStart : weekStart + DAYS_PER_WEEK - 1);
@@ -224,6 +232,7 @@ const shiftYearPage = ({ calendar, state }: NavigationScope, amount: number): Na
 };
 
 const switchCalendar = ({ context, state }: NavigationScope, calendarId: CalendarId): NavigationState => {
+  if (calendarId === state.displayCalendarId) return state;
   const calendar = findCalendar(context.calendars, calendarId);
   const focus = focusAsFirstMonth({ calendar, context, state }, state.focusedEpochDay);
   return mergeNavigation(state, {

@@ -130,6 +130,46 @@ describe('navigation', () => {
     });
   });
 
+  describe('edges and identity', () => {
+    const lunarContext = createTestContext({ calendars: [gregory, dangi] });
+
+    it('stays put when stepping a month past the last supported lunar month', () => {
+      const state = createNavigationState(lunarContext, {
+        focusedEpochDay: dangi.supportedRange.max,
+        displayCalendarId: 'dangi',
+      });
+
+      expect(navigationReducer(state, { type: 'focus.move', unit: 'month', amount: 1 }, lunarContext)).toBe(state);
+    });
+
+    it('clamps to the last lunar day when the focus lies beyond the lunar range', () => {
+      const state = createNavigationState(lunarContext, { focusedEpochDay: solar(2060, 1, 1) });
+
+      const next = navigationReducer(state, { type: 'calendar.set', calendarId: 'dangi' }, lunarContext);
+
+      expect(next.focusedEpochDay).toBe(dangi.supportedRange.max);
+    });
+
+    it('shifts the view back when focus moves before the first of two visible months', () => {
+      const twoMonths = createTestContext({ numberOfMonths: 2 });
+
+      const next = navigationReducer(
+        createNavigationState(twoMonths),
+        { type: 'focus.set', epochDay: solar(2026, 9, 20) },
+        twoMonths,
+      );
+
+      expect(next.visibleMonth).toEqual({ year: 2026, monthCode: 'M09' });
+    });
+
+    it('returns the same state for the current view and the current calendar', () => {
+      const state = createNavigationState(lunarContext);
+
+      expect(navigationReducer(state, { type: 'view.set', view: 'days' }, lunarContext)).toBe(state);
+      expect(navigationReducer(state, { type: 'calendar.set', calendarId: 'gregory' }, lunarContext)).toBe(state);
+    });
+  });
+
   describe('lunar display', () => {
     const lunarContext = createTestContext({ calendars: [gregory, dangi] });
 
