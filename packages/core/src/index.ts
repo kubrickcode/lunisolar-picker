@@ -38,6 +38,8 @@ export {
 export { formatDateForField } from './locales/format-date-for-field';
 export type { LocaleData, LocaleLabels } from './locales/locale-data';
 export { defineLocale } from './locales/locale-data';
+export type { DateFieldEvent, DateFieldResult, DateFieldState } from './stores/date-field';
+export { createDateFieldState, dateFieldReducer, dateFieldResult } from './stores/date-field';
 export type { CalendarView, FocusUnit, NavigationEvent, NavigationState } from './stores/navigation';
 export { createNavigationState, navigationReducer, YEAR_PAGE_SIZE } from './stores/navigation';
 export type {
@@ -54,6 +56,8 @@ export {
   rangeValidity,
   rangeValue,
 } from './stores/range-selection';
+export type { Segment, SegmentEvent, SegmentGroup, SegmentLimits, TypedDigit } from './stores/segment';
+export { createSegment, eraseDigit, stepSegment, typeDigit } from './stores/segment';
 export type { SelectedDay } from './stores/selectable';
 export { isSelectableDay } from './stores/selectable';
 export type { SingleSelectionEvent, SingleSelectionState } from './stores/single-selection';
@@ -63,6 +67,8 @@ export {
   singleSelectionReducer,
   singleValue,
 } from './stores/single-selection';
+export type { TimeFieldContext, TimeFieldEvent, TimeFieldResult, TimeFieldState } from './stores/time-field';
+export { createTimeFieldState, timeFieldReducer, timeFieldResult } from './stores/time-field';
 export type {
   CommitMode,
   DateSegmentKind,

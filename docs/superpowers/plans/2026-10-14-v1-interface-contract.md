@@ -227,7 +227,8 @@ export interface SegmentGroup<Kind extends string> { segments: readonly Segment<
 export type SegmentEvent =
   | { type: 'segment.focus'; index } | { type: 'segment.blur' } | { type: 'digit.type'; digit } | { type: 'separator.type' }
   | { type: 'segment.erase' } | { type: 'segment.step'; amount } | { type: 'focus.shift'; amount };
-createSegment, typeDigit, eraseDigit, stepSegment, withSegmentValue, focusSegmentAt, replaceFocusedSegment, reduceSegmentEvent
+export interface TypedDigit<Kind extends string> { segment: Segment<Kind>; shouldAdvance: boolean }
+createSegment, typeDigit, eraseDigit, stepSegment
 
 export interface DateFieldState extends SegmentGroup<DateSegmentKind> { isLeapMonth: boolean; entryCalendarId: CalendarId }
 export type DateFieldEvent =
@@ -244,6 +245,8 @@ export interface TimeFieldResult { readonly time: TimeString | null; readonly va
 createTimeFieldState(initial: TimeString | null, context: TimeFieldContext): TimeFieldState
 timeFieldReducer: Reducer<TimeFieldState, TimeFieldEvent, TimeFieldContext>; timeFieldResult(state, context): TimeFieldResult
 ```
+
+> 계약 변경(2026-10-14, M2-T8): `withSegmentValue`·`focusSegmentAt`·`replaceFocusedSegment`·`reduceSegmentEvent`는 core 내부 함수로 두고 공개하지 않는다. M3~M5 계획 어디서도 쓰지 않아서다. 나중에 필요하면 공개를 더하는 것은 깨지지 않는 변경이다. 대신 `typeDigit`의 반환 타입 `TypedDigit`을 공개한다.
 
 - 붙여넣기(`text.paste`)는 세그먼트 공통 이벤트가 아니라 필드별 이벤트다. 바인딩의 명령 타입은 둘을 합친다 [M3-T6].
 - 타이핑 중에는 날짜를 고치지 않는다. 결과가 유효하지 않으면 `'invalid-date'` 또는 `'incomplete'`.
