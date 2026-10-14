@@ -355,7 +355,7 @@ export function useToday(timeZone, today): EpochDay;
 
 | 모듈 | 이름 |
 |---|---|
-| `settings/use-picker-settings.ts` | `usePickerSettings(props): PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars }`, `withGregorian(calendars)` |
+| `settings/use-picker-settings.ts` | `usePickerSettings(props): PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars; calendarKey }`, `withGregorian(calendars)` |
 | `settings/use-picker-context.ts` | `usePickerContext(settings, { constraints, commitMode, numberOfMonths }): PickerContext` (양력 기준 제약) |
 | `store/use-store-instance.ts` | `useStoreInstance(createInitialState: (previous: State \| undefined) => State, reducer, context, options?: { resetKey?: string }): { state; send }` — resetKey가 바뀌면 이전 상태를 넘겨 새 store를 만든다(확정 값 유지). 소비자는 객체가 아니라 `send`에 의존한다 (M3-T3 리뷰) |
 | `utilities/use-controllable-state.ts` | `useControllableState(controlled, defaultValue, onChange): [value, setValue]` |
