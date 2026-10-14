@@ -17,8 +17,9 @@ export type StoreInstanceOptions = {
 };
 
 // Constraint: store는 인스턴스마다 한 번만 만들고, 바뀐 prop은 context ref로 읽게 함. 서버 렌더에서 요청끼리 상태가 섞이지 않음 (스펙 3.3)
+// Goal: resetKey로 store를 새로 만들 때 이전 상태를 넘겨, 확정 값을 잃지 않고 새 설정으로 다시 만들게 함
 export const useStoreInstance = <State, Event, Context>(
-  createInitialState: () => State,
+  createInitialState: (previous: State | undefined) => State,
   reducer: Reducer<State, Event, Context>,
   context: Context,
   options: StoreInstanceOptions = {},
@@ -29,13 +30,13 @@ export const useStoreInstance = <State, Event, Context>(
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
     contextRef.current = context;
   });
-  const createKeyedStore = (): KeyedStore<State, Event> => ({
+  const createKeyedStore = (previous: State | undefined): KeyedStore<State, Event> => ({
     resetKey,
-    store: createStore({ initialState: createInitialState(), reducer, readContext: () => contextRef.current }),
+    store: createStore({ initialState: createInitialState(previous), reducer, readContext: () => contextRef.current }),
   });
-  const [keyedStore, setKeyedStore] = useState(createKeyedStore);
+  const [keyedStore, setKeyedStore] = useState(() => createKeyedStore(undefined));
   // Goal: 렌더 중 상태 갱신이라 React가 이 렌더 결과를 버리고 새 store로 곧바로 다시 렌더함. 이펙트로 바꾸면 옛 순서가 한 번 화면에 나옴
-  const current = keyedStore.resetKey === resetKey ? keyedStore : createKeyedStore();
+  const current = keyedStore.resetKey === resetKey ? keyedStore : createKeyedStore(keyedStore.store.getSnapshot());
   if (current !== keyedStore) setKeyedStore(current);
   const { store } = current;
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);

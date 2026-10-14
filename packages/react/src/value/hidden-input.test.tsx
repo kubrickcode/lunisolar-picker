@@ -43,4 +43,36 @@ describe('HiddenInput', () => {
 
     expect(screen.container.querySelector('input')).toBeNull();
   });
+
+  it('leaves a disabled value out of the submitted form data', async () => {
+    const screen = await render(
+      <form aria-label="Booking">
+        <HiddenInput name="checkIn" value="2026-10-14" disabled onFocusRequest={vi.fn()} />
+      </form>,
+    );
+    const form = screen.getByRole('form').element() as HTMLFormElement; // as: getByRole('form')로 찾은 form 요소
+
+    expect(new FormData(form).has('checkIn')).toBe(false);
+  });
+
+  it('submits with the form named by the form attribute even when rendered outside it', async () => {
+    const screen = await render(
+      <>
+        <form id="booking" aria-label="Booking" />
+        <HiddenInput name="checkIn" form="booking" value="2026-10-14" onFocusRequest={vi.fn()} />
+      </>,
+    );
+    const form = screen.getByRole('form').element() as HTMLFormElement; // as: getByRole('form')로 찾은 form 요소
+
+    expect(new FormData(form).get('checkIn')).toBe('2026-10-14');
+  });
+
+  it('stays out of the tab order, the accessibility tree and autofill', async () => {
+    const screen = await render(<HiddenInput name="checkIn" value="2026-10-14" onFocusRequest={vi.fn()} />);
+    const input = screen.container.querySelector('input');
+
+    expect(input?.tabIndex).toBe(-1);
+    expect(input?.getAttribute('aria-hidden')).toBe('true');
+    expect(input?.getAttribute('autocomplete')).toBe('off');
+  });
 });

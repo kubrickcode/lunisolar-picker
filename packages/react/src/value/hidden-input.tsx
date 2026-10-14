@@ -1,16 +1,16 @@
 import type { CSSProperties, ReactElement } from 'react';
 
 const VISUALLY_HIDDEN_STYLE: CSSProperties = {
-  position: 'absolute',
-  inlineSize: 1,
   blockSize: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clipPath: 'inset(50%)',
-  whiteSpace: 'nowrap',
   border: 0,
+  clipPath: 'inset(50%)',
+  inlineSize: 1,
+  margin: -1,
   opacity: 0,
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
 };
 
 export type HiddenInputProps = {
@@ -35,6 +35,7 @@ export const HiddenInput = ({
   return (
     <input
       aria-hidden="true"
+      autoComplete="off"
       tabIndex={-1}
       type="text"
       name={name}
