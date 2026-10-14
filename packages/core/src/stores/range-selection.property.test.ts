@@ -150,7 +150,11 @@ describe('selection properties', () => {
             events.reduce<SingleSelectionState>((state, event) => {
               const next = singleSelectionReducer(state, event, context);
               const value = singleValue(next, context);
-              if (value !== null) expect(parseExposedDate(value, context).epochDay).toBe(next.committed?.epochDay);
+              if (value !== null) {
+                const parsed = parseExposedDate(value, context);
+                expect(parsed.epochDay).toBe(next.committed?.epochDay);
+                expect(parsed.calendar).toBe(next.committed?.calendarId);
+              }
               return next;
             }, createSingleSelectionState(null));
           },

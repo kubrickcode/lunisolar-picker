@@ -11,11 +11,6 @@ export type RangeHandle = 'start' | 'end';
 
 export type RangePointerPhase = 'idle' | 'pressing' | 'dragging';
 
-type RangeSelectionScope = {
-  readonly context: PickerContext;
-  readonly state: RangeSelectionState;
-};
-
 export type RangeSelectionEvent =
   | { readonly type: 'pointer.down'; readonly epochDay: EpochDay; readonly calendarId: CalendarId }
   | { readonly type: 'pointer.enter'; readonly epochDay: EpochDay }
@@ -27,6 +22,11 @@ export type RangeSelectionEvent =
   | { readonly type: 'cancel' }
   | { readonly type: 'clear' }
   | { readonly type: 'value.sync'; readonly selected: SelectedRange | null };
+
+type RangeSelectionScope = {
+  readonly context: PickerContext;
+  readonly state: RangeSelectionState;
+};
 
 export interface RangeSelectionState {
   readonly committed: SelectedRange | null;
@@ -77,7 +77,7 @@ export const rangeSelectionReducer: Reducer<RangeSelectionState, RangeSelectionE
     case 'pointer.up':
       return releasePointer(scope);
     case 'handle.grab':
-      return grabHandle(state, event.handle);
+      return grabHandle(scope, event.handle);
     case 'range.set':
       return setRange(scope, { calendarId: event.calendarId, range: event.range });
     case 'commit':
@@ -103,6 +103,7 @@ export const rangeValue = (state: RangeSelectionState, context: PickerContext): 
   const calendar = findCalendar(context.calendars, state.committed.calendarId);
   const start = formatDate(state.committed.range.start, calendar);
   const end = state.committed.range.end === null ? null : formatDate(state.committed.range.end, calendar);
+  // Constraint: 선택·range.set은 입력 역법으로 적을 수 있는 날만 저장하므로 여기서 포맷이 실패하는 건 value.sync·초기값으로 범위 밖 값이 들어온 경우뿐. 그때 잘못된 문자열 대신 값 없음으로 둠
   if (!start.isOk || (end !== null && !end.isOk)) return null;
   return { start: start.value, end: end === null ? null : end.value };
 };
@@ -167,13 +168,16 @@ const releasePointer = (scope: RangeSelectionScope): RangeSelectionState => {
   return { ...state, pointerPhase: 'idle' };
 };
 
-const grabHandle = (state: RangeSelectionState, handle: RangeHandle): RangeSelectionState => {
+const grabHandle = ({ context, state }: RangeSelectionScope, handle: RangeHandle): RangeSelectionState => {
   const range = state.draft?.range;
   if (!state.draft || !range || range.end === null || state.anchor !== null) return state;
   const isStart = handle === 'start';
+  const anchor = isStart ? range.end : range.start;
+  // Goal: 고정될 반대쪽 끝이 지금은 고를 수 없는 날이면 그 끝을 기준으로 다시 고르게 하지 않음
+  if (!isSelectableDay(anchor, findCalendar(context.calendars, state.draft.calendarId), context)) return state;
   return {
     ...state,
-    anchor: isStart ? range.end : range.start,
+    anchor,
     grabbedHandle: handle,
     pendingCalendarId: state.draft.calendarId,
     pointerPhase: 'pressing',
@@ -185,13 +189,7 @@ const setRange = ({ context, state }: RangeSelectionScope, selected: SelectedRan
   if (selected.range.end === null && !context.constraints.isOpenEndAllowed) return state;
   if (!isRepresentableRange(selected, context)) return state;
   const draft: SelectedRange = { calendarId: selected.calendarId, range: sortedEpochRange(selected.range) };
-  return {
-    ...state,
-    ...IDLE_TRANSIENT,
-    committed: context.commitMode === 'immediate' ? draft : state.committed,
-    draft,
-    pendingCalendarId: selected.calendarId,
-  };
+  return resetTo(state, { committed: context.commitMode === 'immediate' ? draft : state.committed, draft });
 };
 
 // Goal: 입력 역법으로 적을 수 없는 프리셋을 저장하면 rangeValue가 조용히 null이 되므로 처음부터 받지 않음. min/max·막힌 날 위반은 저장하고 rangeValidity로 알림
@@ -201,10 +199,16 @@ const isRepresentableRange = ({ calendarId, range }: SelectedRange, context: Pic
 };
 
 const commitDraft = ({ context, state }: RangeSelectionScope): RangeSelectionState => {
-  if (state.anchor !== null || state.draft === null || isSameSelectedRange(state.draft, state.committed)) return state;
-  if (state.draft.range.end === null && !context.constraints.isOpenEndAllowed) return state;
-  return { ...state, committed: state.draft };
+  const draft = committableDraft(state);
+  if (draft?.range.end === null && !context.constraints.isOpenEndAllowed) return state;
+  return resetTo(state, { committed: draft, draft });
 };
+
+// Goal: 열린 끝을 허용하면 고르는 중인 시작일만으로도 rangeValidity가 유효하므로 확인 버튼도 그 값을 반영해야 둘이 어긋나지 않음
+const committableDraft = (state: RangeSelectionState): SelectedRange | null =>
+  state.anchor === null
+    ? state.draft
+    : { calendarId: state.pendingCalendarId, range: { start: state.anchor, end: null } };
 
 // Constraint: 바뀐 값이 없으면 같은 참조를 돌려줘야 createStore가 구독자를 깨우지 않음
 const resetTo = (state: RangeSelectionState, { committed, draft }: ResetTarget): RangeSelectionState => {

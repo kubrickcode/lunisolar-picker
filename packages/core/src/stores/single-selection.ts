@@ -27,6 +27,7 @@ export const createSingleSelectionState = (committed: SelectedDay | null): Singl
 
 export const formatSelectedDay = (selected: SelectedDay, context: PickerContext): DateString | null => {
   const formatted = formatDate(selected.epochDay, findCalendar(context.calendars, selected.calendarId));
+  // Constraint: date.select는 입력 역법으로 적을 수 있는 날만 저장하므로 포맷 실패는 value.sync·초기값으로 범위 밖 값이 들어온 경우뿐. 그때 잘못된 문자열 대신 값 없음으로 둠
   return formatted.isOk ? formatted.value : null;
 };
 

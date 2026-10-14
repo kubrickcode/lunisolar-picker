@@ -77,6 +77,26 @@ describe('range selection', () => {
     });
   });
 
+  describe('minimum length in block mode', () => {
+    const context = createTestContext({ constraints: resolveConstraints({ minDays: 3, limitMode: 'block' }) });
+
+    it('ignores a second tap that would make the range too short, the anchor included', () => {
+      const state = reduceEvents(rangeSelectionReducer, empty, [select(13), select(13), select(14)], context);
+      const completed = rangeSelectionReducer(state, select(15), context);
+
+      expect(displayedRange(state)).toEqual({ start: october(13), end: null });
+      expect(rangeValue(completed, context)).toEqual({ start: '2026-10-13', end: '2026-10-15' });
+    });
+
+    it('holds the preview when dragging back onto the anchor', () => {
+      const state = reduceEvents(rangeSelectionReducer, empty, [press(13), enter(15), enter(13)], context);
+      const released = rangeSelectionReducer(state, RELEASE, context);
+
+      expect(state.preview).toBe(october(15));
+      expect(rangeValue(released, context)).toEqual({ start: '2026-10-13', end: '2026-10-15' });
+    });
+  });
+
   describe('dragging', () => {
     const context = createTestContext();
 
@@ -118,6 +138,39 @@ describe('range selection', () => {
       );
 
       expect(rangeValue(extended, context)).toEqual({ start: '2026-10-13', end: '2026-10-18' });
+    });
+
+    it('swaps the ends when a handle is dragged past the other end', () => {
+      const completed = reduceEvents(rangeSelectionReducer, empty, [select(13), select(15)], context);
+
+      const swapped = reduceEvents(
+        rangeSelectionReducer,
+        completed,
+        [{ type: 'handle.grab', handle: 'end' }, enter(10), RELEASE],
+        context,
+      );
+
+      expect(rangeValue(swapped, context)).toEqual({ start: '2026-10-10', end: '2026-10-13' });
+    });
+
+    it('ignores grabbing a handle whose opposite end is no longer selectable', () => {
+      const blocked = createTestContext({
+        constraints: resolveConstraints({ isDateDisabled: (date) => date === '2026-10-13' }),
+      });
+      const state = createRangeSelectionState({
+        range: { start: october(13), end: october(15) },
+        calendarId: 'gregory',
+      });
+
+      expect(rangeSelectionReducer(state, { type: 'handle.grab', handle: 'end' }, blocked)).toBe(state);
+      expect(rangeSelectionReducer(state, { type: 'handle.grab', handle: 'start' }, blocked).anchor).toBe(october(15));
+    });
+
+    it('keeps the state reference for a release while idle and for entering the previewed day again', () => {
+      const previewing = reduceEvents(rangeSelectionReducer, empty, [select(13), enter(16)], context);
+
+      expect(rangeSelectionReducer(empty, RELEASE, context)).toBe(empty);
+      expect(rangeSelectionReducer(previewing, enter(16), context)).toBe(previewing);
     });
 
     it('starts a new range when an end handle is clicked without dragging', () => {
@@ -174,6 +227,24 @@ describe('range selection', () => {
       expect(rangeValidity(state, context)).toEqual({ isValid: false, reasons: ['after-max', 'range-too-long'] });
     });
 
+    it('keeps the state reference when the same preset is applied again', () => {
+      const context = createTestContext();
+      const event: RangeSelectionEvent = {
+        type: 'range.set',
+        range: { start: october(11), end: october(17) },
+        calendarId: 'gregory',
+      };
+      const reversed: RangeSelectionEvent = {
+        type: 'range.set',
+        range: { start: october(17), end: october(11) },
+        calendarId: 'gregory',
+      };
+      const state = rangeSelectionReducer(empty, event, context);
+
+      expect(rangeSelectionReducer(state, event, context)).toBe(state);
+      expect(rangeSelectionReducer(state, reversed, context)).toBe(state);
+    });
+
     it('rejects an open-ended preset unless open ranges are allowed', () => {
       const closed = createTestContext();
       const openEnded = createTestContext({ constraints: resolveConstraints({ isOpenEndAllowed: true }) });
@@ -202,11 +273,65 @@ describe('range selection', () => {
       expect(displayedRange(rangeSelectionReducer(drafted, { type: 'cancel' }, context))).toBeNull();
     });
 
+    it('commits an empty value after clearing', () => {
+      const context = createTestContext({ commitMode: 'confirm' });
+      const state = createRangeSelectionState({
+        range: { start: october(13), end: october(15) },
+        calendarId: 'gregory',
+      });
+
+      const cleared = rangeSelectionReducer(state, { type: 'clear' }, context);
+      const committed = rangeSelectionReducer(cleared, { type: 'commit' }, context);
+
+      expect(displayedRange(cleared)).toBeNull();
+      expect(rangeValue(cleared, context)).toEqual({ start: '2026-10-13', end: '2026-10-15' });
+      expect(rangeValue(committed, context)).toBeNull();
+    });
+
+    it('clears the value at once in immediate mode', () => {
+      const context = createTestContext();
+      const state = createRangeSelectionState({
+        range: { start: october(13), end: october(15) },
+        calendarId: 'gregory',
+      });
+
+      const cleared = rangeSelectionReducer(state, { type: 'clear' }, context);
+
+      expect(displayedRange(cleared)).toBeNull();
+      expect(rangeValue(cleared, context)).toBeNull();
+    });
+
     it('does not commit a range that is still being selected', () => {
       const context = createTestContext({ commitMode: 'confirm' });
       const inProgress = rangeSelectionReducer(empty, select(13), context);
 
       expect(rangeSelectionReducer(inProgress, { type: 'commit' }, context)).toBe(inProgress);
+    });
+  });
+
+  describe('open end', () => {
+    const constraints = resolveConstraints({ isOpenEndAllowed: true });
+
+    it('commits the start alone on confirm when open ends are allowed, matching its validity', () => {
+      const context = createTestContext({ commitMode: 'confirm', constraints });
+      const inProgress = rangeSelectionReducer(empty, select(13), context);
+
+      const committed = rangeSelectionReducer(inProgress, { type: 'commit' }, context);
+
+      expect(rangeValidity(inProgress, context).isValid).toBe(true);
+      expect(rangeValue(committed, context)).toEqual({ start: '2026-10-13', end: null });
+      expect(committed.anchor).toBeNull();
+    });
+
+    it('does not commit the first tap on its own in immediate mode', () => {
+      const context = createTestContext({ constraints });
+      const inProgress = rangeSelectionReducer(empty, select(13), context);
+
+      expect(rangeValue(inProgress, context)).toBeNull();
+      expect(rangeValue(rangeSelectionReducer(inProgress, { type: 'commit' }, context), context)).toEqual({
+        start: '2026-10-13',
+        end: null,
+      });
     });
   });
 

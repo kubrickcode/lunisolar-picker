@@ -77,11 +77,18 @@ describe('isEpochDayInBlockedRange', () => {
     expect(isEpochDayInBlockedRange(october(13), october(16), flagging)).toBe(false);
   });
 
-  it('blocks days that would make the range shorter than the minimum, except the anchor itself', () => {
+  it('blocks days that would make the range shorter than the minimum, including the anchor itself', () => {
     const resolved = resolveConstraints({ minDays: 3 });
 
     expect(isEpochDayInBlockedRange(october(13), october(14), resolved)).toBe(true);
-    expect(isEpochDayInBlockedRange(october(13), october(13), resolved)).toBe(false);
+    expect(isEpochDayInBlockedRange(october(13), october(13), resolved)).toBe(true);
     expect(isEpochDayInBlockedRange(october(13), october(15), resolved)).toBe(false);
+    expect(isEpochDayInBlockedRange(october(13), october(11), resolved)).toBe(false);
+  });
+
+  it('allows the anchor itself when one-day ranges meet the limits', () => {
+    expect(
+      isEpochDayInBlockedRange(october(13), october(13), resolveConstraints({ maxDays: 1, limitMode: 'block' })),
+    ).toBe(false);
   });
 });

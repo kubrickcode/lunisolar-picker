@@ -8,7 +8,7 @@ export const isEpochDayInBlockedRange = (
   candidate: EpochDay,
   constraints: ResolvedConstraints,
 ): boolean => {
-  if (constraints.limitMode !== 'block' || candidate === anchor) return false;
+  if (constraints.limitMode !== 'block') return false;
   const dayCount = Math.abs(candidate - anchor) + 1;
   const isTooLong = constraints.maxDays !== null && dayCount > constraints.maxDays;
   const isTooShort = constraints.minDays !== null && dayCount < constraints.minDays;
