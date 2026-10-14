@@ -144,6 +144,8 @@ export function validateRange(range: { start: string; end: string | null }, cons
 
 - 바인딩은 `resolveConstraints(constraints, gregory, settings.calendars)`로 부른다. 세 번째 인자는 `min: '…[u-ca=dangi]'` 같은 표기를 해석하는 데 쓴다.
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `validateRange`는 시작과 끝이 서로 다른 역법이면 `'invalid-date'`를 낸다. ② `validateEpochRange`는 뒤집힌 범위를 정렬해서 검사한다. ③ `'range-includes-disabled'`는 다른 사유가 하나도 없을 때만 낸다(범위가 이미 무효라서 정보 손실은 허용). ④ `'block'` 모드의 `isEpochDayInBlockedRange`는 양 끝 포함 일수가 `minDays` 미만이거나 `maxDays` 초과인 날을 막는다. anchor 자신도 포함한다.
+
 ### 2.4 격자와 날짜 계산 [M2-T5]
 
 ```ts
@@ -169,6 +171,8 @@ yearPageStartOf(year, pageSize): number
 listYearPage(calendar, pageStart: number, pageSize: number): readonly number[]   // 두 번째 인자는 페이지 시작 연도
 ```
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): `shiftVisibleMonth`는 그 연도에 없는 `monthCode`를 받으면 `LunisolarPickerError`를 던진다. 호출자는 `constrainDateFields`·`visibleMonthOf`로 맞춘 월을 넘긴다.
+
 ### 2.5 navigation store [M2-T6]
 
 ```ts
@@ -183,6 +187,8 @@ export const YEAR_PAGE_SIZE = 12;
 createNavigationState(context, initial?: { focusedEpochDay?; displayCalendarId? }): NavigationState
 navigationReducer: Reducer<NavigationState, NavigationEvent, PickerContext>
 ```
+
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `year.pick`은 고른 연도 안으로 포커스를 옮긴다(`constrainDateFields`로 맞춘 뒤 `boundsFor`로 자름). 보이는 달도 새 포커스에서 다시 정하므로 이후 `month.shift`가 그 연도에서 이어진다. ② `numberOfMonths > 1`인 `month.shift`는 마지막 보이는 달이 지원하는 마지막 달을(시작 쪽은 첫 달을) 넘지 않게 자른다. 같은 달 창이 중복해서 보이는 일이 없다.
 
 ### 2.6 selection store [M2-T7]
 
@@ -218,6 +224,11 @@ rangeSelectionReducer; displayedRange(state): EpochRange | null; rangeValidity(s
 - `'block'`이면 anchor 기준 `maxDays`를 넘는 날의 입력을 무시하고, `'flag'`이면 받아 두고 `'range-too-long'`을 낸다.
 - immediate는 범위가 완성될 때, confirm은 `commit`에서만 committed를 갱신한다.
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `'block'`은 양 끝 포함 일수가 `minDays` 미만이거나 `maxDays` 초과인 날을 막는다(anchor 자신 포함). 그래서 `minDays > 1`이면 block 모드에서 하루짜리 범위는 만들 수 없다. ② `range.set`은 끝점이 입력 역법에서 표현되지 않으면 no-op이다. 그 밖의 min/max/비활성/일수 위반은 저장하고 `rangeValidity`가 표시한다. ③ `isOpenEndAllowed`일 때 `commit`은 idle 상태(제스처 중도, 잡은 핸들도 없음)에서만 `{ anchor, null }`을 확정한다. ④ `value.sync`와 초기값은 뒤집힌 범위를 정렬해서 받는다. ⑤ 표현할 수 없는 값은 `value.sync`/초기값 경로로만 들어오므로 바인딩은 `parseDate` 결과에서 만든다. 
+>
+> 바인딩 주의점: (a) 그리기는 `displayedRange`로 하고, "선택 중"은 `anchor !== null`로 판단한다(`draft.end === null`이 아님). (b) `rangeValidity`는 표시·미리보기 범위의 유효성이다. `aria-invalid`는 committed 값의 유효성을 쓴다. (c) `value.sync`는 값 문자열이 바뀔 때만 보낸다. 진행 중인 anchor와 confirm 모드의 임시 draft가 지워진다. (d) 핸들을 잡은 뒤 start/end가 뒤바뀌어도 `grabbedHandle`은 처음 이름을 유지한다. (e) confirm 모드에서 닫을 때는 `cancel`을 보낸다(변화 없는 `commit`은 anchor를 남긴다).
+
+### 2.7 field store [M2-T8]
 ### 2.7 field store [M2-T8]
 
 ```ts
@@ -251,6 +262,8 @@ timeFieldReducer: Reducer<TimeFieldState, TimeFieldEvent, TimeFieldContext>; tim
 - 붙여넣기(`text.paste`)는 세그먼트 공통 이벤트가 아니라 필드별 이벤트다. 바인딩의 명령 타입은 둘을 합친다 [M3-T6].
 - 타이핑 중에는 날짜를 고치지 않는다. 결과가 유효하지 않으면 `'invalid-date'` 또는 `'incomplete'`.
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① 붙여넣기 뒤 세그먼트 `value`가 `maxValue`를 넘을 수 있다. aria 값으로 쓰기 전에 자른다. ② `value.sync`의 `entryCalendarId`는 `selected`가 null일 때만 적용된다. ③ 세그먼트 순서는 생성 시점에 고정된다. 로케일이 바뀌면 새 상태를 만든다. ④ 입력 역법에서 표현할 수 없는 `selected`는 던지지 않고 빈 세그먼트가 된다. ⑤ `value.sync`는 값이 바뀔 때만 보낸다. ⑥ 시간 필드에 `"930"`을 붙여넣으면 09:30이다(3자리 한 덩어리 = 시 + 분, 4자리는 HHMM). ⑦ 연·월이 정해져 있으면 일 ↑/↓는 그 달의 일수 안에서, 연 ↑/↓는 지원 연도 범위 안에서 돈다. ⑧ 윤달 여부 판단은 역법 id 분기가 아니라 CalendarSystem에서 유도한다.
+
 ### 2.8 column store와 휠 모델 [M2-T9]
 
 ```ts
@@ -267,6 +280,8 @@ export interface WheelTimeColumns { hours: ColumnOption<number>[]; minutes: Colu
 buildTimeColumns(context: TimeFieldContext): WheelTimeColumns
 ```
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `selectedIndex === -1`은 선택 없음(옵션이 비었거나 전부 비활성)이다. 그 밖에는 항상 활성 옵션을 가리킨다. ② `minuteStep`은 60을 나누는 정수여야 하고 아니면 `LunisolarPickerError`를 던진다. ③ 시간 휠에서 24:30이 선택될 수 있다. 바인딩이 24시일 때 분 옵션을 비활성으로 만든다. ④ 월 옵션은 범위 제약으로만 비활성이 된다. ⑤ `options.replace`에는 항상 제약을 거친 `preferredValue`를 넘긴다. 없으면 인덱스를 유지한다. ⑥ 옵션 배열은 메모이즈한다. 새 배열이면 새 상태로 취급한다.
+
 ### 2.9 gestures [M2-T10]
 
 ```ts
@@ -278,6 +293,8 @@ export type EdgeDirection = 'previous' | 'next';
 export interface EdgeDwell { enter(direction, nowMs); leave(); poll(nowMs): EdgeDirection | null }
 export const EDGE_DWELL_DELAY_MS = 500; createEdgeDwell(delayMs?): EdgeDwell
 ```
+
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① 속도의 부호는 샘플 축을 따른다. ② 바인딩은 손을 뗄 때 마지막 샘플을 한 번 더 넣는다. ③ `itemSize <= 0`이면 `LunisolarPickerError`를 던진다. ④ `itemCount`가 0이면 `index`는 -1이다.
 
 ### 2.10 locales [M2-T3]
 
