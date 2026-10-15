@@ -238,7 +238,9 @@ const navigateBy = (api: CalendarViewApi, direction: NavigationDirection): void 
 };
 
 // Constraint: roving tabindex·열릴 때 포커스·비활성 의미는 격자 전체 규칙이라 앱 prop이 덮지 못함
+// Constraint: 막힌 날도 화살표로 지나가야 하므로 aria-disabled만 쓰고 네이티브 disabled는 앱이 넘겨도 지움
 const reservedCellProps = (button: CellProps['button']) => ({
+  disabled: undefined,
   tabIndex: button.tabIndex,
   'aria-disabled': button['aria-disabled'],
   [AUTOFOCUS_ATTRIBUTE]: button[AUTOFOCUS_ATTRIBUTE],

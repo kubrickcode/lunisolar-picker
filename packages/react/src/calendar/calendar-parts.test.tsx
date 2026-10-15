@@ -277,6 +277,20 @@ describe('Calendar', () => {
       expect(tabbable[0]?.getAttribute('aria-label')).toBe(dayLabel('2026-10-20'));
     });
 
+    it('keeps a cell focusable when the app passes a native disabled', async () => {
+      const screen = await renderCalendar(
+        <Calendar.Root defaultValue="2026-10-20">
+          <Calendar.Grid>{(cell) => <Calendar.Cell key={cell.epochDay} cell={cell} disabled />}</Calendar.Grid>
+        </Calendar.Root>,
+      );
+      const selectedDay = screen.getByRole('button', { name: dayLabel('2026-10-20') });
+      await expect.element(selectedDay).toBeVisible();
+
+      expect(selectedDay.element().hasAttribute('disabled')).toBe(false);
+      selectedDay.element().focus();
+      await expect.element(selectedDay).toHaveFocus();
+    });
+
     it('keeps the grid named when the app gives the heading its own id', async () => {
       const screen = await renderCalendar(
         <Calendar.Root defaultValue="2026-10-20">
