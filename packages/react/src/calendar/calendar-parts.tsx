@@ -139,11 +139,10 @@ export const CalendarHeading = ({ monthIndex = 0, render, ...domProps }: Calenda
   const api = useCalendarView();
   const month = api.months[monthIndex];
   const text = month ? api.context.locale.formatHeading(month.month, api.calendar.id) : '';
-  // Constraint: 격자의 aria-labelledby가 이 id를 가리키므로 앱 id가 덮지 못함
-  const headingProps = {
-    ...mergeProps({ 'aria-live': 'polite' as const, ...partAttributes('calendar-heading'), children: text }, domProps),
-    id: api.headingId(monthIndex),
-  };
+  const headingProps = mergeProps(
+    { 'aria-live': 'polite' as const, ...partAttributes('calendar-heading'), children: text },
+    domProps,
+  );
   return renderElement('span', render, headingProps, api);
 };
 
@@ -248,7 +247,8 @@ const reservedCellProps = (button: CellProps['button']) => ({
 
 const navigationLabel = (api: CalendarViewApi, direction: NavigationDirection): string => {
   const { labels } = api.context.locale;
-  // Constraint: 월 보기의 이전·다음은 한 해씩 옮기므로 달 이동 이름을 쓰지 않음. 로케일에 한 해 이동 이름이 따로 없어 연 쪽 이름을 같이 씀
-  if (api.navigation.view !== 'days') return direction < 0 ? labels.previousYears : labels.nextYears;
+  if (api.navigation.view === 'years') return direction < 0 ? labels.previousYears : labels.nextYears;
+  // Constraint: 월 보기의 이전·다음은 한 해씩 옮기므로 달 이동 이름을 쓰지 않음
+  if (api.navigation.view === 'months') return direction < 0 ? labels.previousYear : labels.nextYear;
   return direction < 0 ? labels.previousMonth : labels.nextMonth;
 };

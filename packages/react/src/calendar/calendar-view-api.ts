@@ -52,7 +52,6 @@ export interface CalendarViewApi {
   getCellProps(cell: MonthGridCell): CellProps;
   getGridProps(monthIndex: number): TableHTMLAttributes<HTMLTableElement>;
   getRootProps(): CalendarRootDomProps;
-  headingId(monthIndex: number): string;
   consumeFocusRequest(): boolean;
   // Goal: 고른 버튼이 사라지는 보기 전환(월·연 고르기) 뒤에 새로 그려지는 탭 정지점이 포커스를 이어 받게 함
   requestFocus(): void;
@@ -80,7 +79,8 @@ export type SelectionBehavior = {
 export const createCalendarViewApi = ({ behavior, foundation, interaction }: CalendarViewInput): CalendarViewApi => {
   const { calendar, context, months, navigation, secondaryCalendar } = foundation;
   const isInteractive = !interaction.isDisabled && !interaction.isReadOnly;
-  const headingId = (monthIndex: number): string => `${foundation.idPrefix}-heading-${monthIndex}`;
+  const gridLabelProps = (month: MonthGrid | undefined): { readonly 'aria-label'?: string } =>
+    month ? { 'aria-label': context.locale.formatHeading(month.month, calendar.id) } : {};
 
   const getCellState = (cell: MonthGridCell): CellState =>
     buildCellState(cell, {
@@ -158,7 +158,8 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
     getCellProps,
     getGridProps: (monthIndex) => ({
       role: 'grid',
-      'aria-labelledby': headingId(monthIndex),
+      // Goal: 보이는 제목과 같은 글로 이름을 붙여 Heading·ViewButton 중 무엇을 그리든(둘 다 그려도) id 연결 없이 격자 이름이 같음 (T3 리뷰 4)
+      ...gridLabelProps(months[monthIndex]),
       ...(behavior.mode === 'range' ? { 'aria-multiselectable': true } : {}),
       onKeyDown: (event: KeyboardEvent<HTMLTableElement>) => {
         if (interaction.isDisabled) return;
@@ -189,7 +190,6 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
         invalid: interaction.isInvalid,
       }),
     }),
-    headingId,
     consumeFocusRequest: foundation.consumeFocusRequest,
     requestFocus: foundation.requestFocus,
   };

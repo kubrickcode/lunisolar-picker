@@ -26,8 +26,11 @@ export interface LocaleLabels {
   readonly minute: string;
   readonly month: string;
   readonly nextMonth: string;
+  // Goal: 월 보기의 이전·다음 버튼처럼 한 해씩 옮기는 동작의 이름. nextYears는 연 쪽(여러 해)을 넘김
+  readonly nextYear: string;
   readonly nextYears: string;
   readonly previousMonth: string;
+  readonly previousYear: string;
   readonly previousYears: string;
   readonly rangeEnd: string;
   readonly rangeStart: string;

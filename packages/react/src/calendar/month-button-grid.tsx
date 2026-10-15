@@ -13,6 +13,14 @@ export type ButtonGridItem = {
   readonly onPick: () => void;
 };
 
+type KeyMoveInput = {
+  readonly columnCount: number;
+  readonly focusedIndex: number;
+  readonly isRightToLeft: boolean;
+  readonly itemCount: number;
+  readonly key: string;
+};
+
 export type MonthButtonGridProps = {
   readonly columnCount: number;
   // Goal: 고른 뒤 이 격자가 새로 그려질 때(연 → 월) 키보드 포커스를 이어 받음. 달력 밖에서 쓰면 넘기지 않음
@@ -24,12 +32,10 @@ export type MonthButtonGridProps = {
   readonly part: PartName;
 };
 
-type KeyMoveInput = {
-  readonly columnCount: number;
-  readonly focusedIndex: number;
-  readonly isRightToLeft: boolean;
-  readonly itemCount: number;
-  readonly key: string;
+type RovingState = {
+  readonly focusedKey: string | null;
+  // Goal: 탭 정지점을 정할 때 본 선택 항목. 선택이 바뀐 것을 알아채는 데 씀
+  readonly selectedKey: string | null;
 };
 
 // Goal: 월·연 격자도 날짜 격자처럼 화살표로 이동하는 roving tabindex를 씀 (스펙 10.1)
@@ -41,13 +47,17 @@ export const MonthButtonGrid = ({
   label,
   part,
 }: MonthButtonGridProps): ReactElement => {
-  const selectedIndex = Math.max(
-    HOME_INDEX,
-    items.findIndex((item) => item.isSelected),
-  );
-  const [focusedIndex, setFocusedIndex] = useState(selectedIndex);
-  // Constraint: 연 쪽을 넘기면 지원 범위 끝 쪽은 항목이 적어질 수 있으므로 탭 정지점이 항목 밖에 남지 않게 자름
-  const tabStopIndex = Math.min(focusedIndex, items.length - 1);
+  const selectedKey = items.find((item) => item.isSelected)?.key ?? null;
+  const [storedRoving, setRoving] = useState<RovingState>({ focusedKey: selectedKey, selectedKey });
+  // Constraint: 선택이 바뀌면(연 고르기, 윤달이 다른 해로 역법 전환) 탭 정지점도 새 선택으로 옮김. 렌더 중 상태 갱신이라 StrictMode 이중 렌더에서도 같은 결과
+  const roving = storedRoving.selectedKey === selectedKey ? storedRoving : { focusedKey: selectedKey, selectedKey };
+  if (roving !== storedRoving) setRoving(roving);
+  // Constraint: 연 쪽을 넘기면 포커스했던 항목이 없을 수 있음(지원 범위 끝 쪽은 항목도 적음). 그때는 선택, 그것도 없으면 첫 항목
+  const tabStopIndex = indexOfKey(items, roving.focusedKey) ?? indexOfKey(items, selectedKey) ?? HOME_INDEX;
+  const focusItem = (index: number): void => {
+    const key = items[index]?.key;
+    if (key !== undefined) setRoving({ ...roving, focusedKey: key });
+  };
   const rows = Array.from({ length: Math.ceil(items.length / columnCount) }, (_, rowIndex) =>
     items.slice(rowIndex * columnCount, (rowIndex + 1) * columnCount),
   );
@@ -63,7 +73,7 @@ export const MonthButtonGrid = ({
     });
     if (nextIndex === null) return;
     event.preventDefault();
-    setFocusedIndex(nextIndex);
+    focusItem(nextIndex);
     event.currentTarget.querySelectorAll<HTMLButtonElement>('button')[nextIndex]?.focus();
   };
 
@@ -102,7 +112,7 @@ export const MonthButtonGrid = ({
                     {...(isTabStop ? { [AUTOFOCUS_ATTRIBUTE]: '' } : {})}
                     {...(isInert ? { 'aria-disabled': true } : {})}
                     onFocus={() => {
-                      if (!isDisabled) setFocusedIndex(index);
+                      if (!isDisabled) focusItem(index);
                     }}
                     onClick={() => {
                       if (!isInert) item.onPick();
@@ -118,6 +128,11 @@ export const MonthButtonGrid = ({
       </tbody>
     </table>
   );
+};
+
+const indexOfKey = (items: readonly ButtonGridItem[], key: string | null): number | null => {
+  const index = items.findIndex((item) => item.key === key);
+  return index === -1 ? null : index;
 };
 
 const nextIndexForKey = ({ columnCount, focusedIndex, isRightToLeft, itemCount, key }: KeyMoveInput): number | null => {

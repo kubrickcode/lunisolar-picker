@@ -15,7 +15,7 @@ import {
   type SelectedDay,
   shiftVisibleMonth,
 } from '@lunisolar-picker/core';
-import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SharedPickerProps } from '../settings/shared-picker-props';
 import { usePickerContext } from '../settings/use-picker-context';
 import type { PickerSettings } from '../settings/use-picker-settings';
@@ -29,7 +29,6 @@ export type CalendarFoundation = {
   readonly calendar: CalendarSystem;
   readonly consumeFocusRequest: () => boolean;
   readonly context: PickerContext;
-  readonly idPrefix: string;
   readonly months: readonly MonthGrid[];
   readonly navigation: NavigationState;
   readonly requestFocus: () => void;
@@ -74,7 +73,6 @@ export const useCalendarFoundation = ({
   props,
   settings,
 }: CalendarFoundationInput): CalendarFoundation => {
-  const idPrefix = useId();
   const { calendars } = settings;
   const context = usePickerContext(settings, {
     constraints,
@@ -147,7 +145,6 @@ export const useCalendarFoundation = ({
     calendar,
     consumeFocusRequest,
     context,
-    idPrefix,
     months,
     navigation,
     requestFocus,

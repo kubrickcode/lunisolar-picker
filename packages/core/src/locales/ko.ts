@@ -38,6 +38,8 @@ export const ko: LocaleData = /* @__PURE__ */ defineLocale({
   labels: {
     previousMonth: '이전 달',
     nextMonth: '다음 달',
+    previousYear: '이전 해',
+    nextYear: '다음 해',
     previousYears: '이전 연도',
     nextYears: '다음 연도',
     today: '오늘',

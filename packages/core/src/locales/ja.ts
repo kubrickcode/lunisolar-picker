@@ -38,6 +38,8 @@ export const ja: LocaleData = /* @__PURE__ */ defineLocale({
   labels: {
     previousMonth: '前の月',
     nextMonth: '次の月',
+    previousYear: '前年',
+    nextYear: '翌年',
     previousYears: '前の年',
     nextYears: '次の年',
     today: '今日',

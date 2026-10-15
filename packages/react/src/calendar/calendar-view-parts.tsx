@@ -15,7 +15,7 @@ import {
   type VisibleMonth,
   YEAR_PAGE_SIZE,
 } from '@lunisolar-picker/core';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactElement } from 'react';
+import { type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, useId } from 'react';
 import { partAttributes, stateAttributes } from '../contract/data-attributes';
 import { mergeProps } from '../utilities/merge-props';
 import { type RenderProp, renderElement } from '../utilities/render-element';
@@ -91,20 +91,19 @@ export const CalendarToggle = ({ render, ...domProps }: CalendarToggleProps): Re
   return renderElement('div', render, groupProps, api);
 };
 
-// Constraint: 첫 달 제목(Heading monthIndex 0)과 같은 id를 쓰므로 한 화면에서는 둘 중 하나만 그림 (preflight 1.7)
 export const CalendarViewButton = ({ render, ...domProps }: CalendarViewButtonProps): ReactElement => {
   const api = useCalendarView();
+  const idPrefix = useId();
+  const textId = `${idPrefix}-text`;
+  const actionId = `${idPrefix}-action`;
   const { labels } = api.context.locale;
   const { view } = api.navigation;
-  const isAvailable = !api.isDisabled;
-  const headingId = api.headingId(0);
-  const actionId = `${headingId}-action`;
+  // Constraint: 연 보기는 더 내려갈 단계가 없으므로 누를 수 없음. 포커스는 받아 지금 단계를 읽을 수 있게 aria-disabled만 씀
+  const isAvailable = !api.isDisabled && view !== 'years';
   const buttonProps = {
     ...mergeProps(
       {
         type: 'button' as const,
-        // Goal: 보이는 제목으로 시작하는 이름이라 음성 입력 사용자가 보이는 글자로 누를 수 있음 (WCAG 2.5.3). 구분자를 직접 붙이지 않도록 이름 조합은 브라우저에 맡김
-        'aria-labelledby': `${headingId} ${actionId}`,
         ...(isAvailable ? {} : { 'aria-disabled': true }),
         ...partAttributes('calendar-view-button', { view, disabled: !isAvailable }),
         onClick: () => {
@@ -113,13 +112,15 @@ export const CalendarViewButton = ({ render, ...domProps }: CalendarViewButtonPr
       },
       domProps,
     ),
-    // Constraint: 첫 달 격자의 aria-labelledby가 이 span을 가리키므로 앱이 내용과 id를 바꾸지 못함
+    // Goal: 보이는 글로 시작하는 이름이라 음성 입력 사용자가 보이는 글자로 누를 수 있음 (WCAG 2.5.3). 구분자를 직접 붙이지 않도록 이름 조합은 브라우저에 맡김
+    // Constraint: 이름은 아래 두 span으로 정해지므로 앱이 aria-labelledby·내용을 바꾸지 못함 (Cell 예약 속성과 같은 방식)
+    'aria-labelledby': `${textId} ${actionId}`,
     children: (
       <>
-        <span id={headingId} aria-live="polite">
+        <span id={textId} aria-live="polite">
           {viewButtonText(api)}
         </span>
-        {/* Goal: 연 보기에서는 더 내려갈 곳이 없으므로 "월 선택" 대신 지금 고르는 단위를 알림 (preflight 4.11) */}
+        {/* Goal: 연 보기에서는 "월 선택" 대신 지금 고르는 단위를 알림 (preflight 4.11) */}
         <span id={actionId} hidden>
           {view === 'years' ? labels.year : labels.chooseMonth}
         </span>

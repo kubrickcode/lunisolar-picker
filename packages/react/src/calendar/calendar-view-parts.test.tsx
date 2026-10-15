@@ -4,10 +4,11 @@ import { YEAR_PAGE_SIZE } from '@lunisolar-picker/core';
 import { en } from '@lunisolar-picker/core/locales/en';
 import { ko } from '@lunisolar-picker/core/locales/ko';
 import { describe, expect, it, vi } from 'vitest';
-import { type Locator, userEvent } from 'vitest/browser';
+import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { LunisolarProvider } from '../settings/lunisolar-provider';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
+import { focusDirectly } from '../testing/focus-directly';
 import { dayLabel, FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
 import { settleEffects } from '../testing/settle-effects';
 import { Calendar } from './index';
@@ -20,13 +21,6 @@ const gregoryMonthName = (year: number, monthCode: MonthCode): string =>
 // Goal: 보기 버튼 이름은 보이는 제목 뒤에 동작 이름이 붙음 (WCAG 2.5.3 label in name)
 const viewButtonName = (visibleText: string, action: string = ko.labels.chooseMonth): string =>
   `${visibleText} ${action}`;
-
-// Goal: 누르면 동작하는 버튼(월·연 고르기)이나 비활성 버튼에 클릭 없이 포커스를 둔 뒤 자리 잡았는지 확인함
-const focusDirectly = async (locator: Locator): Promise<void> => {
-  const element = locator.element();
-  if (element instanceof HTMLElement) element.focus();
-  await expect.element(locator).toHaveFocus();
-};
 
 describe('Calendar views', () => {
   describe('lunar toggle', () => {
@@ -101,10 +95,11 @@ describe('Calendar views', () => {
   });
 
   describe('month and year views', () => {
-    it('drills from days to months to years and back to days', async () => {
+    it('drills from days to months to years and back to days without reporting a value', async () => {
+      const onValueChange = vi.fn();
       const screen = await render(
         <KoreanProvider>
-          <Calendar.Root defaultValue="2026-10-14" />
+          <Calendar.Root defaultValue="2026-10-14" onValueChange={onValueChange} />
         </KoreanProvider>,
       );
 
@@ -120,6 +115,8 @@ describe('Calendar views', () => {
       await expect
         .element(screen.getByRole('grid'))
         .toHaveAccessibleName(ko.formatHeading({ year: 2031, monthCode: 'M03' }, 'gregory'));
+      await settleEffects();
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
     it('lists the leap month in the lunar month view', async () => {
@@ -205,6 +202,51 @@ describe('Calendar views', () => {
       await expect.element(screen.getByRole('grid', { name: ko.labels.year })).toBeVisible();
     });
 
+    it('keeps the view button focusable but inert at the top of the drill', async () => {
+      const screen = await render(
+        <KoreanProvider>
+          <Calendar.Root defaultValue="2026-10-14" />
+        </KoreanProvider>,
+      );
+      await screen.getByRole('button', { name: viewButtonName(OCTOBER_2026) }).click();
+      await screen.getByRole('button', { name: viewButtonName('2026') }).click();
+      await screen.getByRole('button', { name: ko.labels.nextYears }).click();
+      const yearViewButton = screen.getByRole('button', {
+        name: viewButtonName(`2028${ko.rangeSeparator}2039`, ko.labels.year),
+      });
+      await expect.element(yearViewButton).toHaveAttribute('aria-disabled', 'true');
+      await expect.element(yearViewButton).toHaveAttribute('data-disabled', '');
+
+      await focusDirectly(yearViewButton);
+
+      await yearViewButton.click({ force: true });
+      await settleEffects();
+
+      // Constraint: 눌림이 통하면 view.set years가 연 쪽을 2016–2027로 되돌려 2031이 사라짐
+      await expect.element(screen.getByRole('button', { name: '2031' })).toBeVisible();
+    });
+
+    it('moves the month tab stop to the newly selected month when switching to a calendar with a leap month', async () => {
+      const screen = await render(
+        <KoreanProvider hasLunar>
+          <Calendar.Root defaultValue="2025-08-01" />
+        </KoreanProvider>,
+      );
+      await screen
+        .getByRole('button', { name: viewButtonName(ko.formatHeading({ year: 2025, monthCode: 'M08' }, 'gregory')) })
+        .click();
+
+      await screen.getByRole('button', { name: ko.calendarNames.dangi }).click();
+
+      const leapMonthName = ko.formatMonthName({ year: 2025, monthCode: 'M06L' }, 'dangi');
+      await expect
+        .element(screen.getByRole('gridcell', { name: leapMonthName }))
+        .toHaveAttribute('aria-selected', 'true');
+      const tabbable = screen.container.querySelectorAll('[data-lsp-part="calendar-month-grid"] button[tabindex="0"]');
+      expect(Array.from(tabbable, (button) => button.getAttribute('aria-label'))).toEqual([leapMonthName]);
+      expect(tabbable[0]?.hasAttribute('data-autofocus')).toBe(true);
+    });
+
     it('moves a year at a time with the navigation buttons in the months view', async () => {
       const screen = await render(
         <KoreanProvider>
@@ -213,9 +255,11 @@ describe('Calendar views', () => {
       );
       await screen.getByRole('button', { name: viewButtonName(OCTOBER_2026) }).click();
 
-      await screen.getByRole('button', { name: ko.labels.nextYears }).click();
-
+      await screen.getByRole('button', { name: ko.labels.nextYear }).click();
       await expect.element(screen.getByRole('button', { name: viewButtonName('2027') })).toBeVisible();
+
+      await screen.getByRole('button', { name: ko.labels.previousYear }).click();
+      await expect.element(screen.getByRole('button', { name: viewButtonName('2026') })).toBeVisible();
     });
 
     it('disables months and years outside min and max', async () => {
@@ -271,6 +315,42 @@ describe('Calendar views', () => {
       await screen.getByRole('button', { name: `2026 ${en.labels.chooseMonth}` }).click();
       await expect.element(screen.getByRole('grid', { name: en.labels.year })).toBeVisible();
       await expectNoAxeViolations(screen.container);
+    });
+  });
+
+  describe('composition', () => {
+    it('renders the view button and the first heading together without duplicate ids', async () => {
+      const screen = await render(
+        <LunisolarProvider locale={en} timeZone="Asia/Seoul" today={FIXED_TODAY}>
+          <Calendar.Root defaultValue="2026-10-14">
+            <Calendar.Header>
+              <Calendar.ViewButton />
+              <Calendar.Heading />
+            </Calendar.Header>
+            <Calendar.Grid />
+          </Calendar.Root>
+        </LunisolarProvider>,
+      );
+      const october = en.formatHeading({ year: 2026, monthCode: 'M10' }, 'gregory');
+      await expect.element(screen.getByRole('grid')).toHaveAccessibleName(october);
+
+      const ids = Array.from(screen.container.querySelectorAll('[id]'), (element) => element.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      await expectNoAxeViolations(screen.container);
+    });
+
+    it('keeps the view button named by its own text when the app passes aria-labelledby', async () => {
+      const screen = await render(
+        <KoreanProvider>
+          <Calendar.Root defaultValue="2026-10-14">
+            <span id="app-label">app</span>
+            <Calendar.ViewButton aria-labelledby="app-label" />
+            <Calendar.Grid />
+          </Calendar.Root>
+        </KoreanProvider>,
+      );
+
+      await expect.element(screen.getByRole('button', { name: viewButtonName(OCTOBER_2026) })).toBeVisible();
     });
   });
 

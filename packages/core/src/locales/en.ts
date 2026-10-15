@@ -67,6 +67,8 @@ export const en: LocaleData = /* @__PURE__ */ defineLocale({
   labels: {
     previousMonth: 'Previous month',
     nextMonth: 'Next month',
+    previousYear: 'Previous year',
+    nextYear: 'Next year',
     previousYears: 'Previous years',
     nextYears: 'Next years',
     today: 'Today',
