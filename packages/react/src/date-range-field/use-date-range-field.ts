@@ -31,7 +31,7 @@ import { createFocusLeaveListener } from '../utilities/focus-leave';
 import { formatOrNull } from '../value/format-or-null';
 import type { HiddenInputProps } from '../value/hidden-input';
 import { isVisiblyInvalid } from '../value/is-visibly-invalid';
-import { type DateRangeInput, parseOptionalRange } from '../value/parse-controlled-value';
+import { type DateRangeInput, describeRangeInput, parseOptionalRange } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
 
@@ -252,8 +252,6 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     }),
   };
 };
-
-const describeRangeInput = (input: DateRangeInput): string => `${input.start}/${input.end ?? ''}`;
 
 const selectedDayOf = (date: DateString | null): SelectedDay | null =>
   date === null ? null : { epochDay: epochDayOf(date), calendarId: calendarIdOf(date) };

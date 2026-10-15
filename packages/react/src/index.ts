@@ -16,6 +16,7 @@ export type { PopoverApi, UsePopoverProps } from './popover/use-popover';
 export { usePopover } from './popover/use-popover';
 export type { Presentation, ResolvedPresentation } from './presentation/use-presentation';
 export { resolvePresentation, usePresentation } from './presentation/use-presentation';
+export * from './range-calendar/index';
 export type { LunisolarProviderProps } from './settings/lunisolar-provider';
 export { LunisolarProvider } from './settings/lunisolar-provider';
 export type { SharedPickerProps, ValueChangeDetails } from './settings/shared-picker-props';

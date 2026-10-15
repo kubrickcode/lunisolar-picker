@@ -22,6 +22,9 @@ export type ParsedControlledValue<Value> = {
   readonly value: Value | null;
 };
 
+// Goal: 범위 입력을 onInvalidValue에 넘길 한 줄 문자열로 적음. 범위 필드·범위 달력이 같은 모양으로 알림
+export const describeRangeInput = (input: DateRangeInput): string => `${input.start}/${input.end ?? ''}`;
+
 // Goal: store에 넣는 값은 parseDate를 거친 정규 문자열만. 입력 역법에서 표현 가능한 값만 store에 들어감 (계약 §2.7 ④)
 export const parseOptionalDate = (
   input: string | null | undefined,
