@@ -16,6 +16,7 @@ export const DATA_ATTRIBUTES = [
   'data-calendar',
   'data-view',
   'data-weekday',
+  'data-slide',
 ] as const;
 
 export const PART_ATTRIBUTE = 'data-lsp-part';
@@ -52,6 +53,10 @@ export const PART_NAMES = [
   'sheet-backdrop',
   'picker-footer',
   'picker-presets',
+  'calendar-months',
+  'calendar-month',
+  'calendar-cell-secondary',
+  'live-region',
 ] as const;
 
 export type DataAttribute = (typeof DATA_ATTRIBUTES)[number];

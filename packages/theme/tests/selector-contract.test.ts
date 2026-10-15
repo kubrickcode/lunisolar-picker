@@ -26,6 +26,10 @@ const PARTS_WITHOUT_RULES: readonly PartName[] = [
   'calendar-year-grid',
   'picker-footer',
   'picker-presets',
+  'calendar-months',
+  'calendar-month',
+  'calendar-cell-secondary',
+  'live-region',
 ];
 const PART_SELECTOR_PATTERN = /\[data-lsp-part\s*[~|^$*]?=\s*['"]?([a-z-]+)/g;
 const THEME_FILES = [MONO_FILE, '../src/bridge/shadcn.css'];

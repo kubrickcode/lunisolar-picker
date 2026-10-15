@@ -1,3 +1,4 @@
+export * from './calendar/index';
 export type { DataAttribute, DataAttributeProps, PartName } from './contract/data-attributes';
 export { DATA_ATTRIBUTES, PART_NAMES } from './contract/data-attributes';
 export { useDateFieldContext } from './date-field/date-field-context';
