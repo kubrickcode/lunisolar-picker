@@ -54,6 +54,8 @@ export interface CalendarViewApi {
   getRootProps(): CalendarRootDomProps;
   headingId(monthIndex: number): string;
   consumeFocusRequest(): boolean;
+  // Goal: 고른 버튼이 사라지는 보기 전환(월·연 고르기) 뒤에 새로 그려지는 탭 정지점이 포커스를 이어 받게 함
+  requestFocus(): void;
 }
 
 export type CalendarViewInput = {
@@ -189,6 +191,7 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
     }),
     headingId,
     consumeFocusRequest: foundation.consumeFocusRequest,
+    requestFocus: foundation.requestFocus,
   };
 };
 

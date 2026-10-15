@@ -248,6 +248,7 @@ const reservedCellProps = (button: CellProps['button']) => ({
 
 const navigationLabel = (api: CalendarViewApi, direction: NavigationDirection): string => {
   const { labels } = api.context.locale;
-  if (api.navigation.view === 'years') return direction < 0 ? labels.previousYears : labels.nextYears;
+  // Constraint: 월 보기의 이전·다음은 한 해씩 옮기므로 달 이동 이름을 쓰지 않음. 로케일에 한 해 이동 이름이 따로 없어 연 쪽 이름을 같이 씀
+  if (api.navigation.view !== 'days') return direction < 0 ? labels.previousYears : labels.nextYears;
   return direction < 0 ? labels.previousMonth : labels.nextMonth;
 };

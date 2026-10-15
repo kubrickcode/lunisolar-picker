@@ -10,3 +10,9 @@ export {
   CalendarTodayButton as TodayButton,
 } from './calendar-parts';
 export { CalendarRoot as Root } from './calendar-root';
+export {
+  CalendarMonthGrid as MonthGrid,
+  CalendarToggle,
+  CalendarViewButton as ViewButton,
+  CalendarYearGrid as YearGrid,
+} from './calendar-view-parts';
