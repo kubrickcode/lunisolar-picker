@@ -321,7 +321,7 @@ export interface LocaleData {
   formatDateLabel(fields: DateFields, calendarId): string;                      // 요일·역법 이름 없는 날짜 (칸 이름의 보조 역법 부분) [M4 제안 1]
   formatSecondaryLabel(label: SecondaryDateLabel): string;
   readonly calendarNames: Record<CalendarId, string>;
-  readonly labels: LocaleLabels;   // 계약 원안 그대로 (previousMonth … validation)
+  readonly labels: LocaleLabels;   // 계약 원안 그대로 (previousMonth … validation). [M4-T3] previousYear·nextYear 추가(월 보기의 1년 이동). previousYears·nextYears는 연 보기의 쪽 이동
 }
 defineLocale(locale): LocaleData
 formatDateForField(epochDay, calendar, locale, separator?): string
@@ -427,7 +427,7 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 | 공개 | 내용 |
 |---|---|
 | `Calendar.{Root, Header, Heading, PrevButton, NextButton, TodayButton, CalendarToggle, ViewButton, Grid, HeadCell, Cell, MonthGrid, YearGrid, Layout}` | `Grid({ monthIndex?, children?: (cell: MonthGridCell) => ReactNode })`, `Cell({ cell, children?: ReactNode \| ((info: CellRenderInfo) => ReactNode) })`, `Layout({ renderCell? })` |
-| `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`(포커스 가능한 칸 버튼은 `data-autofocus`를 가져 열릴 때 선택한 날, 없으면 오늘로 포커스), `selectEpochDay`, `isTodayVisible`, `isInvalid`(보이는 무효: `incomplete` 제외), `getRootProps()`(`onBlur`는 포커스가 달력 전체를 벗어날 때, `calendar` 부품 속성, `ref` 포함 — 직접 조립할 때 자기 ref로 덮어쓰지 말고 합칠 것) [M4-T1]. `CalendarApi.getHiddenInputProps()`는 M3 훅과 같은 모양(비제어는 폼 reset 때 마운트 시점 기본값, 그 역법이 빠졌으면 빈 값). disabled 달력은 탭 정지·키보드·월 이동이 모두 멈추고 readOnly는 월 이동만 된다. `Calendar.Cell`의 `tabIndex`·`aria-disabled`·`data-autofocus`·`disabled`와 `Calendar.Heading`의 `id`는 예약 속성이다 [M4-T2] |
+| `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`(포커스 가능한 칸 버튼은 `data-autofocus`를 가져 열릴 때 선택한 날, 없으면 오늘로 포커스), `selectEpochDay`, `isTodayVisible`, `isInvalid`(보이는 무효: `incomplete` 제외), `getRootProps()`(`onBlur`는 포커스가 달력 전체를 벗어날 때, `calendar` 부품 속성, `ref` 포함 — 직접 조립할 때 자기 ref로 덮어쓰지 말고 합칠 것) [M4-T1]. `CalendarApi.getHiddenInputProps()`는 M3 훅과 같은 모양(비제어는 폼 reset 때 마운트 시점 기본값, 그 역법이 빠졌으면 빈 값). disabled 달력은 탭 정지·키보드·월 이동이 모두 멈추고 readOnly는 월 이동만 된다. `Calendar.Cell`의 `tabIndex`·`aria-disabled`·`data-autofocus`·`disabled`와 `Calendar.ViewButton`의 `aria-labelledby`는 예약 속성이다 [M4-T2·T3]. 격자 이름은 보이는 제목과 같은 텍스트의 `aria-label`이라 `ViewButton`과 `Heading`을 함께 써도 id가 겹치지 않는다(`headingId`는 제거) [M4-T3]. `requestFocus()`: 월·연을 고르면 눌렀던 버튼이 사라지므로 다음 보기의 탭 정지로 포커스를 넘긴다. 직접 조립할 때는 `requestFocus` 뒤에 탭 정지를 그리는 보기가 와야 한다 [M4-T3]. 연 보기에서 보기 버튼은 비활성(맨 위 단계) |
 | `RangeCalendar.Root`, `useRangeCalendar(props): RangeCalendarApi`, `useRangeCalendarContext()` | `RangeCalendarApi`: `selection`, `value`, `draftValue`, `validity`, `announcement`, `rootRef`, `setRange`, `commit`, `cancel`. 범위 props에 `startName`·`endName` |
 | `MonthCalendar.Root`, `TimeList.Root`, `listTimes(minuteStep, isEndOfDayAllowed)` | |
 | `type CellRenderInfo = MonthGridCell & CellState` | `CellState { isSelected; isToday; isDisabled; isOutsideMonth; isInRange; isRangeStart; isRangeEnd; isPreview; isFocused }` |
