@@ -12,6 +12,7 @@
 > - theme: `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`를 스타일을 붙일 때마다 줄인다. 이 검사가 "모든 부품에 규칙"을 보장하므로 `calendar-selectors.test.ts`(약 2758행)는 달력 고유 검사만 남기거나 뺀다.
 > - `useStoreInstance`의 `send`는 `resetKey`가 바뀔 때 새로 만들어진다. M4-T1부터 달력 navigation·selection store도 `resetKey = calendarKey`를 쓰므로 역법 목록이 바뀌면 `send`가 바뀐다. `send`는 최신 ref로 읽거나 호출 시점에 쓴다. `getSnapshot()`으로 렌더 없이 최신 상태를 읽을 수 있다.
 > - 테스트: 클릭 후 입력은 `src/testing/click-to-focus.ts`의 `clickToFocus`를 쓰고, 부정 단언 전에는 `settleEffects`를 쓴다.
+> - M4-T1~T3 실제 코드 기준(실행 중 반영): `CalendarViewApi.headingId`·`foundation.idPrefix`는 없다(약 601·617·686·750·839·853·1225·1799·1852행은 옛 코드). 격자 이름은 `aria-label = formatHeading(...)`. `foundation.config`는 `settings`, `INVALID_SELECTION`·`ParsedSelection`은 없음, `useSelectionSync`는 `resetKey`를 받고 `{ isReported, markReported }`를 돌려줌, `useCalendarFoundation`·`createCalendarViewApi`는 객체 인자. 사용자 선택·`commit` 뒤에는 `reportCommitted`. T7 MonthCalendar의 1년 이동(약 3161·3278·3282행)은 `previousYear`/`nextYear` 라벨을 쓴다.
 
 **Goal:** 단일·범위 달력 부품(`Calendar.*`, `RangeCalendar.Root`)과 완성형 picker 5종(`DatePicker`, `DateRangePicker`, `MonthPicker`, `WheelDatePicker`, `TimePicker`)을 만들어, web-console·back-office·saju-pictures가 쓰던 기능을 공개 API만으로 재현할 수 있게 한다.
 
