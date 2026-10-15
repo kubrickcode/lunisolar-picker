@@ -1,7 +1,6 @@
 import { type CalendarSystem, type DateRangeValue, type EpochDay, gregory } from '@lunisolar-picker/calendar';
 import {
   createRangeSelectionState,
-  invalidBecause,
   type RangeConstraints,
   type RangeSelectionEvent,
   type RangeSelectionState,
@@ -20,10 +19,16 @@ import { type RefObject, useMemo, useState } from 'react';
 import { type CalendarViewApi, createCalendarViewApi } from '../calendar/calendar-view-api';
 import { parseRangeSelection, rangeSelectionKey } from '../calendar/parsed-selection';
 import { isCalendarProvided, providedCalendarOf, toProvidedCalendar } from '../calendar/provided-calendar';
+import {
+  createCommittedReporter,
+  focusTabbableDay,
+  MISSING_REQUIRED,
+  restorableDefault,
+  useMountSelections,
+} from '../calendar/selection-binding';
 import { type CalendarFoundationProps, useCalendarFoundation } from '../calendar/use-calendar-foundation';
 import { useSelectionSync } from '../calendar/use-selection-sync';
 import type { RangeSide } from '../date-range-field/use-date-range-field';
-import { focusInitialElement } from '../focus/focusable-elements';
 import type { ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
 import { useStoreInstance } from '../store/use-store-instance';
@@ -35,8 +40,6 @@ import { useParsedValue } from '../value/use-parsed-value';
 import { describeRangeAnnouncement } from './range-announcement';
 import { rangeCellFlags } from './range-cell-flags';
 import { useRangePointer } from './use-range-pointer';
-
-const MISSING_REQUIRED: Validity = invalidBecause(['incomplete']);
 
 type CommittedValidityInput = {
   readonly committed: SelectedRange | null;
@@ -60,7 +63,8 @@ export interface RangeCalendarApi extends CalendarViewApi {
   getHiddenInputProps(side: RangeSide): HiddenInputProps;
 }
 
-export interface UseRangeCalendarProps extends CalendarFoundationProps, RangeConstraints {
+// Constraint: 범위는 startName·endName으로만 폼에 참여하므로 단일 name은 받지 않음 (DateRangeField와 같음)
+export interface UseRangeCalendarProps extends Omit<CalendarFoundationProps, 'name'>, RangeConstraints {
   readonly value?: DateRangeInput | null | undefined;
   readonly defaultValue?: DateRangeInput | null | undefined;
   readonly onValueChange?: ((value: DateRangeValue | null, details: ValueChangeDetails) => void) | undefined;
@@ -77,14 +81,11 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
     props.onInvalidValue,
     settings.calendarKey,
   );
-  // Goal: form reset이 돌아갈 처음 기본값. 입력 칸(DateRangeField)처럼 마운트 때 값으로 고정함
-  const [defaultSelected] = useState(() =>
-    parseRangeSelection(parseOptionalRange(props.defaultValue, settings.calendars).value),
-  );
-  // Constraint: 제어 중이면 처음 포커스·표시 역법도 부모 값(null 포함)만 따름. 쓰이지 않는 defaultValue가 화면을 정하지 않게 함
-  const [initialSelected] = useState(() =>
-    controlled.isControlled ? parseRangeSelection(controlled.value) : defaultSelected,
-  );
+  const { defaultSelected, initialSelected } = useMountSelections({
+    controlled,
+    readDefault: () => parseOptionalRange(props.defaultValue, settings.calendars).value,
+    toSelected: parseRangeSelection,
+  });
   const foundation = useCalendarFoundation({
     props,
     settings,
@@ -123,16 +124,15 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
     emitChange: () => props.onValueChange?.(value, { validity: committedValidity }),
   });
 
-  // Goal: 사용자 조작이 같은 핸들러에서 달력을 닫아(언마운트) 이펙트가 돌지 않아도 확정 값을 알림. 공개 sendSelection으로 바로 보낸 이벤트는 이펙트가 알림 (preflight 1.4, 계약 §3.4)
-  const reportCommitted = (): void => {
-    const snapshot = getSnapshot();
-    const committedKey = rangeSelectionKey(snapshot.committed);
-    if (selectionSync.isReported(committedKey)) return;
-    selectionSync.markReported(committedKey);
-    props.onValueChange?.(rangeValue(snapshot, context), {
-      validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints, isRequired }),
-    });
-  };
+  const reportCommitted = createCommittedReporter({
+    getSnapshot,
+    keyOf: (snapshot) => rangeSelectionKey(snapshot.committed),
+    report: (snapshot) =>
+      props.onValueChange?.(rangeValue(snapshot, context), {
+        validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints, isRequired }),
+      }),
+    selectionSync,
+  });
 
   // Constraint: 확정 범위를 바꿀 수 있는 사용자 이벤트(date.select·pointer.*·range.set·clear·commit)는 모두 이 경로로 보냄. 확정 값이 그대로면 알리지 않음
   const sendUserSelection = (event: RangeSelectionEvent): void => {
@@ -165,24 +165,24 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
       sendUserSelection({ type: 'clear' });
       return;
     }
+    const previous = getSnapshot();
     sendUserSelection({ type: 'range.set', range: selected.range, calendarId: selected.calendarId });
+    // Constraint: store가 받지 않은 범위(열린 끝 불허, 입력 역법으로 적을 수 없는 끝)면 포커스도 그대로 둠
+    if (getSnapshot() === previous) return;
     foundation.sendNavigation({ type: 'focus.set', epochDay: selected.range.start });
   };
 
   // Goal: 비제어만 form reset에서 처음 기본값으로 돌아가며 알림(이펙트가 알림). 제어 값은 부모가 정함 (계약 §3.3 #1)
-  // Constraint: 처음 기본값의 역법을 앱이 calendars에서 뺐으면 그 값을 적을 수 없으므로 비움. 양 끝 숨은 입력이 둘 다 알려도 같은 값이라 한 번 바뀐 것과 같음
+  // Constraint: 양 끝 숨은 입력이 둘 다 알려도 같은 값이라 한 번 바뀐 것과 같음
   const resetToDefault = (): void => {
     if (controlled.isControlled) return;
-    const isDefaultWritable =
-      defaultSelected === null || isCalendarProvided(context.calendars, defaultSelected.calendarId);
-    sendSelection({ type: 'value.sync', selected: isDefaultWritable ? defaultSelected : null });
+    sendSelection({ type: 'value.sync', selected: restorableDefault(defaultSelected, context.calendars) });
   };
 
-  // Goal: 브라우저가 required 검증 실패로 숨은 입력에 포커스를 주면 탭으로 들어가는 칸으로 옮김
-  const focusTabbableDay = (): void => {
-    const root = foundation.rootRef.current;
-    if (root) focusInitialElement(root);
-  };
+  // Goal: 마운트 때는 말하지 않음. 범위 picker는 열 때마다 달력을 새로 마운트하므로 이미 고른 범위를 매번 다시 읽지 않게 함 (React Aria와 같음). 이후 바뀐 선택은 사용자 조작이든 부모 값이든 알림
+  // Constraint: store는 바뀔 때만 새 상태 객체를 만들므로 마운트 때 상태 객체와 같으면 아직 바뀐 적이 없음
+  const [mountedSelection] = useState(selection);
+  const hasSelectionChanged = selection !== mountedSelection;
 
   const isRequiredBySide: Readonly<Record<RangeSide, boolean>> = {
     start: isRequired,
@@ -218,12 +218,9 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
     value,
     draftValue: draftValueOf(selection.draft, context.calendars),
     validity,
-    announcement: describeRangeAnnouncement({
-      calendar: foundation.calendar,
-      locale: context.locale,
-      selection,
-      validity,
-    }),
+    announcement: hasSelectionChanged
+      ? describeRangeAnnouncement({ calendar: foundation.calendar, locale: context.locale, selection, validity })
+      : '',
     rootRef: foundation.rootRef,
     sendSelection,
     setRange,
@@ -235,7 +232,7 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
       value: (side === 'start' ? value?.start : value?.end) ?? '',
       required: isRequiredBySide[side],
       disabled: props.disabled,
-      onFocusRequest: focusTabbableDay,
+      onFocusRequest: () => focusTabbableDay(foundation.rootRef),
       onFormReset: resetToDefault,
     }),
   };

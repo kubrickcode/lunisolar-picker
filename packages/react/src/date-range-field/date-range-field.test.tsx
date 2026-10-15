@@ -13,6 +13,7 @@ import { settleEffects } from '../testing/settle-effects';
 import type { DateRangeInput } from '../value/parse-controlled-value';
 import { useDateRangeFieldContext } from './date-range-field-context';
 import * as DateRangeField from './parts';
+import type { UseDateRangeFieldProps } from './use-date-range-field';
 
 const GREGORY_RANGE: DateRangeInput = { start: '2026-10-13', end: '2026-10-17' };
 
@@ -205,6 +206,13 @@ describe('DateRangeField', () => {
   });
 
   describe('form', () => {
+    it('rejects a single name prop because each end has its own name', () => {
+      // @ts-expect-error: 범위 필드는 name을 받지 않음. startName·endName만 폼에 참여함 (계약 §3.4)
+      const props: UseDateRangeFieldProps = { name: 'period' };
+
+      expect(props).toEqual({ name: 'period' });
+    });
+
     it('submits each end under its own name', async () => {
       const screen = await render(
         <form aria-label="Report">

@@ -29,7 +29,6 @@ const RANGE_CALENDAR_PROP_NAMES = [
   'maxDays',
   'min',
   'minDays',
-  'name',
   'numberOfMonths',
   'onBlur',
   'onDisplayCalendarChange',

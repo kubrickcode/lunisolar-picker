@@ -1,18 +1,9 @@
 import { type CSSProperties, type ReactElement, useEffect, useRef } from 'react';
 import { useLatestRef } from '../utilities/use-latest-ref';
+import { VISUALLY_HIDDEN_STYLE } from '../utilities/visually-hidden';
 
-const VISUALLY_HIDDEN_STYLE: CSSProperties = {
-  blockSize: 1,
-  border: 0,
-  clipPath: 'inset(50%)',
-  inlineSize: 1,
-  margin: -1,
-  opacity: 0,
-  overflow: 'hidden',
-  padding: 0,
-  position: 'absolute',
-  whiteSpace: 'nowrap',
-};
+// Goal: M3 숨은 입력의 모양(투명도 0 포함)을 그대로 둠. 이 입력은 보조 기술에서도 aria-hidden이라 읽힐 필요가 없음
+const HIDDEN_INPUT_STYLE: CSSProperties = { ...VISUALLY_HIDDEN_STYLE, opacity: 0 };
 
 export type HiddenInputProps = {
   readonly disabled?: boolean | undefined;
@@ -63,7 +54,7 @@ export const HiddenInput = ({
       disabled={disabled}
       onChange={ignoreChange}
       onFocus={onFocusRequest}
-      style={VISUALLY_HIDDEN_STYLE}
+      style={HIDDEN_INPUT_STYLE}
     />
   );
 };

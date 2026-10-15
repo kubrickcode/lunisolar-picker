@@ -29,6 +29,7 @@ const PARTS_WITHOUT_RULES: readonly PartName[] = [
   'calendar-months',
   'calendar-month',
   'calendar-cell-secondary',
+  // Constraint: 부품이 인라인 sr-only 스타일로 숨기므로 테마가 꾸밀 것이 없음 (M4-T4 fix 1)
   'live-region',
 ];
 const PART_SELECTOR_PATTERN = /\[data-lsp-part\s*[~|^$*]?=\s*['"]?([a-z-]+)/g;

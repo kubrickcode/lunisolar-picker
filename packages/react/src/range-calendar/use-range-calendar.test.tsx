@@ -46,6 +46,13 @@ const ClosableRangeCalendar = ({ onValueChange }: Omit<ClosingProbeProps, 'onClo
 };
 
 describe('useRangeCalendar', () => {
+  it('rejects a single name prop because the range submits through startName and endName', () => {
+    // @ts-expect-error: 범위 훅은 name을 받지 않음 (계약 §3.4)
+    const props: UseRangeCalendarProps = { name: 'stay' };
+
+    expect(props).toEqual({ name: 'stay' });
+  });
+
   describe('immediate mode', () => {
     it('reports the completed range once even when the calendar closes in the same click', async () => {
       const onValueChange = vi.fn();
@@ -91,6 +98,45 @@ describe('useRangeCalendar', () => {
       expect(onInvalidValue).toHaveBeenCalledWith('2026-1-5/2026-10-17', 'invalid-date');
       expect(result.current.value).toEqual({ start: '2026-10-13', end: '2026-10-17' });
       expect(onValueChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('presets', () => {
+    it('keeps focus where it was when the store refuses the preset', async () => {
+      const { result, act } = await renderRangeCalendar({});
+
+      await act(() => result.current.setRange({ start: '2026-11-20', end: null }));
+
+      expect(result.current.draftValue).toBeNull();
+      expect(result.current.navigation.focusedEpochDay).toBe(epochDayAt(FIXED_TODAY));
+    });
+
+    it('moves focus to the start of an accepted preset', async () => {
+      const { result, act } = await renderRangeCalendar({});
+
+      await act(() => result.current.setRange({ start: '2026-11-20', end: '2026-11-22' }));
+
+      expect(result.current.navigation.focusedEpochDay).toBe(epochDayAt('2026-11-20'));
+    });
+  });
+
+  describe('selected cells', () => {
+    it('exposes the span from the anchor to the hovered day as selected while choosing', async () => {
+      const { result, act } = await renderRangeCalendar({});
+
+      await act(() =>
+        result.current.sendSelection({
+          type: 'pointer.down',
+          epochDay: epochDayAt('2026-10-13'),
+          calendarId: 'gregory',
+        }),
+      );
+      await act(() => result.current.sendSelection({ type: 'pointer.enter', epochDay: epochDayAt('2026-10-15') }));
+
+      const ariaSelectedOf = (isoDate: string) =>
+        result.current.getCellProps(cellOf(result.current, isoDate)).gridCell['aria-selected'];
+      expect(ariaSelectedOf('2026-10-14')).toBe(true);
+      expect(ariaSelectedOf('2026-10-16')).toBe(false);
     });
   });
 

@@ -32,10 +32,12 @@ const renderRangeCalendar = (element: ReactElement): Promise<Screen> =>
   render(<KoreanProvider>{element}</KoreanProvider>);
 
 // Constraint: 범위 달력 칸은 마우스 클릭이 포인터 경로(Task 5)로 가므로, 탭·키보드 선택 경로인 Enter로 고름
-const tapDay = async (screen: Screen, isoDate: string): Promise<void> => {
-  await focusDirectly(screen.getByRole('button', { name: dayLabel(isoDate) }));
+const tapDayNamed = async (screen: Screen, dayName: string): Promise<void> => {
+  await focusDirectly(screen.getByRole('button', { name: dayName }));
   await userEvent.keyboard('{Enter}');
 };
+
+const tapDay = (screen: Screen, isoDate: string): Promise<void> => tapDayNamed(screen, dayLabel(isoDate));
 
 const englishDayLabel = (isoDate: string): string => {
   const epochDay = epochDayAt(isoDate);
@@ -124,6 +126,22 @@ describe('RangeCalendar', () => {
 
       await expect.element(screen.getByRole('grid')).toHaveAttribute('aria-multiselectable', 'true');
     });
+
+    it('exposes every day of the range as selected but styles only the ends as selected', async () => {
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root defaultValue={{ start: '2026-10-13', end: '2026-10-17' }} />,
+      );
+      const middleDay = screen.getByRole('gridcell', { name: dayLabel('2026-10-15') });
+
+      await expect.element(middleDay).toHaveAttribute('aria-selected', 'true');
+      await expect.element(middleDay).not.toHaveAttribute('data-selected');
+      await expect
+        .element(screen.getByRole('gridcell', { name: dayLabel('2026-10-13') }))
+        .toHaveAttribute('data-selected', '');
+      await expect
+        .element(screen.getByRole('gridcell', { name: dayLabel('2026-10-18') }))
+        .toHaveAttribute('aria-selected', 'false');
+    });
   });
 
   describe('live region', () => {
@@ -141,12 +159,45 @@ describe('RangeCalendar', () => {
         .toHaveTextContent(ko.labels.formatRangeSummary(dayLabel('2026-10-13'), dayLabel('2026-10-17'), 5));
     });
 
+    it('stays silent on mount and announces a range the parent sets later', async () => {
+      const calendarWith = (end: string): ReactElement => (
+        <KoreanProvider>
+          <RangeCalendar.Root value={{ start: '2026-10-13', end }} />
+        </KoreanProvider>
+      );
+      const screen = await render(calendarWith('2026-10-17'));
+      const region = screen.getByRole('status');
+      await expect.element(screen.getByRole('grid')).toBeVisible();
+      await settleEffects();
+      expect(region.element().textContent).toBe('');
+
+      await screen.rerender(calendarWith('2026-10-15'));
+
+      await expect
+        .element(region)
+        .toHaveTextContent(ko.labels.formatRangeSummary(dayLabel('2026-10-13'), dayLabel('2026-10-15'), 3));
+    });
+
+    it('stays visually hidden without a theme', async () => {
+      const screen = await renderRangeCalendar(<RangeCalendar.Root />);
+      const region = screen.getByRole('status');
+      await expect.element(region).toBeInTheDocument();
+
+      const bounds = region.element().getBoundingClientRect();
+      expect(bounds.width).toBeLessThanOrEqual(1);
+      expect(bounds.height).toBeLessThanOrEqual(1);
+    });
+
     it('reads the strings of the active locale', async () => {
       const screen = await render(
         <LunisolarProvider locale={en} timeZone="Asia/Seoul" today={FIXED_TODAY}>
-          <RangeCalendar.Root defaultValue={{ start: '2026-10-13', end: '2026-10-17' }} />
+          <RangeCalendar.Root />
         </LunisolarProvider>,
       );
+
+      await tapDayNamed(screen, englishDayLabel('2026-10-13'));
+      await tapDayNamed(screen, englishDayLabel('2026-10-17'));
+
       const summary = en.labels.formatRangeSummary(englishDayLabel('2026-10-13'), englishDayLabel('2026-10-17'), 5);
 
       await expect.element(screen.getByRole('status')).toHaveTextContent(summary);
@@ -251,9 +302,10 @@ describe('RangeCalendar', () => {
       expect(onValueChange).toHaveBeenCalledWith({ start: '2026-10-13', end: '2026-10-17' }, { validity: VALID });
     });
 
-    it('selects a preset range through setRange', async () => {
+    it('selects a preset range through setRange without reporting it before commit', async () => {
+      const onValueChange = vi.fn();
       const screen = await renderRangeCalendar(
-        <RangeCalendar.Root commitMode="confirm">
+        <RangeCalendar.Root commitMode="confirm" onValueChange={onValueChange}>
           <Calendar.Layout />
           <PresetButton />
         </RangeCalendar.Root>,
@@ -262,6 +314,11 @@ describe('RangeCalendar', () => {
       await screen.getByRole('button', { name: 'preset' }).click();
 
       await expect.poll(() => screen.container.querySelectorAll(IN_RANGE_SELECTOR).length).toBe(7);
+      await expect
+        .poll(() => screen.container.querySelector(TABBABLE_CELL_SELECTOR)?.getAttribute('aria-label'))
+        .toBe(dayLabel('2026-10-08'));
+      await settleEffects();
+      expect(onValueChange).not.toHaveBeenCalled();
     });
   });
 
@@ -383,6 +440,18 @@ describe('RangeCalendar', () => {
 
       expect(hiddenInputOf(screen.container, 'from').checkValidity()).toBe(false);
       expect(hiddenInputOf(screen.container, 'to').checkValidity()).toBe(false);
+    });
+
+    it('requires only the start when the end may stay open', async () => {
+      const screen = await renderRangeCalendar(
+        <form aria-label="stay">
+          <RangeCalendar.Root startName="from" endName="to" required isOpenEndAllowed />
+        </form>,
+      );
+      await expect.element(screen.getByRole('grid')).toBeVisible();
+
+      expect(hiddenInputOf(screen.container, 'from').required).toBe(true);
+      expect(hiddenInputOf(screen.container, 'to').required).toBe(false);
     });
 
     it('moves focus from a hidden input to the tabbable day', async () => {

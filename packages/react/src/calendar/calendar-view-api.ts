@@ -103,7 +103,8 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
     return {
       gridCell: {
         role: 'gridcell',
-        'aria-selected': state.isSelected,
+        // Constraint: 범위 달력은 범위 안 모든 날(고르는 중이면 anchor~미리보기)을 선택된 것으로 읽힘. data-selected는 양 끝에만 남겨 테마가 끝을 채움 (계약 §3.4)
+        'aria-selected': behavior.mode === 'range' ? state.isInRange : state.isSelected,
         ...(state.isDisabled ? { 'aria-disabled': true } : {}),
         ...partAttributes('calendar-cell'),
         ...cellDataAttributes(cell, state),

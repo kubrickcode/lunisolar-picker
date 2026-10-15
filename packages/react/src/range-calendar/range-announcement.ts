@@ -32,8 +32,11 @@ export const describeRangeAnnouncement = ({
 }: RangeAnnouncementInput): string => {
   const range = displayedRange(selection);
   if (range === null || selection.preview !== null) return '';
+  // Constraint: 시작일 안내는 끝을 고르는 중일 때만. 열린 끝으로 확정된 범위는 알릴 문구가 아직 없어 조용히 함
   if (range.end === null)
-    return locale.labels.formatRangeStartSelected(dayLabelOf({ calendar, epochDay: range.start, locale }));
+    return selection.anchor === null
+      ? ''
+      : locale.labels.formatRangeStartSelected(dayLabelOf({ calendar, epochDay: range.start, locale }));
   if (!validity.isValid)
     return validity.reasons.map((reason) => locale.labels.validation[reason]).join(MESSAGE_SEPARATOR);
   return locale.labels.formatRangeSummary(

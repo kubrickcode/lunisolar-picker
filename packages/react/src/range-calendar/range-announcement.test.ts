@@ -39,6 +39,17 @@ describe('describeRangeAnnouncement', () => {
     );
   });
 
+  it('stays silent for a committed range with an open end', () => {
+    const openEnded: RangeSelectionState = {
+      ...empty,
+      draft: { range: { start: epochDayAt('2026-10-13'), end: null }, calendarId: 'gregory' },
+    };
+
+    expect(describeRangeAnnouncement({ selection: openEnded, validity: VALID, locale: ko, calendar: gregory })).toBe(
+      '',
+    );
+  });
+
   it('summarises a complete range with its inclusive day count', () => {
     const complete = completeRange('2026-10-13', '2026-10-17');
 

@@ -75,7 +75,8 @@ type RangeValidityInput = {
   readonly startResult: DateFieldResult;
 };
 
-export interface UseDateRangeFieldProps extends SharedPickerProps, RangeConstraints {
+// Constraint: 범위는 startName·endName으로만 폼에 참여하므로 단일 name은 받지 않음 (계약 §3.4, M4-T4 fix 1)
+export interface UseDateRangeFieldProps extends Omit<SharedPickerProps, 'name'>, RangeConstraints {
   readonly value?: DateRangeInput | null | undefined;
   readonly defaultValue?: DateRangeInput | null | undefined;
   readonly onValueChange?: ((value: DateRangeValue | null, details: ValueChangeDetails) => void) | undefined;
