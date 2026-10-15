@@ -15,7 +15,7 @@ import {
   type SelectedDay,
   shiftVisibleMonth,
 } from '@lunisolar-picker/core';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { SharedPickerProps } from '../settings/shared-picker-props';
 import { usePickerContext } from '../settings/use-picker-context';
 import type { PickerSettings } from '../settings/use-picker-settings';
@@ -33,6 +33,8 @@ export type CalendarFoundation = {
   readonly months: readonly MonthGrid[];
   readonly navigation: NavigationState;
   readonly requestFocus: () => void;
+  // Goal: 숨은 입력이 포커스를 넘길 때처럼 훅이 달력 안의 칸을 찾아 포커스할 때 씀. getRootProps가 Root 요소에 붙임
+  readonly rootRef: RefObject<HTMLDivElement | null>;
   readonly secondaryCalendar: CalendarSystem | null;
   readonly selectDisplayCalendar: (calendarId: CalendarId) => void;
   readonly sendNavigation: (event: NavigationEvent) => void;
@@ -120,6 +122,7 @@ export const useCalendarFoundation = ({
   );
   const slideDirection = useSlideDirection(firstEpochDayOfMonth(calendar, navigation.visibleMonth));
 
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const isFocusRequestedRef = useRef(false);
   const requestFocus = useCallback(() => {
     // 의도적 변경: React ref 객체는 current 대입으로만 갱신됨
@@ -148,6 +151,7 @@ export const useCalendarFoundation = ({
     months,
     navigation,
     requestFocus,
+    rootRef,
     secondaryCalendar,
     selectDisplayCalendar,
     sendNavigation,

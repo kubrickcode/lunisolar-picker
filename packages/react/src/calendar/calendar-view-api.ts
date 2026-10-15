@@ -6,6 +6,7 @@ import type {
   HTMLAttributes,
   KeyboardEvent,
   MouseEvent,
+  RefObject,
   TableHTMLAttributes,
   TdHTMLAttributes,
 } from 'react';
@@ -29,6 +30,7 @@ export type CalendarInteraction = {
 export type CalendarRootDomProps = HTMLAttributes<HTMLDivElement> &
   DataAttributeProps & {
     readonly onBlur: (event: FocusEvent<HTMLElement>) => void;
+    readonly ref: RefObject<HTMLDivElement | null>;
   };
 
 export interface CalendarViewApi {
@@ -94,6 +96,8 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
 
   const getCellProps = (cell: MonthGridCell): CellProps => {
     const state = getCellState(cell);
+    // Constraint: 비활성 달력은 M3 비활성 입력 칸처럼 탭 정지점이 없음. 읽기 전용은 둘러볼 수 있게 남김
+    const isTabStop = state.isFocused && !interaction.isDisabled;
     return {
       gridCell: {
         role: 'gridcell',
@@ -104,9 +108,9 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
       },
       button: {
         type: 'button',
-        tabIndex: state.isFocused ? 0 : -1,
+        tabIndex: isTabStop ? 0 : -1,
         // Goal: Popover·Sheet가 열릴 때 탭으로 들어가는 칸(선택한 날, 없으면 오늘)에 포커스가 가게 함 (스펙 10.4, preflight 3.3)
-        ...(state.isFocused ? { [AUTOFOCUS_ATTRIBUTE]: '' } : {}),
+        ...(isTabStop ? { [AUTOFOCUS_ATTRIBUTE]: '' } : {}),
         'aria-label': buildCellLabel({
           cell,
           calendar,
@@ -121,6 +125,7 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
           selectEpochDay(cell.epochDay);
         },
         onFocus: () => {
+          if (interaction.isDisabled) return;
           if (cell.epochDay !== navigation.focusedEpochDay && !cell.isOutsideMonth) {
             foundation.sendNavigation({ type: 'focus.set', epochDay: cell.epochDay });
           }
@@ -154,6 +159,7 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
       'aria-labelledby': headingId(monthIndex),
       ...(behavior.mode === 'range' ? { 'aria-multiselectable': true } : {}),
       onKeyDown: (event: KeyboardEvent<HTMLTableElement>) => {
+        if (interaction.isDisabled) return;
         const action = calendarKeyAction({
           key: event.key,
           isShiftPressed: event.shiftKey,
@@ -172,6 +178,7 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
     // Constraint: 칸 사이 이동은 달력 안이므로 달력 전체를 벗어날 때만 onBlur를 알림. react-hook-form의 touched 판정에 씀 (preflight 3.1)
     getRootProps: () => ({
       onBlur: createFocusLeaveListener(interaction.onBlur),
+      ref: foundation.rootRef,
       ...partAttributes('calendar', {
         calendar: navigation.displayCalendarId,
         view: navigation.view,

@@ -14,15 +14,17 @@ import {
   validateEpochDay,
 } from '@lunisolar-picker/core';
 import { useMemo, useState } from 'react';
+import { focusInitialElement } from '../focus/focusable-elements';
 import type { ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
 import { useStoreInstance } from '../store/use-store-instance';
+import type { HiddenInputProps } from '../value/hidden-input';
 import { isVisiblyInvalid } from '../value/is-visibly-invalid';
 import { parseOptionalDate } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { type CalendarViewApi, createCalendarViewApi } from './calendar-view-api';
 import { parseSelection, selectionKey } from './parsed-selection';
-import { toProvidedCalendar } from './provided-calendar';
+import { isCalendarProvided, toProvidedCalendar } from './provided-calendar';
 import { type CalendarFoundationProps, useCalendarFoundation } from './use-calendar-foundation';
 import { useSelectionSync } from './use-selection-sync';
 
@@ -35,6 +37,7 @@ export interface CalendarApi extends CalendarViewApi {
   sendSelection(event: SingleSelectionEvent): void;
   commit(): void;
   cancel(): void;
+  getHiddenInputProps(): HiddenInputProps;
 }
 
 type CommittedValidityInput = {
@@ -58,11 +61,13 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     props.onInvalidValue,
     settings.calendarKey,
   );
+  // Goal: form reset이 돌아갈 처음 기본값. 입력 칸(DateField)처럼 마운트 때 값으로 고정함
+  const [defaultSelected] = useState(() =>
+    parseSelection(parseOptionalDate(props.defaultValue, settings.calendars).value),
+  );
   // Constraint: 제어 중이면 처음 포커스·표시 역법도 부모 값(null 포함)만 따름. 쓰이지 않는 defaultValue가 화면을 정하지 않게 함
   const [initialSelected] = useState(() =>
-    parseSelection(
-      controlled.isControlled ? controlled.value : parseOptionalDate(props.defaultValue, settings.calendars).value,
-    ),
+    controlled.isControlled ? parseSelection(controlled.value) : defaultSelected,
   );
   const foundation = useCalendarFoundation({ props, settings, constraints: props, initialSelected });
   const { context } = foundation;
@@ -112,6 +117,21 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     reportCommitted();
   };
 
+  // Goal: 비제어만 form reset에서 처음 기본값으로 돌아가며 알림(이펙트가 알림). 제어 값은 부모가 정함 (계약 §3.3 #1)
+  // Constraint: 처음 기본값의 역법을 앱이 calendars에서 뺐으면 그 값을 적을 수 없으므로 비움
+  const resetToDefault = (): void => {
+    if (controlled.isControlled) return;
+    const isDefaultWritable =
+      defaultSelected === null || isCalendarProvided(context.calendars, defaultSelected.calendarId);
+    sendSelection({ type: 'value.sync', selected: isDefaultWritable ? defaultSelected : null });
+  };
+
+  // Goal: 브라우저가 required 검증 실패로 숨은 입력에 포커스를 주면 탭으로 들어가는 칸으로 옮김
+  const focusTabbableDay = (): void => {
+    const root = foundation.rootRef.current;
+    if (root) focusInitialElement(root);
+  };
+
   const viewApi = createCalendarViewApi({
     foundation,
     behavior: {
@@ -147,6 +167,15 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     sendSelection,
     commit,
     cancel: () => sendSelection({ type: 'cancel' }),
+    getHiddenInputProps: () => ({
+      name: props.name,
+      form: props.form,
+      value: value ?? '',
+      required: props.required,
+      disabled: props.disabled,
+      onFocusRequest: focusTabbableDay,
+      onFormReset: resetToDefault,
+    }),
   };
 };
 

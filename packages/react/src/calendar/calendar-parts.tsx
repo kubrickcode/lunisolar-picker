@@ -8,10 +8,11 @@ import {
   type TableHTMLAttributes,
 } from 'react';
 import { partAttributes, stateAttributes } from '../contract/data-attributes';
+import { AUTOFOCUS_ATTRIBUTE } from '../focus/focusable-elements';
 import { mergeProps } from '../utilities/merge-props';
 import { type RenderProp, renderElement } from '../utilities/render-element';
 import { useCalendarView } from './calendar-context';
-import type { CalendarViewApi } from './calendar-view-api';
+import type { CalendarViewApi, CellProps } from './calendar-view-api';
 import type { CellRenderInfo } from './cell-state';
 
 const DAYS_PER_WEEK = 7;
@@ -41,7 +42,7 @@ export interface CalendarHeadingProps extends HTMLAttributes<HTMLSpanElement> {
   readonly render?: RenderProp<HTMLAttributes<HTMLSpanElement>, CalendarViewApi> | undefined;
 }
 
-export interface CalendarNavButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
+export interface CalendarNavButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly render?: RenderProp<ButtonHTMLAttributes<HTMLButtonElement>, CalendarViewApi> | undefined;
 }
 
@@ -58,7 +59,10 @@ export const CalendarCell = ({ cell, children, render, ...buttonProps }: Calenda
     if (element && state.isFocused && api.consumeFocusRequest()) element.focus();
   };
   // Goal: 앱 핸들러가 먼저 돌고 preventDefault 하면 칸의 선택을 건너뜀 (M3 mergeProps 규칙, preflight 2.18)
-  const props = mergeProps({ ...button, ref: focusOnRequest }, { ...buttonProps, children: content });
+  const props = {
+    ...mergeProps({ ...button, ref: focusOnRequest }, { ...buttonProps, children: content }),
+    ...reservedCellProps(button),
+  };
   return <td {...gridCell}>{renderElement('button', render, props, info)}</td>;
 };
 
@@ -135,15 +139,11 @@ export const CalendarHeading = ({ monthIndex = 0, render, ...domProps }: Calenda
   const api = useCalendarView();
   const month = api.months[monthIndex];
   const text = month ? api.context.locale.formatHeading(month.month, api.calendar.id) : '';
-  const headingProps = mergeProps(
-    {
-      id: api.headingId(monthIndex),
-      'aria-live': 'polite' as const,
-      ...partAttributes('calendar-heading'),
-      children: text,
-    },
-    domProps,
-  );
+  // Constraint: 격자의 aria-labelledby가 이 id를 가리키므로 앱 id가 덮지 못함
+  const headingProps = {
+    ...mergeProps({ 'aria-live': 'polite' as const, ...partAttributes('calendar-heading'), children: text }, domProps),
+    id: api.headingId(monthIndex),
+  };
   return renderElement('span', render, headingProps, api);
 };
 
@@ -157,13 +157,14 @@ export const CalendarPrevButton = (props: CalendarNavButtonProps): ReactElement 
 
 export const CalendarTodayButton = ({ children, render, ...domProps }: CalendarNavButtonProps): ReactElement => {
   const api = useCalendarView();
+  const isAvailable = !api.isDisabled && !api.isTodayVisible;
   const buttonProps = mergeProps(
     {
       type: 'button' as const,
-      ...(api.isTodayVisible ? { 'aria-disabled': true } : {}),
-      ...partAttributes('calendar-today-button', { disabled: api.isTodayVisible }),
+      ...(isAvailable ? {} : { 'aria-disabled': true }),
+      ...partAttributes('calendar-today-button', { disabled: !isAvailable }),
       onClick: () => {
-        if (!api.isTodayVisible) api.sendNavigation({ type: 'today.go' });
+        if (isAvailable) api.sendNavigation({ type: 'today.go' });
       },
     },
     { ...domProps, children: children ?? api.context.locale.labels.today },
@@ -178,7 +179,8 @@ const CalendarNavButton = ({
   ...domProps
 }: CalendarNavButtonProps & { readonly direction: NavigationDirection }): ReactElement => {
   const api = useCalendarView();
-  const isPossible = canNavigate(api, direction);
+  // Constraint: 비활성 달력은 둘러보기도 막음. 읽기 전용은 둘러볼 수 있음
+  const isPossible = !api.isDisabled && canNavigate(api, direction);
   const buttonProps = mergeProps(
     {
       type: 'button' as const,
@@ -234,6 +236,13 @@ const navigateBy = (api: CalendarViewApi, direction: NavigationDirection): void 
   }
   api.sendNavigation({ type: 'yearPage.shift', amount: direction });
 };
+
+// Constraint: roving tabindex·열릴 때 포커스·비활성 의미는 격자 전체 규칙이라 앱 prop이 덮지 못함
+const reservedCellProps = (button: CellProps['button']) => ({
+  tabIndex: button.tabIndex,
+  'aria-disabled': button['aria-disabled'],
+  [AUTOFOCUS_ATTRIBUTE]: button[AUTOFOCUS_ATTRIBUTE],
+});
 
 const navigationLabel = (api: CalendarViewApi, direction: NavigationDirection): string => {
   const { labels } = api.context.locale;
