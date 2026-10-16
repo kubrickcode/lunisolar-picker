@@ -115,18 +115,21 @@ describe('MonthPicker', () => {
       await expect.element(trigger).toHaveFocus();
     });
 
-    it('stays closed and reports closing when asked to open while read-only', async () => {
-      const onOpenChange = vi.fn();
-      const screen = await renderPicker(
-        <MonthPicker presentation="popover" readOnly open onOpenChange={onOpenChange} />,
-      );
+    it.each(['popover', 'sheet'] as const)(
+      'stays closed in the %s and reports closing when asked to open while read-only',
+      async (presentation) => {
+        const onOpenChange = vi.fn();
+        const screen = await renderPicker(
+          <MonthPicker presentation={presentation} readOnly open onOpenChange={onOpenChange} />,
+        );
 
-      await expect.poll(() => onOpenChange.mock.calls).toEqual([[false]]);
-      await expect
-        .element(screen.getByRole('button', { name: TRIGGER_NAME }))
-        .toHaveAttribute('aria-expanded', 'false');
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
-    });
+        await expect.poll(() => onOpenChange.mock.calls).toEqual([[false]]);
+        await expect
+          .element(screen.getByRole('button', { name: TRIGGER_NAME }))
+          .toHaveAttribute('aria-expanded', 'false');
+        expect(document.querySelector('[role="dialog"]')).toBeNull();
+      },
+    );
 
     it.each([
       ['disabled', { disabled: true }],
