@@ -354,7 +354,7 @@ describe('DateRangePicker', () => {
     it.each([
       ['read-only', { readOnly: true }],
       ['disabled', { disabled: true }],
-    ] as const)('ignores a preset while %s', async (_, stateProps) => {
+    ] as const)('never shows the presets while %s, even when asked to open', async (_, stateProps) => {
       const onOpenChange = vi.fn();
       const onValueChange = vi.fn();
       const screen = await renderPicker(
@@ -367,14 +367,12 @@ describe('DateRangePicker', () => {
           {...stateProps}
         />,
       );
-      await expect.element(screen.getByRole('dialog')).toBeVisible();
 
-      // Constraint: 비활성·읽기 전용이어도 앱 프리셋 버튼은 앱 것이라 눌림. picker가 무시해야 함
-      await screen.getByRole('button', { name: LAST_WEEK_LABEL }).click();
-      await settleEffects();
-
-      await expect.element(screen.getByRole('dialog')).toBeVisible();
-      expect(onOpenChange).not.toHaveBeenCalled();
+      await expect.poll(() => onOpenChange.mock.calls).toEqual([[false]]);
+      await expect
+        .element(screen.getByRole('button', { name: ko.labels.chooseDateRange }))
+        .toHaveAttribute('aria-expanded', 'false');
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
       expect(onValueChange).not.toHaveBeenCalled();
     });
 

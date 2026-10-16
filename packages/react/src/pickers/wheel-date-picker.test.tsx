@@ -11,6 +11,7 @@ import { focusOnce } from '../testing/focus-once';
 import { formElementOf } from '../testing/form-element';
 import { FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
 import {
+  endsWith,
   hiddenInputNamed,
   inputsNamed,
   openSheet,
@@ -24,6 +25,8 @@ const CHIP_PLACEHOLDER = '생년월일';
 const FIELD_NAME = 'bornOn';
 const FORM_LABEL = '가입 정보';
 const OUTSIDE_BUTTON_LABEL = '바깥';
+// Goal: 시트 트리거 이름은 "보이는 값 + 동작 라벨"이므로 동작 라벨로 끝나는지로 찾음
+const TRIGGER_NAME = endsWith(ko.labels.chooseDate);
 const VALID_DETAILS = { validity: { isValid: true, reasons: [] } };
 
 const renderPicker = (element: ReactElement) => render(<KoreanProvider>{element}</KoreanProvider>);
@@ -111,7 +114,7 @@ describe('WheelDatePicker', () => {
       );
 
       await openSheet({
-        trigger: screen.getByRole('button', { name: ko.labels.chooseDate }),
+        trigger: screen.getByRole('button', { name: TRIGGER_NAME }),
         initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }),
       });
       const yearColumn = screen.getByRole('spinbutton', { name: ko.labels.year });
@@ -133,7 +136,7 @@ describe('WheelDatePicker', () => {
       const screen = await renderPicker(<WheelDatePicker presentation="sheet" onValueChange={onValueChange} />);
 
       await openSheet({
-        trigger: screen.getByRole('button', { name: ko.labels.chooseDate }),
+        trigger: screen.getByRole('button', { name: TRIGGER_NAME }),
         initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }),
       });
       await pressWithKeyboard(screen.getByRole('button', { name: ko.labels.confirm }));
@@ -155,12 +158,33 @@ describe('WheelDatePicker', () => {
       );
 
       await openSheet({
-        trigger: screen.getByRole('button', { name: ko.labels.chooseDate }),
+        trigger: screen.getByRole('button', { name: TRIGGER_NAME }),
         initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }),
       });
       await pressWithKeyboard(screen.getByRole('button', { name: ko.labels.confirm }));
 
       expect(onValueChange.mock.calls).toEqual([['2000-01-01', VALID_DETAILS]]);
+    });
+
+    it('starts the draft on the clamped date without marking it invalid', async () => {
+      const screen = await renderPicker(
+        <WheelDatePicker presentation="sheet" value="1990-03-15" min="2000-01-01" max="2010-12-31" />,
+      );
+
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
+
+      const yearColumn = screen.getByRole('spinbutton', { name: ko.labels.year });
+      await expect.element(yearColumn).toHaveAttribute('aria-valuetext', '2000');
+      await expect.element(yearColumn).not.toHaveAttribute('aria-invalid');
+      await expect.element(screen.getByRole('button', { name: ko.labels.confirm })).toBeEnabled();
+    });
+
+    it('disables confirm when the limits leave no day to pick', async () => {
+      const screen = await renderPicker(<WheelDatePicker presentation="sheet" min="2010-01-01" max="2000-01-01" />);
+
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
+
+      await expect.element(screen.getByRole('button', { name: ko.labels.confirm })).toBeDisabled();
     });
 
     it('closes on confirm without reporting the value it already has', async () => {
@@ -170,7 +194,7 @@ describe('WheelDatePicker', () => {
       );
 
       await openSheet({
-        trigger: screen.getByRole('button', { name: ko.labels.chooseDate }),
+        trigger: screen.getByRole('button', { name: TRIGGER_NAME }),
         initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }),
       });
       await pressWithKeyboard(screen.getByRole('button', { name: ko.labels.confirm }));
@@ -185,7 +209,7 @@ describe('WheelDatePicker', () => {
       const screen = await renderPicker(
         <WheelDatePicker presentation="sheet" defaultValue="1990-03-15" onValueChange={onValueChange} />,
       );
-      const trigger = screen.getByRole('button', { name: ko.labels.chooseDate });
+      const trigger = screen.getByRole('button', { name: TRIGGER_NAME });
 
       await openSheet({ trigger, initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }) });
       const yearColumn = screen.getByRole('spinbutton', { name: ko.labels.year });
@@ -207,7 +231,7 @@ describe('WheelDatePicker', () => {
         <WheelDatePicker presentation="sheet" defaultValue="1990-03-15" separator="-" />,
       );
 
-      await expect.element(screen.getByRole('button', { name: ko.labels.chooseDate })).toHaveTextContent('1990-03-15');
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveTextContent('1990-03-15');
     });
 
     it('names the sheet after the given label and focuses the trigger through the ref', async () => {
@@ -248,7 +272,7 @@ describe('WheelDatePicker', () => {
     ] as const)('cannot be opened while %s', async (_, stateProps) => {
       const screen = await renderPicker(<WheelDatePicker presentation="sheet" {...stateProps} />);
 
-      await expect.element(screen.getByRole('button', { name: ko.labels.chooseDate })).toBeDisabled();
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeDisabled();
     });
   });
 
@@ -262,7 +286,7 @@ describe('WheelDatePicker', () => {
           <WheelDatePicker presentation={presentation} name={FIELD_NAME} defaultValue="1990-03-15" />
         </form>,
       );
-      if (presentation === 'sheet') await screen.getByRole('button', { name: ko.labels.chooseDate }).click();
+      if (presentation === 'sheet') await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year })).toBeVisible();
 
       expect(inputsNamed(FIELD_NAME).map((input) => input.value)).toEqual(['1990-03-15']);
@@ -342,6 +366,20 @@ describe('WheelDatePicker', () => {
       expect(onValueChange).not.toHaveBeenCalled();
       expect(hiddenInputNamed(FIELD_NAME).value).toBe('1990-03-15');
     });
+  });
+
+  it('has no axe violations on the value trigger and with the sheet open', async () => {
+    const screen = await render(
+      <WheelDatePicker presentation="sheet" locale={en} today={FIXED_TODAY} defaultValue="1990-03-15" />,
+    );
+    const trigger = screen.getByRole('button', { name: endsWith(en.labels.chooseDate) });
+    // Constraint: 시트가 열리면 트리거가 inert라 axe가 보지 않으므로 닫힌 트리거를 먼저 검사함
+    await expectNoAxeViolations(screen.container);
+
+    await trigger.click();
+    await expect.element(screen.getByRole('dialog')).toBeVisible();
+
+    await expectNoAxeViolations(document.body);
   });
 
   it('has no axe violations inline', async () => {

@@ -49,8 +49,9 @@ describe('TimePicker', () => {
 
     it('closes when the selected time is picked again without reporting a change', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderPicker(
-        <TimePicker presentation="popover" defaultValue="09:30" onValueChange={onValueChange} />,
+        <TimePicker presentation="popover" defaultValue="09:30" onValueChange={onValueChange} onPick={onPick} />,
       );
 
       await screen.getByRole('button', { name: ko.labels.chooseTime }).click();
@@ -58,6 +59,7 @@ describe('TimePicker', () => {
       await userEvent.keyboard('{Enter}');
 
       await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+      expect(onPick.mock.calls).toEqual([['09:30']]);
       await settleEffects();
       expect(onValueChange).not.toHaveBeenCalled();
     });
@@ -158,6 +160,36 @@ describe('TimePicker', () => {
       await pressWithKeyboard(screen.getByRole('button', { name: ko.labels.close }));
 
       await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not show the list for an initially open disabled picker', async () => {
+      const onOpenChange = vi.fn();
+      const screen = await renderPicker(
+        <TimePicker presentation="popover" disabled defaultOpen onOpenChange={onOpenChange} />,
+      );
+
+      await expect.poll(() => onOpenChange.mock.calls).toEqual([[false]]);
+      await expect
+        .element(screen.getByRole('button', { name: ko.labels.chooseTime }))
+        .toHaveAttribute('aria-expanded', 'false');
+      expect(document.querySelector('[role="listbox"]')).toBeNull();
+    });
+
+    it('closes the list when the picker becomes disabled while open', async () => {
+      const onOpenChange = vi.fn();
+      const pickerWith = (isDisabled: boolean) => (
+        <KoreanProvider>
+          <TimePicker presentation="popover" disabled={isDisabled} defaultOpen onOpenChange={onOpenChange} />
+        </KoreanProvider>
+      );
+      const screen = await render(pickerWith(false));
+      await expect.element(screen.getByRole('listbox')).toBeVisible();
+
+      await screen.rerender(pickerWith(true));
+
+      await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument();
+      expect(onOpenChange.mock.calls).toEqual([[false]]);
+      expect(screen.container.querySelector('[data-lsp-part="time-picker"]')?.hasAttribute('data-open')).toBe(false);
     });
 
     it.each([

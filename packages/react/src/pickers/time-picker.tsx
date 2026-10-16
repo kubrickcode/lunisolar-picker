@@ -40,6 +40,8 @@ export interface TimePickerProps extends UseTimeFieldProps, PickerOpenProps {
   readonly 'aria-labelledby'?: string | undefined;
   readonly className?: string | undefined;
   readonly id?: string | undefined;
+  // Goal: 받아들인 목록 고르기마다(이미 고른 시각을 다시 골라도) 알림. onValueChange는 값이 바뀔 때만 (계약 §3.4 onPick)
+  readonly onPick?: ((value: TimeString) => void) | undefined;
   readonly placeholder?: string | undefined;
   readonly presentation?: Presentation | undefined;
   // Goal: ref.focus()가 입력 칸의 첫 칸(앱 트리거를 쓰면 그 트리거)에 포커스함. react-hook-form이 검증 실패 칸으로 포커스를 옮길 때 씀 (스펙 7.6, preflight 3.7)
@@ -65,6 +67,7 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
     onBlur,
     onInvalidValue,
     onOpenChange,
+    onPick,
     onValueChange,
     open,
     placeholder = '',
@@ -123,7 +126,8 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
   };
 
   // Goal: 이미 고른 시각을 다시 골라도 닫힘. onValueChange는 값이 바뀔 때만 오므로 고르기 신호로 닫음 (계약 §3.4 onPick)
-  const closeOnPick = (): void => {
+  const closeOnPick = (picked: TimeString): void => {
+    onPick?.(picked);
     setOpen(false);
   };
 

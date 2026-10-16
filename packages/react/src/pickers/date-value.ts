@@ -3,14 +3,14 @@ import { type DateConstraints, VALID, type Validity, validateDate } from '@lunis
 
 const EMPTY_VALUE: ParsedDateValue = { invalidReason: null, value: null };
 
-export type ParsedDateValue = {
-  readonly invalidReason: ValidationReason | null;
-  readonly value: DateString | null;
-};
-
 type DateValidityInput = {
   readonly calendars: readonly CalendarSystem[];
   readonly constraints: DateConstraints;
+  readonly value: DateString | null;
+};
+
+export type ParsedDateValue = {
+  readonly invalidReason: ValidationReason | null;
   readonly value: DateString | null;
 };
 

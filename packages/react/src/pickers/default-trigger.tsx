@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react';
+import { type ReactElement, type ReactNode, useId } from 'react';
 import type { PickerTriggerProps } from './trigger-render-props';
 
 type DefaultTriggerProps = {
@@ -50,10 +50,18 @@ export const ClockIcon = (): ReactElement => (
 );
 
 // Goal: 입력 칸이 없는 picker(월, 시트 휠)는 트리거가 값을 보여 줌
-// Constraint: 이름은 동작 라벨이라 보이는 값을 가림(WCAG 2.5.3). M4는 이 이름을 지키고 보이는 값을 이름·설명에 잇는 일은 M5 접근성 QA로 남김 (preflight 4.11)
-export const ValueTrigger = ({ triggerProps, label, icon, text }: ValueTriggerProps): ReactElement => (
-  <button {...triggerProps} type="button" aria-label={label}>
-    {icon}
-    {text === '' ? null : <span>{text}</span>}
-  </button>
-);
+// Constraint: 이름은 "보이는 값 + 동작 라벨"이라 음성 제어로 보이는 값을 말해도 눌림 (WCAG 2.5.3). 자기 id를 가리키는 자리에서는 aria-label(동작 라벨 또는 앱 라벨)이 쓰임 (accname 2B)
+// Constraint: 앱이 aria-labelledby를 주면 보이는 값 뒤에 앱이 가리킨 라벨을 이어 붙임. 보이는 값이 없으면 라벨만 씀
+export const ValueTrigger = ({ triggerProps, label, icon, text }: ValueTriggerProps): ReactElement => {
+  const ownId = useId();
+  const textId = useId();
+  const triggerId = triggerProps.id ?? ownId;
+  const appLabelledBy = triggerProps['aria-labelledby'];
+  const labelledBy = text === '' ? appLabelledBy : `${textId} ${appLabelledBy ?? triggerId}`;
+  return (
+    <button {...triggerProps} id={triggerId} type="button" aria-label={label} aria-labelledby={labelledBy}>
+      {icon}
+      {text === '' ? null : <span id={textId}>{text}</span>}
+    </button>
+  );
+};

@@ -12,6 +12,9 @@ type SheetOpening = {
   readonly trigger: Locator;
 };
 
+// Goal: 값을 보이는 트리거의 이름은 "보이는 값 + 동작 라벨"이라 동작 라벨로 끝나는 이름을 찾음
+export const endsWith = (label: string): RegExp => new RegExp(`${escapeRegExp(label)}$`);
+
 export const hiddenInputNamed = (name: string): HTMLInputElement => {
   const inputs = inputsNamed(name);
   const [input] = inputs;
@@ -53,3 +56,5 @@ export const stubCoarseNarrowScreen = (): MockInstance<(query: string) => MediaQ
     removeEventListener: vi.fn(),
     removeListener: vi.fn(),
   }));
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

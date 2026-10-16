@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, type RefObject, useCallback, useId } from 'react';
+import { type ReactElement, type ReactNode, type RefObject, useCallback, useEffect, useId } from 'react';
 import { partAttributes } from '../contract/data-attributes';
 import { Popover, type ResolvedPresentation, Sheet, usePopoverContext } from '../index';
 import type { PickerTriggerProps } from './trigger-render-props';
@@ -29,6 +29,12 @@ export const PickerSurface = ({
   triggerRef,
 }: PickerSurfaceProps): ReactElement => {
   const sheetId = useId();
+  // Constraint: 비활성·읽기 전용 picker는 표면을 보이지 않음. defaultOpen·제어 open으로 열려 있어도, 열린 채 비활성이 되어도 닫힘
+  const isShown = isOpen && isDisabled !== true;
+  // Goal: 막혀서 닫힌 것을 열림 상태에도 알려 data-open·aria-expanded·앱의 open이 실제 표면과 어긋나지 않게 함
+  useEffect(() => {
+    if (isOpen && isDisabled === true) onOpenChange(false);
+  }, [isDisabled, isOpen, onOpenChange]);
   if (presentation === 'sheet') {
     // Constraint: Sheet에는 Trigger 부품이 없어 팝오버 트리거와 같은 속성을 직접 만듦
     // Constraint: Sheet는 열기 전 포커스로 돌려주는데, Safari는 클릭한 버튼에 포커스를 주지 않으므로 열기 전에 트리거에 포커스함
@@ -37,18 +43,18 @@ export const PickerSurface = ({
       type: 'button',
       disabled: isDisabled,
       'aria-haspopup': 'dialog',
-      'aria-expanded': isOpen,
-      'aria-controls': isOpen ? sheetId : undefined,
+      'aria-expanded': isShown,
+      'aria-controls': isShown ? sheetId : undefined,
       onClick: () => {
         triggerRef.current?.focus({ preventScroll: true });
-        onOpenChange(!isOpen);
+        onOpenChange(!isShown);
       },
-      ...partAttributes('popover-trigger', { open: isOpen }),
+      ...partAttributes('popover-trigger', { open: isShown }),
     };
     return (
       <>
         {renderTrigger(triggerProps)}
-        <Sheet.Root open={isOpen} onOpenChange={onOpenChange}>
+        <Sheet.Root open={isShown} onOpenChange={onOpenChange}>
           <Sheet.Content id={sheetId} aria-label={label}>
             {children}
           </Sheet.Content>
@@ -57,7 +63,7 @@ export const PickerSurface = ({
     );
   }
   return (
-    <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
+    <Popover.Root open={isShown} onOpenChange={onOpenChange}>
       <PopoverTriggerSlot isDisabled={isDisabled} renderTrigger={renderTrigger} triggerRef={triggerRef} />
       <Popover.Content aria-label={label}>{children}</Popover.Content>
     </Popover.Root>

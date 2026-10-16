@@ -312,7 +312,7 @@ const RangeConfirmFooter = ({ labels, onClose }: RangeConfirmFooterProps): React
 // Goal: presets·footer 슬롯이 범위 달력을 picker 규칙(확정·취소하면 닫힘)대로 다루게 함
 const SelectionBridge = ({ children, isConfirmMode, onClose, onInvalidValue }: SelectionBridgeProps): ReactElement => {
   const range = useRangeCalendarContext();
-  // Constraint: 범위 달력처럼 비활성·읽기 전용이면 프리셋도 무시함. 읽지 못한 프리셋은 앱 실수이므로 picker의 onInvalidValue로 알림 (달력에는 onInvalidValue를 넘기지 않음)
+  // Constraint: 범위 달력처럼 비활성·읽기 전용이면 프리셋도 무시함. picker는 이때 표면을 보이지 않아 닿지 않지만, 슬롯이 범위 달력의 상태를 직접 지키도록 방어로 둠. 읽지 못한 프리셋은 앱 실수이므로 picker의 onInvalidValue로 알림 (달력에는 onInvalidValue를 넘기지 않음)
   // Goal: 즉시 모드에서 양 끝이 있는 프리셋은 범위를 끝까지 고른 것과 같으므로 닫음. 같은 범위를 다시 넣어도 닫힘
   const setRange = (next: DateRangeInput | null): void => {
     if (range.isDisabled || range.isReadOnly) return;

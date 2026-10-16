@@ -1,5 +1,13 @@
-import { type CalendarSystem, type DateString, formatDate } from '@lunisolar-picker/calendar';
-import { epochDayOfFields, findCalendar, type LocaleLabels } from '@lunisolar-picker/core';
+import { type CalendarSystem, calendarIdOf, type DateString, epochDayOf, formatDate } from '@lunisolar-picker/calendar';
+import {
+  boundsFor,
+  clampEpochDay,
+  type DateConstraints,
+  epochDayOfFields,
+  findCalendar,
+  type LocaleLabels,
+  resolveConstraints,
+} from '@lunisolar-picker/core';
 import { type ReactElement, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
 import {
@@ -24,6 +32,12 @@ import { useFieldRemount } from './use-field-remount';
 import { useInvalidValueReport } from './use-invalid-value-report';
 
 const WHEEL_SELECTOR = `[${PART_ATTRIBUTE}="wheel"]`;
+
+type DraftStartInput = {
+  readonly calendars: readonly CalendarSystem[];
+  readonly constraints: DateConstraints;
+  readonly value: DateString | null;
+};
 
 type InlineWheelProps = {
   readonly labelProps: WheelLabelProps;
@@ -151,7 +165,8 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
   const resetToDefault = (): void => {
     if (value !== undefined) return;
     const restored = parseDateValue(mountedDefault, settings.calendars).value;
-    remountField();
+    // Constraint: 시트에는 다시 마운트할 입력 자리가 없음. 시트의 휠은 열 때마다 새로 마운트됨
+    if (!isSheet) remountField();
     if (restored === parsedValue) return;
     setCurrentValue(restored);
     onValueChange?.(restored, {
@@ -243,7 +258,11 @@ const SheetWheelDraft = ({
   wheelProps,
 }: SheetWheelDraftProps): ReactElement => {
   const settings = usePickerSettings(wheelProps);
-  const wheel = useWheelDate({ ...wheelProps, defaultValue: initialValue });
+  // Constraint: 휠은 제약 밖 값을 잘라 보여도 원래 값으로 무효를 알리므로, 확인이 확정할 잘린 날에서 시작해 보이는 날과 무효 표시를 맞춤
+  const wheel = useWheelDate({
+    ...wheelProps,
+    defaultValue: draftStartOf({ calendars: settings.calendars, constraints: wheelProps, value: initialValue }),
+  });
   const shownValue = shownValueOf(wheel, settings.calendars);
   const isConfirmable =
     shownValue !== null &&
@@ -259,6 +278,7 @@ const SheetWheelDraft = ({
         isConfirmDisabled={!isConfirmable}
         onCancel={onCancel}
         onConfirm={() => {
+          // Constraint: 보이는 날을 적을 수 없으면 확인이 비활성이라 닿지 않음. 타입을 좁히려는 방어 검사
           if (shownValue !== null) onConfirm(shownValue);
         }}
       />
@@ -289,6 +309,16 @@ const WheelColumns = ({ labelProps, wheel }: WheelColumnsProps): ReactElement =>
     <Wheel.Highlight />
   </Wheel.Root>
 );
+
+// Goal: 확인이 확정할 날. 제약 밖 값은 제약 범위로 자르고, 고를 날이 없거나 자른 날을 적을 수 없으면 원래 값을 둠
+const draftStartOf = ({ calendars, constraints, value }: DraftStartInput): DateString | null => {
+  if (value === null) return null;
+  const calendar = findCalendar(calendars, calendarIdOf(value));
+  const bounds = boundsFor(calendar, resolveConstraints(constraints, calendar, calendars));
+  if (bounds.min > bounds.max) return value;
+  const formatted = formatDate(clampEpochDay(epochDayOf(value), bounds), calendar);
+  return formatted.isOk ? formatted.value : value;
+};
 
 // Constraint: 휠의 value는 고른 적이 없으면 null이고 제약 밖 부모 값이면 잘리기 전 값이라, 확인은 늘 보이는 칸(fields)으로 날을 정함
 const shownValueOf = (wheel: WheelDateApi, calendars: readonly CalendarSystem[]): DateString | null => {

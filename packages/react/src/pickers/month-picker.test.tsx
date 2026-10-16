@@ -9,7 +9,7 @@ import { focusDirectly } from '../testing/focus-directly';
 import { focusOnce } from '../testing/focus-once';
 import { formElementOf } from '../testing/form-element';
 import { FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
-import { hiddenInputNamed, inputsNamed, renderChipTrigger } from '../testing/picker-fixture';
+import { endsWith, hiddenInputNamed, inputsNamed, renderChipTrigger } from '../testing/picker-fixture';
 import { settleEffects } from '../testing/settle-effects';
 import { MonthPicker } from './index';
 
@@ -20,6 +20,8 @@ const NOVEMBER_HEADING = ko.formatHeading({ year: 2026, monthCode: 'M11' }, 'gre
 const NOVEMBER_NAME = ko.formatMonthName({ year: 2026, monthCode: 'M11' }, 'gregory');
 const OCTOBER_NAME = ko.formatMonthName({ year: 2026, monthCode: 'M10' }, 'gregory');
 const OUTSIDE_BUTTON_LABEL = '바깥';
+// Goal: 트리거 이름은 "보이는 값 + 동작 라벨"이므로 값이 있든 없든 동작 라벨로 끝나는지로 찾음
+const TRIGGER_NAME = endsWith(ko.labels.chooseMonth);
 const VALID_DETAILS = { validity: { isValid: true, reasons: [] } };
 
 const renderPicker = (element: ReactElement) => render(<KoreanProvider>{element}</KoreanProvider>);
@@ -32,14 +34,12 @@ describe('MonthPicker', () => {
         <MonthPicker presentation="popover" defaultValue="2026-10" onValueChange={onValueChange} />,
       );
 
-      await screen.getByRole('button', { name: ko.labels.chooseMonth }).click();
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await screen.getByRole('button', { name: NOVEMBER_NAME }).click();
 
       expect(onValueChange).toHaveBeenCalledWith('2026-11', VALID_DETAILS);
       await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
-      await expect
-        .element(screen.getByRole('button', { name: ko.labels.chooseMonth }))
-        .toHaveTextContent(NOVEMBER_HEADING);
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveTextContent(NOVEMBER_HEADING);
     });
 
     it('closes when the selected month is picked again without reporting a change', async () => {
@@ -49,7 +49,7 @@ describe('MonthPicker', () => {
         <MonthPicker presentation="popover" defaultValue="2026-10" onValueChange={onValueChange} onPick={onPick} />,
       );
 
-      await screen.getByRole('button', { name: ko.labels.chooseMonth }).click();
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await screen.getByRole('button', { name: OCTOBER_NAME }).click();
 
       await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('MonthPicker', () => {
 
     it('focuses the selected month on opening', async () => {
       const screen = await renderPicker(<MonthPicker presentation="popover" defaultValue="2026-11" />);
-      const trigger = screen.getByRole('button', { name: ko.labels.chooseMonth });
+      const trigger = screen.getByRole('button', { name: TRIGGER_NAME });
       await focusOnce(trigger);
 
       await trigger.click();
@@ -68,12 +68,18 @@ describe('MonthPicker', () => {
       await expect.element(screen.getByRole('button', { name: NOVEMBER_NAME })).toHaveFocus();
     });
 
+    it('names the trigger by the shown month followed by its action', async () => {
+      const screen = await renderPicker(<MonthPicker presentation="popover" defaultValue="2026-11" />);
+
+      await expect
+        .element(screen.getByRole('button', { name: `${NOVEMBER_HEADING} ${ko.labels.chooseMonth}`, exact: true }))
+        .toBeVisible();
+    });
+
     it('shows the placeholder until a month is picked', async () => {
       const screen = await renderPicker(<MonthPicker presentation="popover" placeholder={CHIP_PLACEHOLDER} />);
 
-      await expect
-        .element(screen.getByRole('button', { name: ko.labels.chooseMonth }))
-        .toHaveTextContent(CHIP_PLACEHOLDER);
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveTextContent(CHIP_PLACEHOLDER);
       expect(screen.container.querySelector('[data-lsp-part="month-picker"]')?.hasAttribute('data-placeholder')).toBe(
         true,
       );
@@ -98,7 +104,7 @@ describe('MonthPicker', () => {
   describe('presentation', () => {
     it('closes the sheet from its close button and returns focus to the trigger', async () => {
       const screen = await renderPicker(<MonthPicker presentation="sheet" />);
-      const trigger = screen.getByRole('button', { name: ko.labels.chooseMonth });
+      const trigger = screen.getByRole('button', { name: TRIGGER_NAME });
       await focusOnce(trigger);
 
       await trigger.click();
@@ -109,13 +115,26 @@ describe('MonthPicker', () => {
       await expect.element(trigger).toHaveFocus();
     });
 
+    it('stays closed and reports closing when asked to open while read-only', async () => {
+      const onOpenChange = vi.fn();
+      const screen = await renderPicker(
+        <MonthPicker presentation="popover" readOnly open onOpenChange={onOpenChange} />,
+      );
+
+      await expect.poll(() => onOpenChange.mock.calls).toEqual([[false]]);
+      await expect
+        .element(screen.getByRole('button', { name: TRIGGER_NAME }))
+        .toHaveAttribute('aria-expanded', 'false');
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    });
+
     it.each([
       ['disabled', { disabled: true }],
       ['read-only', { readOnly: true }],
     ] as const)('cannot be opened while %s', async (_, stateProps) => {
       const screen = await renderPicker(<MonthPicker presentation="popover" {...stateProps} />);
 
-      await expect.element(screen.getByRole('button', { name: ko.labels.chooseMonth })).toBeDisabled();
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeDisabled();
     });
   });
 
@@ -148,6 +167,19 @@ describe('MonthPicker', () => {
       await expect.element(screen.getByRole('button', { name: CHIP_PLACEHOLDER })).toBeVisible();
     });
 
+    it('puts the shown month before a visible label it is pointed at', async () => {
+      const screen = await renderPicker(
+        <>
+          <span id="settled-label">{CHIP_PLACEHOLDER}</span>
+          <MonthPicker presentation="popover" aria-labelledby="settled-label" defaultValue="2026-11" />
+        </>,
+      );
+
+      await expect
+        .element(screen.getByRole('button', { name: `${NOVEMBER_HEADING} ${CHIP_PLACEHOLDER}`, exact: true }))
+        .toBeVisible();
+    });
+
     it('renders an app trigger with the formatted value', async () => {
       const screen = await renderPicker(
         <MonthPicker presentation="popover" defaultValue="2026-11" renderTrigger={renderChipTrigger} />,
@@ -162,7 +194,7 @@ describe('MonthPicker', () => {
 
       ref.current?.focus();
 
-      await expect.element(screen.getByRole('button', { name: ko.labels.chooseMonth })).toHaveFocus();
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveFocus();
     });
 
     it('reports leaving the closed trigger but not moving into the popover', async () => {
@@ -173,7 +205,7 @@ describe('MonthPicker', () => {
           <button type="button">{OUTSIDE_BUTTON_LABEL}</button>
         </>,
       );
-      const trigger = screen.getByRole('button', { name: ko.labels.chooseMonth });
+      const trigger = screen.getByRole('button', { name: TRIGGER_NAME });
       await focusOnce(trigger);
 
       await trigger.click();
@@ -194,7 +226,7 @@ describe('MonthPicker', () => {
       );
       await expect.poll(() => onInvalidValue.mock.calls.length).toBe(1);
 
-      await screen.getByRole('button', { name: ko.labels.chooseMonth }).click();
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await expect.element(screen.getByRole('grid')).toBeVisible();
       await settleEffects();
 
@@ -206,7 +238,7 @@ describe('MonthPicker', () => {
       const screen = await renderPicker(
         <MonthPicker presentation="popover" defaultValue="2026-13" onInvalidValue={onInvalidValue} />,
       );
-      await expect.element(screen.getByRole('button', { name: ko.labels.chooseMonth })).toBeVisible();
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeVisible();
       await settleEffects();
 
       expect(onInvalidValue).not.toHaveBeenCalled();
@@ -221,7 +253,7 @@ describe('MonthPicker', () => {
         </form>,
       );
 
-      await screen.getByRole('button', { name: ko.labels.chooseMonth }).click();
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await expect.element(screen.getByRole('dialog')).toBeVisible();
 
       expect(inputsNamed(FIELD_NAME).map((input) => input.value)).toEqual(['2026-10']);
@@ -240,7 +272,7 @@ describe('MonthPicker', () => {
       // Constraint: Firefox는 창에 포커스가 없으면 .focus()의 focus 이벤트를 빠뜨릴 때가 있어, 브라우저가 검증 메시지용으로 보내는 focusin을 직접 발생시킴
       hiddenInputNamed(FIELD_NAME).dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
 
-      await expect.element(screen.getByRole('button', { name: ko.labels.chooseMonth })).toHaveFocus();
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveFocus();
     });
 
     it('returns to the default value on form reset and reports it once', async () => {
@@ -250,7 +282,7 @@ describe('MonthPicker', () => {
           <MonthPicker presentation="popover" name={FIELD_NAME} defaultValue="2026-10" onValueChange={onValueChange} />
         </form>,
       );
-      await screen.getByRole('button', { name: ko.labels.chooseMonth }).click();
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await screen.getByRole('button', { name: NOVEMBER_NAME }).click();
       await expect.poll(() => hiddenInputNamed(FIELD_NAME).value).toBe('2026-11');
 
@@ -271,7 +303,7 @@ describe('MonthPicker', () => {
           <MonthPicker presentation="popover" name={FIELD_NAME} required onValueChange={onValueChange} />
         </form>,
       );
-      await screen.getByRole('button', { name: ko.labels.chooseMonth }).click();
+      await screen.getByRole('button', { name: TRIGGER_NAME }).click();
       await screen.getByRole('button', { name: NOVEMBER_NAME }).click();
       await expect.poll(() => onValueChange.mock.calls.length).toBe(1);
 
@@ -301,10 +333,9 @@ describe('MonthPicker', () => {
       <MonthPicker presentation="popover" locale={en} today={FIXED_TODAY} defaultValue="2026-10" />,
     );
 
-    await screen.getByRole('button', { name: en.labels.chooseMonth }).click();
+    await screen.getByRole('button', { name: endsWith(en.labels.chooseMonth) }).click();
     await expect.element(screen.getByRole('grid')).toBeVisible();
 
-    // Constraint: 값을 보이는 트리거의 이름이 동작 라벨이라 2.5.3 규칙에 걸림. M4는 이 이름을 지키고 M5 접근성 QA에서 고침 (preflight 4.11)
-    await expectNoAxeViolations(document.body, { disabledRules: ['label-content-name-mismatch'] });
+    await expectNoAxeViolations(document.body);
   });
 });
