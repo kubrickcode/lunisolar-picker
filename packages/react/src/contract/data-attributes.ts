@@ -61,6 +61,11 @@ export const PART_NAMES = [
   'month-calendar-header',
   'time-list',
   'time-option',
+  'date-picker',
+  'date-range-picker',
+  'month-picker',
+  'time-picker',
+  'wheel-date-picker',
 ] as const;
 
 export type DataAttribute = (typeof DATA_ATTRIBUTES)[number];

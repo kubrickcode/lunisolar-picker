@@ -994,3 +994,70 @@
     }
   }
 }
+
+/* 완성형 picker (M4-T8). 팝오버·시트·트리거·달력은 위 규칙을 그대로 씀 */
+@layer lunisolar-picker {
+  /* 입력 칸 옆에 달력 버튼을 붙여 한 줄로 둠 */
+  [data-lsp-part="date-picker"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 달력 Root의 세로 간격 안에 들어가므로 위쪽 선으로만 격자와 구분함 */
+  [data-lsp-part="picker-footer"] {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-block-start: 8px;
+    border-block-start: 1px solid var(--lsp-border);
+  }
+
+  [data-lsp-part="picker-footer"] > button {
+    min-block-size: 32px;
+    padding-inline: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: var(--lsp-fg);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* 확정 버튼(마지막)은 선택과 같은 잉크색 채움으로 주된 동작임을 보임 */
+  [data-lsp-part="picker-footer"] > button:last-child {
+    border-color: var(--lsp-accent);
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="picker-footer"] > button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="picker-footer"] > button:not(:last-child, :disabled):hover {
+      background: var(--lsp-range-bg);
+    }
+  }
+
+  [data-lsp-part="picker-footer"] > button:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    /* 흐림만으로는 강제 색상에서 비활성이 드러나지 않으므로 시스템 비활성 색을 씀 */
+    [data-lsp-part="picker-footer"] > button:disabled {
+      border-color: GrayText;
+      color: GrayText;
+    }
+
+    [data-lsp-part="picker-footer"] > button:focus-visible {
+      outline: 2px solid Highlight;
+    }
+  }
+}
