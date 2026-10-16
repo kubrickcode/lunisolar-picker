@@ -1,7 +1,16 @@
 import type { ReactElement } from 'react';
-import { type MockInstance, vi } from 'vitest';
+import { expect, type MockInstance, vi } from 'vitest';
+import { type Locator, userEvent } from 'vitest/browser';
 import type { TriggerRenderProps } from '../pickers/index';
 import { COARSE_NARROW_SCREEN_QUERY } from '../presentation/use-presentation';
+import { focusDirectly } from './focus-directly';
+import { focusOnce } from './focus-once';
+
+type SheetOpening = {
+  // Goal: 시트가 열린 뒤 처음 포커스를 받는 요소
+  readonly initialFocus: Locator;
+  readonly trigger: Locator;
+};
 
 export const hiddenInputNamed = (name: string): HTMLInputElement => {
   const inputs = inputsNamed(name);
@@ -12,6 +21,19 @@ export const hiddenInputNamed = (name: string): HTMLInputElement => {
 
 export const inputsNamed = (name: string): HTMLInputElement[] =>
   Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`));
+
+// Goal: 시트는 다음 프레임에 첫 포커스를 옮기므로 그 포커스가 자리 잡은 뒤에 테스트가 다른 요소에 포커스해야 빼앗기지 않음
+export const openSheet = async ({ initialFocus, trigger }: SheetOpening): Promise<void> => {
+  await focusOnce(trigger);
+  await trigger.click();
+  await expect.element(initialFocus).toHaveFocus();
+};
+
+// Goal: 테마 없는 시트는 긴 목록·휠 아래로 버튼이 화면 밖에 놓이고 스크롤이 잠겨 포인터로 누를 수 없으므로 키보드로 누름 (preflight 2.10)
+export const pressWithKeyboard = async (locator: Locator): Promise<void> => {
+  await focusDirectly(locator);
+  await userEvent.keyboard('{Enter}');
+};
 
 export const renderChipTrigger = ({ displayValue, placeholder, triggerProps }: TriggerRenderProps): ReactElement => (
   <button {...triggerProps} type="button" data-testid="chip">

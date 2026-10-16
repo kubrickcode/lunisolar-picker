@@ -14,10 +14,6 @@ const MONO_FILE = '../src/mono.css';
 // Constraint: M4가 만들 달력·picker 부품이라 아직 규칙이 없음. M4는 부품에 스타일을 넣을 때 이 목록에서 지움(남겨 두면 아래 테스트가 실패함)
 // Constraint: M3 부품은 순수 래퍼까지 모두 규칙이 있어 이 목록에 없음. 규칙이 필요 없는 래퍼 부품을 새로 만들면 이유와 함께 여기에 더함
 const PARTS_WITHOUT_RULES: readonly PartName[] = [
-  // Constraint: M4-T10이 만들 picker 부품이라 그 작업에서 스타일을 붙임 (preflight 1.1)
-  'month-picker',
-  'time-picker',
-  'wheel-date-picker',
   // Constraint: 부품이 인라인 sr-only 스타일로 숨기므로 테마가 꾸밀 것이 없음 (M4-T4 fix 1)
   'live-region',
 ];

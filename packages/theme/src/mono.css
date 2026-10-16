@@ -995,14 +995,40 @@
   }
 }
 
-/* 완성형 picker (M4-T8·T9). 팝오버·시트·트리거·달력은 위 규칙을 그대로 씀 */
+/* 완성형 picker (M4-T8~T10). 팝오버·시트·트리거·달력·휠·시간 목록은 위 규칙을 그대로 씀 */
 @layer lunisolar-picker {
-  /* 입력 칸 옆에 달력 버튼을 붙여 한 줄로 둠 */
+  /* 입력 칸 옆에 달력·시계 버튼을 붙여 한 줄로 둠. 입력 칸이 없는 picker는 트리거나 휠 하나만 담음 */
   [data-lsp-part="date-picker"],
-  [data-lsp-part="date-range-picker"] {
+  [data-lsp-part="date-range-picker"],
+  [data-lsp-part="month-picker"],
+  [data-lsp-part="time-picker"],
+  [data-lsp-part="wheel-date-picker"] {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+  }
+
+  /* 화면에 바로 둔 생년월일 휠은 세 열이 읽힐 만큼만 넓히고 좁은 화면에서는 줄어듦 */
+  [data-lsp-part="wheel-date-picker"] > [data-lsp-part="wheel"] {
+    inline-size: 288px;
+    max-inline-size: 100%;
+  }
+
+  /* 값을 보이는 트리거가 아직 placeholder를 보일 때는 입력 칸의 빈 칸과 같은 흐린 글자로 둠 */
+  [data-lsp-part="month-picker"][data-placeholder] > [data-lsp-part="popover-trigger"],
+  [data-lsp-part="wheel-date-picker"][data-placeholder] > [data-lsp-part="popover-trigger"] {
+    color: var(--lsp-placeholder);
+  }
+
+  /* 입력 칸이 없는 picker는 값을 보이는 트리거가 입력 칸 자리라 입력 칸처럼 위험색 테두리로 무효를 보임 */
+  [data-lsp-part="month-picker"][data-invalid] > [data-lsp-part="popover-trigger"],
+  [data-lsp-part="wheel-date-picker"][data-invalid] > [data-lsp-part="popover-trigger"] {
+    border-color: var(--lsp-danger);
+  }
+
+  /* 월 달력·시간 목록·휠은 시트에서 footer와 형제로 놓이므로 달력 Root의 세로 간격 대신 위 여백을 줌 */
+  [data-lsp-part="sheet"] > [data-lsp-part="picker-footer"]:not(:first-child) {
+    margin-block-start: 12px;
   }
 
   /* 달력 Root의 세로 간격 안에 들어가므로 위쪽 선으로만 격자와 구분함 */
@@ -1077,6 +1103,12 @@
     [data-lsp-part="picker-footer"] > button:focus-visible,
     [data-lsp-part="picker-presets"] > button:focus-visible {
       outline: 2px solid Highlight;
+    }
+
+    /* 위험색 테두리가 시스템 색으로 바뀌므로 달력처럼 두께로 무효를 구분함 */
+    [data-lsp-part="month-picker"][data-invalid] > [data-lsp-part="popover-trigger"],
+    [data-lsp-part="wheel-date-picker"][data-invalid] > [data-lsp-part="popover-trigger"] {
+      border-width: 2px;
     }
   }
 }

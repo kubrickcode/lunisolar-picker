@@ -1,5 +1,5 @@
-import { type CalendarSystem, type DateString, parseDate, type ValidationReason } from '@lunisolar-picker/calendar';
-import { type DateConstraints, type LocaleLabels, VALID, type Validity, validateDate } from '@lunisolar-picker/core';
+import type { DateString } from '@lunisolar-picker/calendar';
+import { type LocaleLabels, validateDate } from '@lunisolar-picker/core';
 import { type ReactElement, type ReactNode, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
 import {
@@ -15,6 +15,7 @@ import {
   useSingleCalendar,
   type ValueChangeDetails,
 } from '../index';
+import { dateValidityOf, parseDateValue } from './date-value';
 import { CalendarIcon, DefaultTrigger } from './default-trigger';
 import { formatDisplayDate } from './format-display-value';
 import { PickerCloseFooter, PickerFooter } from './picker-footer';
@@ -24,7 +25,6 @@ import { useAppTriggerProps } from './use-app-trigger-props';
 import { useFieldRemount } from './use-field-remount';
 import { useInvalidValueReport } from './use-invalid-value-report';
 
-const EMPTY_VALUE: ParsedValue = { invalidReason: null, value: null };
 const FIELD_SELECTOR = `[${PART_ATTRIBUTE}="date-field"]`;
 
 export interface DatePickerProps extends UseCalendarProps, PickerOpenProps {
@@ -49,20 +49,9 @@ export interface PickerOpenProps {
   readonly open?: boolean | undefined;
 }
 
-type ParsedValue = {
-  readonly invalidReason: ValidationReason | null;
-  readonly value: DateString | null;
-};
-
 type SingleConfirmFooterProps = {
   readonly labels: Pick<LocaleLabels, 'cancel' | 'confirm'>;
   readonly onClose: () => void;
-};
-
-type ValidityInput = {
-  readonly calendars: readonly CalendarSystem[];
-  readonly constraints: DateConstraints;
-  readonly value: DateString | null;
 };
 
 export const DatePicker = (props: DatePickerProps): ReactElement => {
@@ -106,7 +95,7 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
   // Constraint: 기본값은 M3 입력 부품처럼 조용히 해석함. 해석할 수 없는 기본값은 빈 값으로 시작하고 onInvalidValue는 제어 값에만 불림
   const [currentValue, setCurrentValue] = useControllableState<string | null>(
     value,
-    parseValue(defaultValue ?? null, settings.calendars).value,
+    parseDateValue(defaultValue ?? null, settings.calendars).value,
     undefined,
   );
   const [isOpen, setOpen] = useControllableState<boolean>(open, defaultOpen ?? false, onOpenChange);
@@ -117,7 +106,7 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
   const isConfirmMode = commitMode === 'confirm';
   const isTriggerMode = renderTrigger !== undefined;
   const { labels } = settings.locale;
-  const parsed = parseValue(currentValue, settings.calendars);
+  const parsed = parseDateValue(currentValue, settings.calendars);
   const parsedValue = parsed.value;
   const toAppTriggerProps = useAppTriggerProps({
     isOpen,
@@ -158,12 +147,12 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
   // Constraint: 비교는 해석한 값끼리 함. 역법이 빠져 해석되지 않는 현재 값과 빈 기본값은 같은 빈 값이라 알리지 않음
   const resetToDefault = (): void => {
     if (value !== undefined) return;
-    const restored = parseValue(mountedDefault, settings.calendars).value;
+    const restored = parseDateValue(mountedDefault, settings.calendars).value;
     remountField();
     if (restored === parsedValue) return;
     setCurrentValue(restored);
     onValueChange?.(restored, {
-      validity: validityOf({ calendars: settings.calendars, constraints: props, value: restored }),
+      validity: dateValidityOf({ calendars: settings.calendars, constraints: props, value: restored }),
     });
   };
 
@@ -259,19 +248,4 @@ const SingleConfirmFooter = ({ labels, onClose }: SingleConfirmFooterProps): Rea
       }}
     />
   );
-};
-
-const parseValue = (value: string | null, calendars: readonly CalendarSystem[]): ParsedValue => {
-  if (!value) return EMPTY_VALUE;
-  const parsed = parseDate(value, { calendars });
-  return parsed.isOk
-    ? { invalidReason: null, value: parsed.value.value }
-    : { invalidReason: parsed.error, value: null };
-};
-
-// Constraint: 완전히 빈 값은 required여도 VALID로 알림. required는 aria-required와 네이티브 required 검증만 맡음 (M3 입력 부품과 같음)
-const validityOf = ({ calendars, constraints, value }: ValidityInput): Validity => {
-  if (value === null) return VALID;
-  const { isValid, reasons } = validateDate(value, constraints, { calendars });
-  return { isValid, reasons };
 };
