@@ -439,10 +439,10 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 ### 3.5 완성형 (`@lunisolar-picker/react/pickers`) [M4-T8~T10]
 
 ```ts
-interface TriggerRenderProps { readonly displayValue: string; readonly isOpen: boolean; readonly placeholder: string; readonly triggerProps: ButtonHTMLAttributes<HTMLButtonElement> }
+interface TriggerRenderProps { readonly displayValue: string; readonly isOpen: boolean; readonly placeholder: string; readonly triggerProps: PickerTriggerProps }   // PickerTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> & { ref }: 팝오버 기준 위치와 포커스 복귀에 필요하므로 앱 트리거가 ref를 버리면 안 됨 [M4-T8]
 interface PickerOpenProps { open?; defaultOpen?; onOpenChange? }
 
-DatePicker: UseCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; footer?; className? }
+DatePicker: UseCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; footer?; className? }   // + aria-label·aria-labelledby·aria-describedby·id(입력 칸, 트리거 모드면 트리거로), onPick [M4-T8]
 DateRangePicker: UseRangeCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; presets?: ReactNode; footer?; className? }
 MonthPicker: { value?; defaultValue?; onValueChange?: (value: MonthString | null, details) => void; min?; max? } & SharedPickerProps & PickerOpenProps & { presentation?; renderTrigger? }
 WheelDatePicker: SharedPickerProps & DateConstraints(isDateDisabled 제외) & PickerOpenProps & { value?; defaultValue?; onValueChange?; presentation?: 'inline' | 'sheet'; renderTrigger? }
@@ -452,7 +452,7 @@ interface PickerSelection { readonly draftRange: DateRangeValue | null; readonly
 usePickerSelection(): PickerSelection     // DateRangePicker의 presets·footer 안에서만 [M4-T9, M5 제안 3]
 ```
 
-- 완성형은 `onBlur`를 입력 칸에만 넘긴다(react-hook-form 연결용) [M4-T8·T9].
+- 완성형은 폼 참여를 직접 맡는다: 공개 `HiddenInput`(M4-T8부터 공개 export)을 한 개 그려 name·form·required와 폼 reset(비제어는 마운트 시점 기본값, 제어는 무시)을 처리하고, 안의 달력·입력 칸에는 name·form을 넘기지 않는다. `ref`·`onBlur`·`onInvalidValue`는 입력 칸이 맡고, `renderTrigger` 모드에서는 트리거가 맡는다(onBlur는 닫힌 상태에서 트리거를 떠날 때). 시트 표시 + 즉시 모드에는 `Sheet.Close`(labels.close)가 보인다. picker는 `onPick`으로 닫는다 [M4-T8].
 - 확인 모드의 확인·취소는 완성형 footer가 그린다. 직접 조립할 때는 `Popover.Close onClick={() => calendar.commit()}`처럼 쓴다 [M5-T5].
 - `src/pickers/**`는 `src/index.ts`, `src/contract/**`, `src/settings/**`, `src/utilities/**`, `src/pickers/**`만 import한다(dependency-cruiser) [M4-T11].
 
