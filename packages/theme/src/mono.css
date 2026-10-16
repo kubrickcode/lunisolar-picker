@@ -421,7 +421,8 @@
 
 /* 달력 부품 (M4). 같은 이름의 layer 블록은 위 블록과 하나로 합쳐짐 */
 @layer lunisolar-picker {
-  [data-lsp-part="calendar"] {
+  [data-lsp-part="calendar"],
+  [data-lsp-part="month-calendar"] {
     display: inline-flex;
     flex-direction: column;
     gap: 8px;
@@ -436,22 +437,27 @@
 
   /* 팝오버·시트가 이미 테두리와 여백을 그리므로 안에 든 달력은 겹쳐 그리지 않음 */
   [data-lsp-part="popover"] [data-lsp-part="calendar"],
-  [data-lsp-part="sheet"] [data-lsp-part="calendar"] {
+  [data-lsp-part="sheet"] [data-lsp-part="calendar"],
+  [data-lsp-part="popover"] [data-lsp-part="month-calendar"],
+  [data-lsp-part="sheet"] [data-lsp-part="month-calendar"] {
     padding: 0;
     border: 0;
     background: transparent;
   }
 
-  [data-lsp-part="calendar"][data-invalid] {
+  [data-lsp-part="calendar"][data-invalid],
+  [data-lsp-part="month-calendar"][data-invalid] {
     border-color: var(--lsp-danger);
   }
 
   /* 읽기 전용은 둘러볼 수 있어 흐리게 하지 않고 입력 칸처럼 점선 테두리로만 구분함 */
-  [data-lsp-part="calendar"][data-readonly] {
+  [data-lsp-part="calendar"][data-readonly],
+  [data-lsp-part="month-calendar"][data-readonly] {
     border-style: dashed;
   }
 
-  [data-lsp-part="calendar-header"] {
+  [data-lsp-part="calendar-header"],
+  [data-lsp-part="month-calendar-header"] {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -810,7 +816,8 @@
     }
 
     /* 위험색 테두리가 CanvasText로 바뀌므로 두께로 구분함. 점선은 읽기 전용이 씀 */
-    [data-lsp-part="calendar"][data-invalid] {
+    [data-lsp-part="calendar"][data-invalid],
+    [data-lsp-part="month-calendar"][data-invalid] {
       border-width: 2px;
     }
 
@@ -872,6 +879,117 @@
     [data-lsp-part="calendar-cell"] > button:focus-visible,
     [data-lsp-part="calendar-month-grid"] button:focus-visible,
     [data-lsp-part="calendar-year-grid"] button:focus-visible {
+      outline: 2px solid Highlight;
+    }
+  }
+}
+
+/* 월 달력·시간 목록 (M4-T7). 월 달력의 이동 버튼·연도 제목·월 격자는 위 달력 규칙을 같이 씀 */
+@layer lunisolar-picker {
+  /* 이전 해·연도·다음 해만 있으므로 연도를 가운데에 둠 */
+  [data-lsp-part="month-calendar-header"] {
+    justify-content: space-between;
+  }
+
+  /* 편성표의 5분 간격(288개)도 팝오버 안에서 끝없이 늘어나지 않게 높이를 묶고 목록만 스크롤함 (preflight 1.5) */
+  /* 포커스 테두리가 스크롤 가장자리에서 잘리지 않도록 안쪽 여백과 scroll-padding을 둠 */
+  [data-lsp-part="time-list"] {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-block-size: 240px;
+    margin: 0;
+    padding: 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 4px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+    color-scheme: var(--lsp-color-scheme);
+  }
+
+  /* 팝오버·시트가 이미 테두리와 여백을 그리므로 안에 든 목록은 겹쳐 그리지 않음 */
+  [data-lsp-part="popover"] [data-lsp-part="time-list"],
+  [data-lsp-part="sheet"] [data-lsp-part="time-list"] {
+    border: 0;
+    background: transparent;
+  }
+
+  [data-lsp-part="time-option"] {
+    display: flex;
+    flex: none;
+    align-items: center;
+    min-block-size: var(--lsp-cell-size);
+    padding-inline: 12px;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    font-size: 12.5px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 선택은 달력과 같은 잉크색 채움 */
+  [data-lsp-part="time-option"][data-selected] {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="month-calendar"][data-disabled] [data-lsp-part="calendar-heading"] {
+    opacity: 0.4;
+  }
+
+  [data-lsp-part="month-calendar"][data-readonly] [data-lsp-part="calendar-month-grid"] button {
+    cursor: default;
+  }
+
+  /* 달력의 무효 끝점처럼 위험색으로 채움. 범위 밖이라 붙은 흐린 글자색을 덮어 채움 위 글자 대비를 지킴 */
+  [data-lsp-part="month-calendar"][data-invalid] [data-lsp-part="calendar-month-grid"] [data-selected] > button {
+    background: var(--lsp-danger);
+    color: var(--lsp-accent-fg);
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="time-option"]:not([data-selected]):hover {
+      background: var(--lsp-range-bg);
+    }
+
+    /* 읽기 전용 월 달력은 고를 수 없으므로 달력 월 격자의 hover 채움을 지움 */
+    [data-lsp-part="month-calendar"][data-readonly]
+      [data-lsp-part="calendar-month-grid"]
+      td:not([data-selected])
+      > button:hover {
+      background: transparent;
+    }
+  }
+
+  /* 이웃 옵션이 나중에 그려져 테두리를 덮지 않도록 포커스된 옵션을 위로 올림 */
+  [data-lsp-part="time-option"]:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 1px;
+  }
+
+  @media (forced-colors: active) {
+    /* 달력 선택 항목과 같은 이유: 글자 뒤 Canvas 판을 끄고 시스템 색을 직접 쓰며, layer 밖 앱 색은 !important로 막음 */
+    /* biome-ignore-start lint/complexity/noImportantStyles: 자동 조정을 끈 강제 색상에서 layer 밖 앱 색을 이기려면 !important가 필요함 */
+    [data-lsp-part="time-option"][data-selected] {
+      forced-color-adjust: none;
+      background: Highlight !important;
+      color: HighlightText !important;
+    }
+
+    /* 위험색 채움이 Highlight로 바뀌므로 달력의 무효 끝점처럼 점선 테두리로 오류를 알림 */
+    [data-lsp-part="month-calendar"][data-invalid] [data-lsp-part="calendar-month-grid"] [data-selected] > button {
+      border: 2px dashed HighlightText !important;
+    }
+    /* biome-ignore-end lint/complexity/noImportantStyles: 범위 끝 */
+
+    [data-lsp-part="time-option"]:focus-visible {
       outline: 2px solid Highlight;
     }
   }

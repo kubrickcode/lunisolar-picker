@@ -26,8 +26,12 @@ export type MonthButtonGridProps = {
   readonly columnCount: number;
   // Goal: 고른 뒤 이 격자가 새로 그려질 때(연 → 월) 키보드 포커스를 이어 받음. 달력 밖에서 쓰면 넘기지 않음
   readonly consumeFocusRequest?: (() => boolean) | undefined;
+  // Goal: 선택이 없을 때 탭 정지점(열릴 때 포커스)이 갈 항목. 월 달력은 이번 달 (스펙 10.4 "없으면 오늘"). 없으면 첫 항목
+  readonly defaultFocusKey?: string | undefined;
   // Constraint: 비활성 달력처럼 탭 정지점·키·고르기를 모두 멈춤 (M4 ruling: disabled 달력은 완전히 멈춤)
   readonly isDisabled?: boolean | undefined;
+  // Goal: 읽기 전용은 둘러볼 수 있고 고르기만 멈춤. 항목마다 aria-disabled 대신 격자의 aria-readonly로 알림 (APG grid)
+  readonly isReadOnly?: boolean | undefined;
   readonly items: readonly ButtonGridItem[];
   readonly label: string;
   readonly part: PartName;
@@ -43,7 +47,9 @@ type RovingState = {
 export const MonthButtonGrid = ({
   columnCount,
   consumeFocusRequest,
+  defaultFocusKey,
   isDisabled = false,
+  isReadOnly = false,
   items,
   label,
   part,
@@ -53,8 +59,12 @@ export const MonthButtonGrid = ({
   // Constraint: 선택이 바뀌면(연 고르기, 윤달이 다른 해로 역법 전환) 탭 정지점도 새 선택으로 옮김. 렌더 중 상태 갱신이라 StrictMode 이중 렌더에서도 같은 결과
   const roving = storedRoving.selectedKey === selectedKey ? storedRoving : { focusedKey: selectedKey, selectedKey };
   if (roving !== storedRoving) setRoving(roving);
-  // Constraint: 연 쪽을 넘기면 포커스했던 항목이 없을 수 있음(지원 범위 끝 쪽은 항목도 적음). 그때는 선택, 그것도 없으면 첫 항목
-  const tabStopIndex = indexOfKey(items, roving.focusedKey) ?? indexOfKey(items, selectedKey) ?? HOME_INDEX;
+  // Constraint: 연 쪽을 넘기면 포커스했던 항목이 없을 수 있음(지원 범위 끝 쪽은 항목도 적음). 그때는 선택, 기본 포커스 항목, 첫 항목 순
+  const tabStopIndex =
+    indexOfKey(items, roving.focusedKey) ??
+    indexOfKey(items, selectedKey) ??
+    indexOfKey(items, defaultFocusKey ?? null) ??
+    HOME_INDEX;
   const focusItem = (index: number): void => {
     const key = items[index]?.key;
     if (key !== undefined) setRoving({ ...roving, focusedKey: key });
@@ -82,6 +92,7 @@ export const MonthButtonGrid = ({
   const gridProps = {
     role: 'grid',
     'aria-label': label,
+    ...(isReadOnly ? { 'aria-readonly': true } : {}),
     onKeyDown: moveFocus,
     ...partAttributes(part, { disabled: isDisabled }),
   };
@@ -116,7 +127,7 @@ export const MonthButtonGrid = ({
                       if (!isDisabled) focusItem(index);
                     }}
                     onClick={() => {
-                      if (!isInert) item.onPick();
+                      if (!isInert && !isReadOnly) item.onPick();
                     }}
                   >
                     {item.label}

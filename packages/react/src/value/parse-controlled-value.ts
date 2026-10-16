@@ -2,9 +2,12 @@ import {
   type CalendarSystem,
   type DateRangeValue,
   type DateString,
+  type MonthString,
   normalizeDateRange,
   parseDate,
+  parseMonth,
   parseTime,
+  type Result,
   type TimeString,
   type ValidationReason,
 } from '@lunisolar-picker/calendar';
@@ -31,10 +34,12 @@ export const parseOptionalDate = (
   calendars: readonly CalendarSystem[],
 ): ParsedControlledValue<DateString> => {
   if (input === undefined || input === null || input === '') return EMPTY;
-  const parsed = parseDate(input, { calendars });
-  return parsed.isOk
-    ? { value: parsed.value.value, invalidReason: null }
-    : { value: null, invalidReason: parsed.error };
+  return fromParseResult(parseDate(input, { calendars }));
+};
+
+export const parseOptionalMonth = (input: string | null | undefined): ParsedControlledValue<MonthString> => {
+  if (input === undefined || input === null || input === '') return EMPTY;
+  return fromParseResult(parseMonth(input));
 };
 
 export const parseOptionalRange = (
@@ -57,8 +62,14 @@ export const parseOptionalTime = (
   options: { readonly isEndOfDayAllowed: boolean },
 ): ParsedControlledValue<TimeString> => {
   if (input === undefined || input === null || input === '') return EMPTY;
-  const parsed = parseTime(input, options);
-  return parsed.isOk
-    ? { value: parsed.value.value, invalidReason: null }
-    : { value: null, invalidReason: parsed.error };
+  return fromParseResult(parseTime(input, options));
 };
+
+// Goal: 형식만 맞으면 24:00도 값으로 읽음. 허용되지 않은 24:00은 형식 오류가 아니라 제약 위반이라 부품이 따로 판단함 (계약 §3.3 TimeField)
+export const parseWellFormedTime = (input: string | null | undefined): ParsedControlledValue<TimeString> =>
+  parseOptionalTime(input, { isEndOfDayAllowed: true });
+
+const fromParseResult = <Value>(
+  parsed: Result<{ readonly value: Value }, ValidationReason>,
+): ParsedControlledValue<Value> =>
+  parsed.isOk ? { value: parsed.value.value, invalidReason: null } : { value: null, invalidReason: parsed.error };

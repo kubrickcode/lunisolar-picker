@@ -66,6 +66,28 @@ describe('MonthButtonGrid', () => {
     });
   });
 
+  describe('read-only', () => {
+    it('announces the grid as read-only and ignores picks', async () => {
+      const items = monthItems(3);
+      const screen = await render(
+        <MonthButtonGrid
+          items={items}
+          columnCount={COLUMN_COUNT}
+          label="월 선택"
+          part="calendar-month-grid"
+          isReadOnly
+        />,
+      );
+      await expect.element(screen.getByRole('grid')).toHaveAttribute('aria-readonly', 'true');
+
+      await screen.getByRole('button', { name: '5월' }).click();
+      await settleEffects();
+
+      expect(items[4]?.onPick).not.toHaveBeenCalled();
+      await expect.element(screen.getByRole('button', { name: '5월' })).not.toHaveAttribute('aria-disabled');
+    });
+  });
+
   describe('roving tab stop', () => {
     it('starts on the selected item', async () => {
       const screen = await render(monthGrid(monthItems(7)));
@@ -73,6 +95,23 @@ describe('MonthButtonGrid', () => {
 
       expect(Array.from(screen.container.querySelectorAll(TAB_STOP_SELECTOR), (button) => button.textContent)).toEqual([
         '7월',
+      ]);
+    });
+
+    it('starts on the default focus item when nothing is selected', async () => {
+      const screen = await render(
+        <MonthButtonGrid
+          items={monthItems(0)}
+          columnCount={COLUMN_COUNT}
+          label="월 선택"
+          part="calendar-month-grid"
+          defaultFocusKey="M10"
+        />,
+      );
+      await expect.element(screen.getByRole('grid')).toBeVisible();
+
+      expect(Array.from(screen.container.querySelectorAll(TAB_STOP_SELECTOR), (button) => button.textContent)).toEqual([
+        '10월',
       ]);
     });
 

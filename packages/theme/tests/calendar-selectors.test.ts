@@ -19,7 +19,9 @@ const SELECTED_ITEM_SELECTORS = [
   '[data-lsp-part="calendar-toggle"] > button[data-selected]',
   '[data-lsp-part="calendar-month-grid"] [data-selected]',
   '[data-lsp-part="calendar-year-grid"] [data-selected]',
+  '[data-lsp-part="time-option"][data-selected]',
 ];
+const TIME_LIST_PART = '[data-lsp-part="time-list"]';
 const VIEW_BUTTON_PART = '[data-lsp-part="calendar-view-button"]';
 const YEARS_VIEW_EXCLUSION = ':not([data-view="years"])';
 
@@ -144,6 +146,19 @@ describe('mono.css calendar', () => {
 
       expect(cellRules.some((rule) => /(^|[;\s])user-select:\s*none/.test(rule.declarations))).toBe(true);
       expect(cellRules.some((rule) => /-webkit-user-select:\s*none/.test(rule.declarations))).toBe(true);
+    });
+  });
+
+  describe('time list', () => {
+    // Constraint: 5분 간격이면 옵션이 288개라 높이를 묶지 않으면 팝오버가 화면 밖까지 늘어남 (preflight 1.5)
+    it('bounds its height and scrolls inside', async () => {
+      const listDeclarations = parseLeafRules(await readMonoCss())
+        .filter((rule) => rule.selectors.includes(TIME_LIST_PART))
+        .map((rule) => rule.declarations)
+        .join(';');
+
+      expect(listDeclarations).toMatch(/max-block-size:\s*\d+px/);
+      expect(listDeclarations).toMatch(/overflow-y:\s*auto/);
     });
   });
 

@@ -17,7 +17,7 @@ import { useStoreInstance } from '../store/use-store-instance';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
 import type { HiddenInputProps } from '../value/hidden-input';
 import { isVisiblyInvalid } from '../value/is-visibly-invalid';
-import { type ParsedControlledValue, parseOptionalTime } from '../value/parse-controlled-value';
+import { parseWellFormedTime } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
 
@@ -160,9 +160,6 @@ const describeTimeSegment = (state: TimeFieldState, index: number, settings: Pic
 };
 
 const withEndOfDayAllowed = (context: TimeFieldContext): TimeFieldContext => ({ ...context, isEndOfDayAllowed: true });
-
-const parseWellFormedTime = (input: string | null | undefined): ParsedControlledValue<TimeString> =>
-  parseOptionalTime(input, { isEndOfDayAllowed: true });
 
 const rebuildWithContext = (previous: TimeFieldState, context: TimeFieldContext): TimeFieldState => {
   const fresh = createTimeFieldState(null, context);

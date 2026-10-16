@@ -57,6 +57,10 @@ export const PART_NAMES = [
   'calendar-month',
   'calendar-cell-secondary',
   'live-region',
+  'month-calendar',
+  'month-calendar-header',
+  'time-list',
+  'time-option',
 ] as const;
 
 export type DataAttribute = (typeof DATA_ATTRIBUTES)[number];

@@ -10,6 +10,7 @@ export { useDateRangeFieldContext } from './date-range-field/date-range-field-co
 export * as DateRangeField from './date-range-field/parts';
 export type { DateRangeFieldApi, RangeSide, UseDateRangeFieldProps } from './date-range-field/use-date-range-field';
 export { useDateRangeField } from './date-range-field/use-date-range-field';
+export * from './month-calendar/index';
 export * as Popover from './popover/parts';
 export { usePopoverContext } from './popover/popover-context';
 export type { PopoverApi, UsePopoverProps } from './popover/use-popover';
@@ -30,6 +31,7 @@ export * as TimeField from './time-field/parts';
 export { useTimeFieldContext } from './time-field/time-field-context';
 export type { TimeFieldApi, UseTimeFieldProps } from './time-field/use-time-field';
 export { useTimeField } from './time-field/use-time-field';
+export * from './time-list/index';
 export { useToday } from './today/use-today';
 export type { RenderProp } from './utilities/render-element';
 export { useControllableState } from './utilities/use-controllable-state';
