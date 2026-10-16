@@ -30,6 +30,8 @@ export type CalendarFoundation = {
   readonly consumeFocusRequest: () => boolean;
   readonly context: PickerContext;
   readonly months: readonly MonthGrid[];
+  // Goal: 키·포인터로 포커스한 날을 옮기며 DOM 포커스도 따라가게 함. 포커스한 날이 실제로 바뀔 때만 요청함
+  readonly navigateWithFocus: (event: NavigationEvent) => void;
   readonly navigation: NavigationState;
   readonly requestFocus: () => void;
   // Goal: 숨은 입력이 포커스를 넘길 때처럼 훅이 달력 안의 칸을 찾아 포커스할 때 씀. getRootProps가 Root 요소에 붙임
@@ -80,7 +82,11 @@ export const useCalendarFoundation = ({
     numberOfMonths: props.numberOfMonths ?? DEFAULT_NUMBER_OF_MONTHS,
   });
   // Constraint: navigationReducer는 모든 이벤트에서 지금 표시 역법을 찾으므로, 앱이 그 역법을 calendars에서 빼면 이벤트(calendar.set 포함)를 보낼 수 없음. 역법 구성이 바뀌면 store를 다시 만들어 양력으로 옮김 (preflight 3.5)
-  const { state: navigation, send: sendNavigation } = useStoreInstance(
+  const {
+    getSnapshot: getNavigationSnapshot,
+    send: sendNavigation,
+    state: navigation,
+  } = useStoreInstance(
     (previous: NavigationState | undefined) =>
       previous === undefined
         ? createNavigationState(context, {
@@ -133,6 +139,13 @@ export const useCalendarFoundation = ({
     return isRequested;
   }, []);
 
+  // Constraint: 경계에서 막힌 이동처럼 포커스한 날이 그대로면 다시 그려지지 않아 요청이 남고, 나중의 상관없는 렌더가 달력 밖의 포커스를 빼앗음. 다시 그리기는 이 호출 뒤에 일어나므로 보낸 뒤 비교해도 늦지 않음
+  const navigateWithFocus = (event: NavigationEvent): void => {
+    const previousFocusedEpochDay = getNavigationSnapshot().focusedEpochDay;
+    sendNavigation(event);
+    if (getNavigationSnapshot().focusedEpochDay !== previousFocusedEpochDay) requestFocus();
+  };
+
   const selectDisplayCalendar = (calendarId: CalendarId): void => {
     if (calendarId === navigation.displayCalendarId) return;
     // Constraint: 모르는 역법 id는 다음 렌더가 아니라 호출한 곳에서 LunisolarPickerError로 드러나게 함
@@ -146,6 +159,7 @@ export const useCalendarFoundation = ({
     consumeFocusRequest,
     context,
     months,
+    navigateWithFocus,
     navigation,
     requestFocus,
     rootRef,

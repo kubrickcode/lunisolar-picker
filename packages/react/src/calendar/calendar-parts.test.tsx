@@ -9,6 +9,7 @@ import { focusInitialElement } from '../focus/focusable-elements';
 import { LunisolarProvider } from '../settings/lunisolar-provider';
 import { clickToFocus } from '../testing/click-to-focus';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
+import { focusOnce } from '../testing/focus-once';
 import { formElementOf } from '../testing/form-element';
 import { dayLabel, FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
 import { settleEffects } from '../testing/settle-effects';
@@ -128,6 +129,30 @@ describe('Calendar', () => {
         .element(screen.getByRole('gridcell', { name: dayLabel('2026-10-22') }))
         .toHaveAttribute('aria-selected', 'true');
       expect(onValueChange.mock.calls.map(([value]) => value)).toEqual(['2026-10-21', '2026-10-22']);
+    });
+  });
+
+  describe('keyboard focus request', () => {
+    it('leaves no focus request behind an arrow key blocked at the max bound', async () => {
+      // Constraint: 다시 그리기가 실제로 칸까지 내려가도록 렌더마다 새 요소를 만듦. 같은 요소면 React가 건너뜀
+      const calendarTree = (): ReactElement => (
+        <KoreanProvider>
+          <Calendar.Root max={FIXED_TODAY} />
+          <input aria-label="outside" />
+        </KoreanProvider>
+      );
+      const screen = await render(calendarTree());
+      const lastDay = screen.getByRole('button', { name: dayLabel(FIXED_TODAY) });
+      await focusOnce(lastDay);
+      await userEvent.keyboard('{ArrowRight}');
+      await expect.element(lastDay).toHaveFocus();
+
+      const outside = screen.getByRole('textbox', { name: 'outside' });
+      await focusOnce(outside);
+      await screen.rerender(calendarTree());
+      await settleEffects();
+
+      await expect.element(outside).toHaveFocus();
     });
   });
 

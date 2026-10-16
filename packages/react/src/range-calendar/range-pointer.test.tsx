@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import { focusOnce } from '../testing/focus-once';
 import { dayLabel, KoreanProvider } from '../testing/korean-fixture';
 import { dispatchPointer } from '../testing/pointer';
 import { settleEffects } from '../testing/settle-effects';
@@ -300,6 +301,51 @@ describe('RangeCalendar pointer', () => {
 
       await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName('M09'));
       expect(tabbableDayLabel(screen)).toBe(dayLabel('2026-09-30'));
+    });
+  });
+
+  // Goal: 누를 때 버튼에 포커스를 주는 브라우저의 DOM 포커스. 합성 포인터 이벤트는 포커스를 옮기지 않으므로 누른 칸에 먼저 포커스를 둠
+  describe('focus', () => {
+    it('moves focus from the pressed day to the day the drag ended on', async () => {
+      const screen = await renderInKorean(<RangeCalendar.Root />);
+      await focusOnce(screen.getByRole('button', { name: dayLabel('2026-10-06') }));
+
+      dispatchPointer(dayButton(screen, '2026-10-06'), 'pointerdown');
+      dispatchPointer(dayButton(screen, '2026-10-09'), 'pointerover');
+      dispatchPointer(document, 'pointerup');
+
+      await expect.element(screen.getByRole('button', { name: dayLabel('2026-10-09') })).toHaveFocus();
+      expect(screen.container.querySelectorAll(TABBABLE_CELL_SELECTOR)).toHaveLength(1);
+    });
+
+    it('keeps focus in the grid when picking an outside day changes the month', async () => {
+      const screen = await renderInKorean(<RangeCalendar.Root />);
+      await focusOnce(screen.getByRole('button', { name: dayLabel('2026-10-14') }));
+
+      dispatchPointer(dayButton(screen, '2026-09-30'), 'pointerdown');
+      dispatchPointer(document, 'pointerup');
+
+      await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName('M09'));
+      await expect.element(screen.getByRole('button', { name: dayLabel('2026-09-30') })).toHaveFocus();
+    });
+
+    it('leaves focus outside the calendar where it was', async () => {
+      const screen = await render(
+        <KoreanProvider>
+          <RangeCalendar.Root />
+          <input aria-label="outside" />
+        </KoreanProvider>,
+      );
+      const outside = screen.getByRole('textbox', { name: 'outside' });
+      await focusOnce(outside);
+
+      dispatchPointer(dayButton(screen, '2026-10-06'), 'pointerdown');
+      dispatchPointer(dayButton(screen, '2026-10-09'), 'pointerover');
+      dispatchPointer(document, 'pointerup');
+      await expect.poll(() => tabbableDayLabel(screen)).toBe(dayLabel('2026-10-09'));
+      await settleEffects();
+
+      await expect.element(outside).toHaveFocus();
     });
   });
 

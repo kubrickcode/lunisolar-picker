@@ -72,6 +72,7 @@ export type RangePointerHandlers = {
 export type RangePointerOptions = {
   readonly displayCalendarId: CalendarId;
   readonly isInteractive: boolean;
+  readonly navigateWithFocus: (event: NavigationEvent) => void;
   readonly rootRef: RefObject<HTMLDivElement | null>;
   readonly selection: RangeSelectionState;
   readonly sendNavigation: (event: NavigationEvent) => void;
@@ -114,8 +115,12 @@ export const useRangePointer = (options: RangePointerOptions): RangePointerHandl
     pressClickRef.current = { releasedAtMilliseconds };
     const current = latestOptions.current;
     current.sendSelection({ type: 'pointer.up' });
-    // Goal: macOS Safari·Firefox는 클릭한 버튼에 포커스를 주지 않으므로 탭 정지점을 끝난 날로 옮김. 바깥 달의 날이면 그 달을 보여 줌 (클릭 경로와 같음)
-    if (endEpochDay !== null) current.sendNavigation({ type: 'focus.set', epochDay: endEpochDay });
+    if (endEpochDay === null) return;
+    const focusEvent: NavigationEvent = { type: 'focus.set', epochDay: endEpochDay };
+    // Goal: 누를 때 버튼에 포커스를 주는 브라우저(Chromium 등)는 DOM 포커스도 끝난 날로 옮겨 Tab 정지점이 둘이 되지 않게 하고, 바깥 달의 날을 골라 달이 바뀌어도 포커스가 body로 떨어지지 않게 함
+    // Constraint: 포커스를 주지 않는 브라우저(macOS Safari·Firefox)는 포커스가 달력 밖이므로 탭 정지점만 옮기고 포커스를 끌어오지 않음. 바깥 달의 날이면 그 달을 보여 줌 (클릭 경로와 같음)
+    if (hasFocusWithin(current.rootRef.current)) current.navigateWithFocus(focusEvent);
+    else current.sendNavigation(focusEvent);
   };
 
   const startDrag = ({ event, isForwardingHover, pressedEpochDay }: DragStart): void => {
@@ -198,6 +203,9 @@ const grabbableHandleAt = (selection: RangeSelectionState, epochDay: EpochDay): 
   if (epochDay === range.end) return 'end';
   return null;
 };
+
+const hasFocusWithin = (root: HTMLElement | null): boolean =>
+  root !== null && root.contains(root.ownerDocument.activeElement);
 
 // Constraint: 펜이 화면에 닿는 기기는 누른 요소(칸 안의 글자 요소일 수 있음)에 포인터를 암묵적으로 캡처할 수 있어 다른 칸에 pointerover가 오지 않음. 캡처를 새로 걸지 않고 브라우저가 건 것만 풂
 const releaseImplicitCapture = (event: PointerEvent<HTMLButtonElement>): void => {

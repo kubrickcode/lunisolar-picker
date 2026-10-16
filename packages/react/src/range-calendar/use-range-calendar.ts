@@ -146,6 +146,7 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
   const pointer = useRangePointer({
     displayCalendarId: foundation.navigation.displayCalendarId,
     isInteractive,
+    navigateWithFocus: foundation.navigateWithFocus,
     rootRef: foundation.rootRef,
     selection,
     sendNavigation: foundation.sendNavigation,

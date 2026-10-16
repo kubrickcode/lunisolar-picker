@@ -176,8 +176,7 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
           selectEpochDay(navigation.focusedEpochDay);
           return;
         }
-        foundation.requestFocus();
-        foundation.sendNavigation(action.event);
+        foundation.navigateWithFocus(action.event);
       },
     }),
     // Constraint: 칸 사이 이동은 달력 안이므로 달력 전체를 벗어날 때만 onBlur를 알림. react-hook-form의 touched 판정에 씀 (preflight 3.1)
