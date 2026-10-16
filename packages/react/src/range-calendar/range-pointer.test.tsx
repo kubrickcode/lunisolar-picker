@@ -9,12 +9,17 @@ import { dayLabel, KoreanProvider } from '../testing/korean-fixture';
 import { dispatchPointer } from '../testing/pointer';
 import { settleEffects } from '../testing/settle-effects';
 import { RangeCalendar } from './index';
+import { PRESS_CLICK_WINDOW_MILLISECONDS } from './use-range-pointer';
 
+const EDGE_OVERSHOOT_PIXELS = 20;
 // Constraint: 머묾 판정(500ms)과 판정 주기를 넘기되 두 번째 넘김(1000ms)에는 닿지 않는 시간
 const EDGE_WAIT_MS = 800;
-const EDGE_OVERSHOOT_PIXELS = 20;
 const IN_RANGE_SELECTOR = '[data-lsp-part="calendar-cell"][data-in-range]:not([data-outside])';
+const LIVE_REGION_SELECTOR = '[data-lsp-part="live-region"]';
+const OTHER_POINTER_ID = 2;
+const PRESS_CLICK_WINDOW_MARGIN_MS = 200;
 const ROOT_SELECTOR = '[data-lsp-part="calendar"]';
+const TABBABLE_CELL_SELECTOR = '[data-lsp-part="calendar-cell"] > button[tabindex="0"]';
 
 type EdgeCase = {
   readonly direction: 'ltr' | 'rtl';
@@ -24,8 +29,6 @@ type EdgeCase = {
 
 type Screen = Awaited<ReturnType<typeof render>>;
 
-const renderInKorean = (element: ReactElement): Promise<Screen> => render(<KoreanProvider>{element}</KoreanProvider>);
-
 const dayButton = (screen: Screen, isoDate: string): HTMLElement => {
   const element = screen.getByRole('button', { name: dayLabel(isoDate) }).element();
   if (!(element instanceof HTMLElement)) throw new Error(`day ${isoDate} should render a button`);
@@ -34,13 +37,21 @@ const dayButton = (screen: Screen, isoDate: string): HTMLElement => {
 
 const inRangeCount = (screen: Screen): number => screen.container.querySelectorAll(IN_RANGE_SELECTOR).length;
 
+const liveRegionText = (screen: Screen): string | null =>
+  screen.container.querySelector(LIVE_REGION_SELECTOR)?.textContent ?? null;
+
 const monthName = (monthCode: MonthCode): string => ko.formatHeading({ year: 2026, monthCode }, 'gregory');
+
+const renderInKorean = (element: ReactElement): Promise<Screen> => render(<KoreanProvider>{element}</KoreanProvider>);
 
 const rootRect = (screen: Screen): DOMRect => {
   const root = screen.container.querySelector(ROOT_SELECTOR);
   if (!root) throw new Error('calendar root should render');
   return root.getBoundingClientRect();
 };
+
+const tabbableDayLabel = (screen: Screen): string | null =>
+  screen.container.querySelector(TABBABLE_CELL_SELECTOR)?.getAttribute('aria-label') ?? null;
 
 const wait = (milliseconds: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -71,6 +82,18 @@ describe('RangeCalendar pointer', () => {
 
       await expect.poll(() => inRangeCount(screen)).toBe(4);
       expect(onValueChange).not.toHaveBeenCalled();
+      dispatchPointer(document, 'pointerup');
+    });
+
+    it('ignores hovering by another pointer while dragging', async () => {
+      const screen = await renderInKorean(<RangeCalendar.Root />);
+      dispatchPointer(dayButton(screen, '2026-10-06'), 'pointerdown');
+      await expect.poll(() => inRangeCount(screen)).toBe(1);
+
+      dispatchPointer(dayButton(screen, '2026-10-09'), 'pointerover', { pointerId: OTHER_POINTER_ID });
+      await settleEffects();
+
+      expect(inRangeCount(screen)).toBe(1);
       dispatchPointer(document, 'pointerup');
     });
 
@@ -183,6 +206,43 @@ describe('RangeCalendar pointer', () => {
         .toEqual([{ start: '2026-10-06', end: '2026-10-09' }, { validity: VALID }]);
     });
 
+    it('ignores the click a pen tap sends after the release', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderInKorean(<RangeCalendar.Root onValueChange={onValueChange} />);
+      const button = dayButton(screen, '2026-10-06');
+
+      dispatchPointer(button, 'pointerdown', { pointerType: 'pen' });
+      dispatchPointer(button, 'pointerup', { pointerType: 'pen' });
+      await settleEffects();
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+      await settleEffects();
+
+      expect(inRangeCount(screen)).toBe(1);
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('releases a pointer capture the browser took on the pressed day', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderInKorean(<RangeCalendar.Root onValueChange={onValueChange} />);
+      // Goal: 펜·터치 기기의 암묵적 캡처를 흉내 냄. 부품의 누르기 처리보다 먼저 누른 요소가 포인터를 캡처함
+      const captureOnPress = (event: PointerEvent): void => {
+        if (event.target instanceof Element) event.target.setPointerCapture(event.pointerId);
+      };
+      document.addEventListener('pointerdown', captureOnPress, true);
+      try {
+        await userEvent.dragAndDrop(
+          screen.getByRole('button', { name: dayLabel('2026-10-06') }),
+          screen.getByRole('button', { name: dayLabel('2026-10-09') }),
+        );
+      } finally {
+        document.removeEventListener('pointerdown', captureOnPress, true);
+      }
+
+      await expect
+        .poll(() => onValueChange.mock.lastCall)
+        .toEqual([{ start: '2026-10-06', end: '2026-10-09' }, { validity: VALID }]);
+    });
+
     it('uses two taps instead of dragging on touch screens', async () => {
       const onValueChange = vi.fn();
       const screen = await renderInKorean(<RangeCalendar.Root onValueChange={onValueChange} />);
@@ -206,8 +266,8 @@ describe('RangeCalendar pointer', () => {
       dispatchPointer(dayButton(screen, '2026-10-09'), 'pointerover');
       dispatchPointer(document, 'pointerup');
       await expect.poll(() => onValueChange.mock.calls.length).toBe(1);
-      // Constraint: 실제 보조 기술의 클릭은 드래그를 끝낸 작업보다 한참 뒤에 옴
-      await settleEffects();
+      // Constraint: 실제 보조 기술의 클릭은 손 뗀 직후의 누르기 클릭 시간을 한참 지나서 옴
+      await wait(PRESS_CLICK_WINDOW_MILLISECONDS + PRESS_CLICK_WINDOW_MARGIN_MS);
 
       // Goal: 보조 기술은 누르기 없이 클릭(detail 1)만 보낼 수 있음. 지난 마우스 드래그 때문에 그 클릭을 버리면 안 됨
       for (const isoDate of ['2026-10-20', '2026-10-22']) {
@@ -218,6 +278,46 @@ describe('RangeCalendar pointer', () => {
       await expect
         .poll(() => onValueChange.mock.lastCall)
         .toEqual([{ start: '2026-10-20', end: '2026-10-22' }, { validity: VALID }]);
+    });
+  });
+
+  describe('tab stop', () => {
+    it('moves the tab stop to the day the drag ended on', async () => {
+      const screen = await renderInKorean(<RangeCalendar.Root />);
+
+      await userEvent.dragAndDrop(
+        screen.getByRole('button', { name: dayLabel('2026-10-06') }),
+        screen.getByRole('button', { name: dayLabel('2026-10-09') }),
+      );
+
+      await expect.poll(() => tabbableDayLabel(screen)).toBe(dayLabel('2026-10-09'));
+    });
+
+    it('shows the month of an outside day picked with a mouse', async () => {
+      const screen = await renderInKorean(<RangeCalendar.Root />);
+
+      await screen.getByRole('button', { name: dayLabel('2026-09-30') }).click();
+
+      await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName('M09'));
+      expect(tabbableDayLabel(screen)).toBe(dayLabel('2026-09-30'));
+    });
+  });
+
+  describe('rejected press', () => {
+    it('leaves no preview behind a press the range limit blocks', async () => {
+      const screen = await renderInKorean(<RangeCalendar.Root limitMode="block" maxDays={3} />);
+      dispatchPointer(dayButton(screen, '2026-10-06'), 'pointerdown');
+      dispatchPointer(document, 'pointerup');
+      const startSelected = ko.labels.formatRangeStartSelected(dayLabel('2026-10-06'));
+      await expect.poll(() => liveRegionText(screen)).toBe(startSelected);
+
+      dispatchPointer(dayButton(screen, '2026-10-20'), 'pointerdown');
+      dispatchPointer(dayButton(screen, '2026-10-07'), 'pointerover');
+      dispatchPointer(document, 'pointerup');
+      await settleEffects();
+
+      expect(inRangeCount(screen)).toBe(1);
+      expect(liveRegionText(screen)).toBe(startSelected);
     });
   });
 

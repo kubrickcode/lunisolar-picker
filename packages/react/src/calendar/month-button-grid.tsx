@@ -1,6 +1,7 @@
 import { type KeyboardEvent, type ReactElement, useState } from 'react';
 import { type PartName, partAttributes, stateAttributes } from '../contract/data-attributes';
 import { AUTOFOCUS_ATTRIBUTE } from '../focus/focusable-elements';
+import { isRightToLeft } from '../utilities/is-right-to-left';
 
 const HOME_INDEX = 0;
 
@@ -67,7 +68,7 @@ export const MonthButtonGrid = ({
     const nextIndex = nextIndexForKey({
       columnCount,
       focusedIndex: tabStopIndex,
-      isRightToLeft: getComputedStyle(event.currentTarget).direction === 'rtl',
+      isRightToLeft: isRightToLeft(event.currentTarget),
       itemCount: items.length,
       key: event.key,
     });

@@ -1,6 +1,7 @@
 import { type HTMLAttributes, type KeyboardEvent, type RefCallback, useCallback, useEffect, useRef } from 'react';
 import { type DataAttributeProps, type PartName, partAttributes } from '../contract/data-attributes';
 import { escapeHtml } from '../utilities/escape-html';
+import { isRightToLeft } from '../utilities/is-right-to-left';
 import { useLatestRef } from '../utilities/use-latest-ref';
 import {
   commandFromKey,
@@ -111,9 +112,8 @@ export const useSegmentedField = (options: SegmentedFieldOptions): SegmentedFiel
     const onKeyDown = (event: KeyboardEvent<HTMLSpanElement>): void => {
       // Constraint: IME 조합 중인 키는 조합 입력의 몫. 여기서 막으면 조합이 깨짐
       if (event.nativeEvent.isComposing || options.isDisabled) return;
-      const isRightToLeft = getComputedStyle(event.currentTarget).direction === 'rtl';
       const command = commandFromKey(event.key, {
-        isRightToLeft,
+        isRightToLeft: isRightToLeft(event.currentTarget),
         canToggleLeapMonth: description.canToggleLeapMonth,
         code: event.code,
         hasShortcutModifier: event.ctrlKey || event.metaKey || event.altKey,

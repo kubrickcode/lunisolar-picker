@@ -13,6 +13,7 @@ import type {
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { AUTOFOCUS_ATTRIBUTE } from '../focus/focusable-elements';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
+import { isRightToLeft } from '../utilities/is-right-to-left';
 import { calendarKeyAction } from './calendar-key-action';
 import { buildCellLabel } from './cell-label';
 import { buildCellState, type CellSelectionFlags, type CellState, cellDataAttributes } from './cell-state';
@@ -195,5 +196,3 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
     requestFocus: foundation.requestFocus,
   };
 };
-
-const isRightToLeft = (element: Element): boolean => getComputedStyle(element).direction === 'rtl';
