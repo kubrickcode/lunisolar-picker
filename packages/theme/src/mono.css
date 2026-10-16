@@ -393,12 +393,14 @@
   }
 
   @media (forced-colors: active) {
-    /* 자동 조정이 글자 뒤에 Canvas 판을 깔아 Highlight 위 글자를 가리므로 끄고 시스템 색을 직접 씀 */
+    /* 자동 조정이 글자 뒤에 Canvas 판을 깔아 Highlight 위 글자를 가리므로 끄고 시스템 색을 직접 씀. 그러면 layer 밖 앱 색이 새어 들어오므로 !important로 막음 */
     [data-lsp-part="date-field-segment"][data-focused],
     [data-lsp-part="time-field-segment"][data-focused] {
       forced-color-adjust: none;
-      background: Highlight;
-      color: HighlightText;
+      /* biome-ignore-start lint/complexity/noImportantStyles: 자동 조정을 끈 강제 색상에서 layer 밖 앱 색을 이기려면 !important가 필요함 */
+      background: Highlight !important;
+      color: HighlightText !important;
+      /* biome-ignore-end lint/complexity/noImportantStyles: 범위 끝 */
       outline: 2px solid Highlight;
     }
 
@@ -792,12 +794,14 @@
 
   @media (forced-colors: active) {
     /* 강제 색상은 글자 뒤에 Canvas 판을 깔아 Highlight 채움 위 글자를 흰 덩어리로 가림. 선택 항목만 자동 조정을 끄고 시스템 색을 직접 지정함 */
+    /* Constraint: 자동 조정을 끄면 layer 밖 앱 규칙(data-weekday 글자색 등)이 강제 색상 모드에도 새어 들어오므로 시스템 색에 !important를 붙임. layer 안 !important는 layer 밖 일반 선언을 이김 */
+    /* biome-ignore-start lint/complexity/noImportantStyles: 위 Constraint대로 강제 색상의 시스템 색은 !important여야 함 */
     [data-lsp-part="calendar-toggle"] > button[data-selected],
     [data-lsp-part="calendar-month-grid"] [data-selected] > button,
     [data-lsp-part="calendar-year-grid"] [data-selected] > button {
       forced-color-adjust: none;
-      background: Highlight;
-      color: HighlightText;
+      background: Highlight !important;
+      color: HighlightText !important;
     }
 
     [data-lsp-part="calendar-cell"][data-in-range] {
@@ -827,13 +831,15 @@
 
     [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button {
       forced-color-adjust: none;
-      background: Highlight;
-      color: HighlightText;
+      background: Highlight !important;
+      color: HighlightText !important;
     }
 
+    /* 안쪽 요소도 자동 조정이 꺼지므로 앱이 칠한 배경이 Highlight 위에 덩어리로 남지 않게 비움 */
     [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button * {
       forced-color-adjust: none;
-      color: HighlightText;
+      background: transparent !important;
+      color: HighlightText !important;
     }
 
     [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])[data-today] > button {
@@ -846,9 +852,10 @@
     [data-lsp-part="calendar"][data-invalid]
       [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])
       > button {
-      border: 2px dashed HighlightText;
-      background: Highlight;
+      border: 2px dashed HighlightText !important;
+      background: Highlight !important;
     }
+    /* biome-ignore-end lint/complexity/noImportantStyles: 범위 끝 */
 
     [data-lsp-part="calendar"][data-invalid]
       [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])[data-today]
