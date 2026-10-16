@@ -2,6 +2,7 @@ import type { CalendarSystem, DateString, EpochDay } from '@lunisolar-picker/cal
 import {
   createSingleSelectionState,
   type DateConstraints,
+  formatSelectedDay,
   type ResolvedConstraints,
   type SelectedDay,
   type SingleSelectionEvent,
@@ -53,6 +54,8 @@ export interface UseCalendarProps extends CalendarFoundationProps, DateConstrain
   readonly value?: string | null | undefined;
   readonly defaultValue?: string | null | undefined;
   readonly onValueChange?: ((value: DateString | null, details: ValueChangeDetails) => void) | undefined;
+  // Goal: 받아들인 사용자 고르기마다(이미 고른 날을 다시 골라도, 확인 모드의 임시 선택도) 알림. 완성형 picker가 닫을 때를 정함. onValueChange는 값이 바뀔 때만
+  readonly onPick?: ((value: DateString) => void) | undefined;
 }
 
 export const useCalendar = (props: UseCalendarProps): CalendarApi => {
@@ -111,6 +114,14 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     selectionSync,
   });
 
+  // Constraint: store가 고르지 못하는 날(입력 역법 밖 등)은 임시 선택이 그 날이 되지 않으므로 알리지 않음
+  const reportPick = (epochDay: EpochDay): void => {
+    const picked = getSnapshot().draft;
+    if (picked?.epochDay !== epochDay) return;
+    const value = formatSelectedDay(picked, context);
+    if (value !== null) props.onPick?.(value);
+  };
+
   const commit = (): void => {
     sendSelection({ type: 'commit' });
     reportCommitted();
@@ -138,6 +149,7 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
         if (!validateEpochDay(epochDay, context.constraints).isValid) return;
         sendSelection({ type: 'date.select', epochDay, calendarId: foundation.navigation.displayCalendarId });
         reportCommitted();
+        reportPick(epochDay);
       },
     },
     interaction: {

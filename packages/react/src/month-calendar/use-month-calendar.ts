@@ -58,6 +58,8 @@ export type UseMonthCalendarProps = SharedPickerProps & {
   readonly defaultValue?: string | null | undefined;
   readonly max?: string | undefined;
   readonly min?: string | undefined;
+  // Goal: 받아들인 사용자 고르기마다(이미 고른 달을 다시 골라도) 알림. 완성형 picker가 닫을 때를 정함. onValueChange는 값이 바뀔 때만
+  readonly onPick?: ((value: MonthString) => void) | undefined;
   readonly onValueChange?: ((value: MonthString | null, details: ValueChangeDetails) => void) | undefined;
   readonly value?: string | null | undefined;
 };
@@ -95,6 +97,7 @@ export const useMonthCalendar = (props: UseMonthCalendarProps): MonthCalendarApi
 
   const pick = (month: MonthString): void => {
     if (month !== selected) report(month);
+    props.onPick?.(month);
   };
 
   // Goal: 비제어만 form reset에서 처음 기본값으로 돌아가며 알림. 제어 값은 부모가 정함 (계약 §3.3 #1)

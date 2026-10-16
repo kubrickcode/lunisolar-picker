@@ -1,4 +1,5 @@
 import { LunisolarPickerError } from '@lunisolar-picker/calendar';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -35,9 +36,16 @@ describe('TimeList', () => {
   describe('selection', () => {
     it('selects an option by click and by keyboard', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await render(
         <KoreanProvider>
-          <TimeList.Root aria-label={LIST_LABEL} minuteStep={5} defaultValue="09:30" onValueChange={onValueChange} />
+          <TimeList.Root
+            aria-label={LIST_LABEL}
+            minuteStep={5}
+            defaultValue="09:30"
+            onValueChange={onValueChange}
+            onPick={onPick}
+          />
         </KoreanProvider>,
       );
 
@@ -48,20 +56,34 @@ describe('TimeList', () => {
         ['09:35', VALID_DETAILS],
         ['09:40', VALID_DETAILS],
       ]);
+      expect(onPick.mock.calls).toEqual([['09:35'], ['09:40']]);
       await expect.element(screen.getByRole('option', { name: '09:40' })).toHaveAttribute('aria-selected', 'true');
     });
 
-    it('stays silent when the selected option is chosen again', async () => {
+    it('reports re-picks of the selected option through onPick without a value change', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await render(
-        <TimeList.Root aria-label={LIST_LABEL} defaultValue="09:30" onValueChange={onValueChange} />,
+        <TimeList.Root aria-label={LIST_LABEL} defaultValue="09:30" onValueChange={onValueChange} onPick={onPick} />,
       );
 
       await clickToFocus(screen.getByRole('option', { name: '09:30' }));
       await userEvent.keyboard('{Enter}');
       await settleEffects();
 
+      expect(onPick.mock.calls).toEqual([['09:30'], ['09:30']]);
       expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('fires nothing while only moving focus', async () => {
+      const onPick = vi.fn();
+      const screen = await render(<TimeList.Root aria-label={LIST_LABEL} defaultValue="09:30" onPick={onPick} />);
+      await focusDirectly(screen.getByRole('option', { name: '09:30' }));
+
+      await userEvent.keyboard('{ArrowDown}{End}');
+      await expect.element(screen.getByRole('option', { name: '23:30' })).toHaveFocus();
+
+      expect(onPick).not.toHaveBeenCalled();
     });
 
     it('returns to the parent value when the parent keeps it unchanged', async () => {
@@ -114,6 +136,20 @@ describe('TimeList', () => {
       );
       expect(autofocusTexts).toEqual(['13:00']);
       expect(tabStopText(screen.container)).toBe('13:00');
+    });
+
+    it('moves the initial-focus mark with the tab stop', async () => {
+      const screen = await render(<TimeList.Root aria-label={LIST_LABEL} defaultValue="13:00" />);
+      await focusDirectly(screen.getByRole('option', { name: '13:00' }));
+
+      await userEvent.keyboard('{ArrowDown}');
+      await expect.element(screen.getByRole('option', { name: '13:30' })).toHaveFocus();
+
+      const autofocusTexts = Array.from(
+        screen.container.querySelectorAll('[data-autofocus]'),
+        (element) => element.textContent,
+      );
+      expect(autofocusTexts).toEqual(['13:30']);
     });
 
     it('starts on the step before a value between steps', async () => {
@@ -173,6 +209,26 @@ describe('TimeList', () => {
       const optionRect = option.getBoundingClientRect();
       expect(optionRect.top).toBeGreaterThanOrEqual(listRect.top);
       expect(optionRect.bottom).toBeLessThanOrEqual(listRect.bottom);
+      expect(window.scrollY).toBe(0);
+    });
+
+    it('scrolls the list to a new value from the parent without scrolling the page', async () => {
+      const listBelowTheFold = (value: string): ReactElement => (
+        <>
+          <div style={BELOW_THE_FOLD_SPACER_STYLE} />
+          <TimeList.Root aria-label={LIST_LABEL} value={value} style={SCROLLING_LIST_STYLE} />
+        </>
+      );
+      const screen = await render(listBelowTheFold('01:00'));
+      const list = screen.getByRole('listbox').element();
+      await expect.element(screen.getByRole('option', { name: '01:00' })).toHaveAttribute('aria-selected', 'true');
+      expect(list.scrollTop).toBe(0);
+
+      await screen.rerender(listBelowTheFold('18:00'));
+
+      const option = screen.getByRole('option', { name: '18:00' }).element();
+      await expect.poll(() => option.getBoundingClientRect().bottom <= list.getBoundingClientRect().bottom).toBe(true);
+      expect(option.getBoundingClientRect().top).toBeGreaterThanOrEqual(list.getBoundingClientRect().top);
       expect(window.scrollY).toBe(0);
     });
   });

@@ -44,21 +44,33 @@ describe('MonthCalendar', () => {
         .toHaveAttribute('aria-selected', 'true');
     });
 
-    it('stays silent when the selected month is picked again', async () => {
+    it('reports a re-pick of the selected month through onPick without a value change', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderMonthCalendar(
-        <MonthCalendar.Root defaultValue="2026-10" onValueChange={onValueChange} />,
+        <MonthCalendar.Root defaultValue="2026-10" onValueChange={onValueChange} onPick={onPick} />,
       );
 
       await screen.getByRole('button', { name: monthName(10) }).click();
       await settleEffects();
 
+      expect(onPick.mock.calls).toEqual([['2026-10']]);
       expect(onValueChange).not.toHaveBeenCalled();
     });
 
+    it('reports a new pick through onPick too', async () => {
+      const onPick = vi.fn();
+      const screen = await renderMonthCalendar(<MonthCalendar.Root defaultValue="2026-10" onPick={onPick} />);
+
+      await screen.getByRole('button', { name: monthName(12) }).click();
+
+      expect(onPick.mock.calls).toEqual([['2026-12']]);
+    });
+
     it('disables months outside min and max', async () => {
+      const onPick = vi.fn();
       const screen = await renderMonthCalendar(
-        <MonthCalendar.Root defaultValue="2026-10" min="2026-03" max="2026-10" />,
+        <MonthCalendar.Root defaultValue="2026-10" min="2026-03" max="2026-10" onPick={onPick} />,
       );
 
       await expect.element(screen.getByRole('button', { name: monthName(2) })).toHaveAttribute('aria-disabled', 'true');
@@ -66,6 +78,10 @@ describe('MonthCalendar', () => {
         .element(screen.getByRole('button', { name: monthName(11) }))
         .toHaveAttribute('aria-disabled', 'true');
       await expect.element(screen.getByRole('button', { name: monthName(3) })).not.toHaveAttribute('aria-disabled');
+
+      await screen.getByRole('button', { name: monthName(2) }).click({ force: true });
+      await settleEffects();
+      expect(onPick).not.toHaveBeenCalled();
     });
 
     it('has no axe violations', async () => {
@@ -157,8 +173,9 @@ describe('MonthCalendar', () => {
   describe('disabled', () => {
     it('leaves no tab stop and ignores years and picks', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderMonthCalendar(
-        <MonthCalendar.Root disabled defaultValue="2026-10" onValueChange={onValueChange} />,
+        <MonthCalendar.Root disabled defaultValue="2026-10" onValueChange={onValueChange} onPick={onPick} />,
       );
       const nextButton = screen.getByRole('button', { name: ko.labels.nextYear });
       await expect.element(nextButton).toHaveAttribute('aria-disabled', 'true');
@@ -170,14 +187,16 @@ describe('MonthCalendar', () => {
 
       await expect.element(screen.getByText('2026')).toBeVisible();
       expect(onValueChange).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
     });
   });
 
   describe('read-only', () => {
     it('moves between years but keeps the selection', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderMonthCalendar(
-        <MonthCalendar.Root readOnly defaultValue="2026-10" onValueChange={onValueChange} />,
+        <MonthCalendar.Root readOnly defaultValue="2026-10" onValueChange={onValueChange} onPick={onPick} />,
       );
       await expect.element(screen.getByRole('grid')).toHaveAttribute('aria-readonly', 'true');
 
@@ -187,6 +206,7 @@ describe('MonthCalendar', () => {
         .element(screen.getByRole('gridcell', { name: monthName(10) }))
         .toHaveAttribute('aria-selected', 'true');
       expect(onValueChange).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
 
       await screen.getByRole('button', { name: ko.labels.nextYear }).click();
       await expect.element(screen.getByText('2027')).toBeVisible();

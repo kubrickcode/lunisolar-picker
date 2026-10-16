@@ -39,6 +39,8 @@ export interface TimeListRootProps
   readonly defaultValue?: string | null | undefined;
   readonly isEndOfDayAllowed?: boolean | undefined;
   readonly minuteStep?: number | undefined;
+  // Goal: 받아들인 사용자 고르기마다(이미 고른 시각을 다시 골라도) 알림. 완성형 picker가 닫을 때를 정함. onValueChange는 값이 바뀔 때만
+  readonly onPick?: ((value: TimeString) => void) | undefined;
   readonly onValueChange?: ((value: TimeString, details: ValueChangeDetails) => void) | undefined;
   readonly value?: string | null | undefined;
 }
@@ -49,6 +51,7 @@ export const TimeListRoot = ({
   defaultValue,
   isEndOfDayAllowed = false,
   minuteStep = DEFAULT_MINUTE_STEP,
+  onPick,
   onValueChange,
   value,
   ...domProps
@@ -66,22 +69,26 @@ export const TimeListRoot = ({
   if (roving !== storedRoving) setRoving(roving);
   // Constraint: 간격에 맞지 않는 값(09:37)이나 목록에 없는 24:00이면 그 앞의 가장 가까운 시각에서 시작함
   const tabStopIndex = indexAtOrBefore(times, roving.focusedTime) ?? FIRST_INDEX;
-  const [mountTabStopIndex] = useState(tabStopIndex);
+  const selectedIndex = indexAtOrBefore(times, selectedTime) ?? FIRST_INDEX;
   const listRef = useRef<HTMLUListElement | null>(null);
 
-  // Goal: 열릴 때 선택한 시각이 목록 안에 보이게 함. 페이지는 움직이지 않도록 목록만 스크롤함. 그리기 전에 옮겨 맨 위가 잠깐 보이지 않게 함
+  // Goal: 열릴 때와 부모가 값을 바꿀 때 선택한 시각이 목록 안에 보이게 함. 페이지는 움직이지 않도록 목록만 스크롤함. 그리기 전에 옮겨 맨 위가 잠깐 보이지 않게 함
+  // Constraint: 이미 보이는 옵션(클릭으로 고른 옵션 등)이면 움직이지 않음
   useLayoutEffect(() => {
     const list = listRef.current;
-    const option = list?.children[mountTabStopIndex];
-    if (list && option instanceof HTMLElement) scrollToCenterOfList(list, option);
-  }, [mountTabStopIndex]);
+    const option = list?.children[selectedIndex];
+    if (list && option instanceof HTMLElement && !isFullyVisibleInList(list, option))
+      scrollToCenterOfList(list, option);
+  }, [selectedIndex]);
 
   const choose = (time: TimeString): void => {
     // Constraint: macOS Safari·Firefox는 클릭으로 포커스를 옮기지 않으므로 탭 정지점을 직접 옮김
     setRoving({ focusedTime: time, selectedTime });
-    if (time === selectedTime) return;
-    setSelectedTime(time);
-    onValueChange?.(time, { validity: VALID });
+    if (time !== selectedTime) {
+      setSelectedTime(time);
+      onValueChange?.(time, { validity: VALID });
+    }
+    onPick?.(time);
   };
 
   const moveFocus = (event: KeyboardEvent<HTMLUListElement>): void => {
@@ -140,6 +147,15 @@ const indexAtOrBefore = (times: readonly TimeString[], time: TimeString | null):
     MISSING_INDEX,
   );
   return index === MISSING_INDEX ? null : index;
+};
+
+const isFullyVisibleInList = (list: HTMLElement, option: HTMLElement): boolean => {
+  const listRect = list.getBoundingClientRect();
+  const optionRect = option.getBoundingClientRect();
+  return (
+    optionRect.top >= listRect.top + list.clientTop &&
+    optionRect.bottom <= listRect.top + list.clientTop + list.clientHeight
+  );
 };
 
 const nextIndexForKey = ({ focusedIndex, itemCount, key }: KeyMoveInput): number | null => {

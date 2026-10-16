@@ -372,8 +372,9 @@ describe('Calendar', () => {
 
     it('ignores grid keys', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderCalendar(
-        <Calendar.Root disabled defaultValue="2026-10-20" onValueChange={onValueChange} />,
+        <Calendar.Root disabled defaultValue="2026-10-20" onValueChange={onValueChange} onPick={onPick} />,
       );
       // Constraint: 비활성 칸은 탭 정지점도 클릭 포커스도 기대할 수 없어 직접 포커스한 뒤 키를 보냄
       const day = screen.getByRole('button', { name: dayLabel('2026-10-20') });
@@ -386,14 +387,16 @@ describe('Calendar', () => {
       await expect.element(screen.getByRole('button', { name: dayLabel('2026-10-20') })).toHaveFocus();
       await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName(2026, 'M10'));
       expect(onValueChange).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
     });
   });
 
   describe('read-only', () => {
     it('navigates but keeps the selection', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderCalendar(
-        <Calendar.Root readOnly defaultValue="2026-10-20" onValueChange={onValueChange} />,
+        <Calendar.Root readOnly defaultValue="2026-10-20" onValueChange={onValueChange} onPick={onPick} />,
       );
       await expect.element(screen.getByRole('grid')).toBeVisible();
       expect(screen.container.querySelectorAll(TABBABLE_CELL_SELECTOR)).toHaveLength(1);
@@ -405,9 +408,58 @@ describe('Calendar', () => {
         .element(screen.getByRole('gridcell', { name: dayLabel('2026-10-20') }))
         .toHaveAttribute('aria-selected', 'true');
       expect(onValueChange).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
 
       await screen.getByRole('button', { name: ko.labels.nextMonth }).click();
       await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName(2026, 'M11'));
+    });
+  });
+
+  describe('picks', () => {
+    it('reports a re-pick of the selected day through onPick without a value change', async () => {
+      const onValueChange = vi.fn();
+      const onPick = vi.fn();
+      const screen = await renderCalendar(
+        <Calendar.Root defaultValue="2026-10-20" onValueChange={onValueChange} onPick={onPick} />,
+      );
+
+      await screen.getByRole('button', { name: dayLabel('2026-10-20') }).click();
+      await settleEffects();
+
+      expect(onPick.mock.calls).toEqual([['2026-10-20']]);
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('reports a day picked in confirm mode before it is committed', async () => {
+      const onValueChange = vi.fn();
+      const onPick = vi.fn();
+      const screen = await renderCalendar(
+        <Calendar.Root commitMode="confirm" defaultValue="2026-10-20" onValueChange={onValueChange} onPick={onPick} />,
+      );
+
+      await screen.getByRole('button', { name: dayLabel('2026-10-22') }).click();
+      await settleEffects();
+
+      expect(onPick.mock.calls).toEqual([['2026-10-22']]);
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('ignores a day rejected by isDateDisabled', async () => {
+      const onPick = vi.fn();
+      const screen = await renderCalendar(
+        <Calendar.Root defaultValue="2026-10-20" isDateDisabled={(date) => date === '2026-10-22'} onPick={onPick} />,
+      );
+
+      await screen.getByRole('button', { name: dayLabel('2026-10-22') }).click({ force: true });
+      // Goal: 클릭은 칸에서 먼저 막히므로 키보드 선택으로 훅의 제약 검사까지 거치게 함
+      await clickToFocus(screen.getByRole('button', { name: dayLabel('2026-10-21') }));
+      onPick.mockClear();
+      await userEvent.keyboard('{ArrowRight}');
+      await expect.element(screen.getByRole('button', { name: dayLabel('2026-10-22') })).toHaveFocus();
+      await userEvent.keyboard('{Enter}');
+      await settleEffects();
+
+      expect(onPick).not.toHaveBeenCalled();
     });
   });
 

@@ -10,7 +10,13 @@ const INVALID_ENDPOINT_PARTS = [
   '[data-lsp-part="calendar"][data-invalid]',
   '[data-lsp-part="calendar-cell"][data-selected]',
 ];
+const INVALID_SELECTED_MONTH_PARTS = [
+  '[data-lsp-part="month-calendar"][data-invalid]',
+  '[data-lsp-part="calendar-month-grid"] [data-selected]',
+];
 const LEAF_RULE_PATTERN = /([^{}]+)\{([^{}]*)\}/g;
+const OUT_OF_RANGE_MONTH_SELECTOR =
+  '[data-lsp-part="calendar-month-grid"]:not([data-disabled]) [data-disabled] > button';
 const MONO_FILE = '../src/mono.css';
 const PART_PATTERN = /\[data-lsp-part="[a-z-]+"\]/;
 const REDUCED_MOTION_QUERY = '@media (prefers-reduced-motion: reduce)';
@@ -81,6 +87,9 @@ const canReachCalendar = (selector: string): boolean =>
 
 const isInvalidEndpointRule = (rule: CssRule): boolean =>
   rule.selectors.some((selector) => INVALID_ENDPOINT_PARTS.every((part) => selector.includes(part)));
+
+const isInvalidSelectedMonthRule = (rule: CssRule): boolean =>
+  rule.selectors.some((selector) => INVALID_SELECTED_MONTH_PARTS.every((part) => selector.includes(part)));
 
 const isUnadjustedRule = (rule: CssRule): boolean => /forced-color-adjust:\s*none/.test(rule.declarations);
 
@@ -159,6 +168,31 @@ describe('mono.css calendar', () => {
 
       expect(listDeclarations).toMatch(/max-block-size:\s*\d+px/);
       expect(listDeclarations).toMatch(/overflow-y:\s*auto/);
+    });
+  });
+
+  describe('month calendar', () => {
+    // Constraint: 범위 밖 값이 선택되면 흐린 글자색이 잉크 채움 위에 남아 읽을 수 없으므로 위험색 채움이 범위 밖 규칙을 이겨야 함
+    it('fills an invalid selected month with the danger color over the out-of-range text', async () => {
+      const rules = parseLeafRules(await readMonoCss());
+      const dangerFill = rules.find(
+        (rule) =>
+          isInvalidSelectedMonthRule(rule) &&
+          /background:\s*var\(--lsp-danger\)/.test(rule.declarations) &&
+          /color:\s*var\(--lsp-accent-fg\)/.test(rule.declarations),
+      );
+      const outOfRange = rules.find((rule) => rule.selectors.includes(OUT_OF_RANGE_MONTH_SELECTOR));
+      if (!dangerFill || !outOfRange) throw new Error('mono.css should style invalid and out-of-range months');
+
+      expect(compareSpecificity(highestSpecificity(dangerFill), highestSpecificity(outOfRange))).toBeGreaterThan(0);
+    });
+
+    it('marks an invalid selected month with a dashed border that app colors cannot override in forced colors', async () => {
+      const forcedRules = (await readForcedColorRules()).filter(isInvalidSelectedMonthRule);
+
+      expect(forcedRules.some((rule) => /border:\s*2px dashed HighlightText !important/.test(rule.declarations))).toBe(
+        true,
+      );
     });
   });
 

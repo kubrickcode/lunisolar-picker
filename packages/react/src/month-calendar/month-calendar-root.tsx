@@ -6,8 +6,6 @@ import { mergeProps } from '../utilities/merge-props';
 import { HiddenInput } from '../value/hidden-input';
 import { type MonthCalendarApi, type UseMonthCalendarProps, useMonthCalendar } from './use-month-calendar';
 
-const MONTH_COLUMN_COUNT = 3;
-
 // Constraint: isolatedDeclarations에서 export한 `as const satisfies`는 TS9010이므로 모듈 안에만 둠 (preflight 2.3)
 const MONTH_CALENDAR_PROP_NAMES = [
   'calendars',
@@ -21,6 +19,7 @@ const MONTH_CALENDAR_PROP_NAMES = [
   'name',
   'onBlur',
   'onInvalidValue',
+  'onPick',
   'onValueChange',
   'readOnly',
   'required',
@@ -29,6 +28,8 @@ const MONTH_CALENDAR_PROP_NAMES = [
   'value',
   'weekStartsOn',
 ] as const satisfies readonly (keyof UseMonthCalendarProps)[];
+
+const MONTH_COLUMN_COUNT = 3;
 
 // Constraint: 훅 prop을 하나라도 빠뜨리면 DOM으로 새어 나가므로 컴파일 시점에 목록 완전성을 검사함
 const isMonthCalendarPropListComplete: [MissingMonthCalendarPropName] extends [never] ? true : false = true;
