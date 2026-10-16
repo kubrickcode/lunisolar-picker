@@ -418,7 +418,7 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 > 5. 훅 API 모양 통일: `DateFieldApi`·`DateRangeFieldApi`·`TimeFieldApi`·`WheelDateApi`가 모두 `validity`, `isInvalid`, `isDisabled`, `isReadOnly`를 갖는다. `DateRangeField` 렌더 상태는 `{ isInvalid, isDisabled }`이고 Root는 `data-focused`를 낸다. `TimeField.HiddenInput`도 prop 덮어쓰기를 받는다. `DateFieldCore.isLeapMonthAvailable()`은 제거했다.
 > 6. 윤달: `DateRangeField`의 기본 시작·종료 칸도 윤달 토글을 그린다(이름에 쪽 라벨이 붙음). 토글은 비활성일 때 `data-disabled`를 낸다. 쓰던 입력 역법이 `calendars`에서 빠지면 양력으로 넘어간다: 비제어는 값을 양력으로 다시 표기하고, 제어는 칸을 비우고 `onInvalidValue`로 알린다.
 > 7. Wheel: `Wheel.Root`가 `disabled`·`readOnly`·`invalid`·`ref`를 받아 모든 열에 전한다(fieldset처럼). `useWheel`·`Wheel.Column`에 `readOnly`(포커스는 되지만 바뀌지 않음, `aria-readonly`·`data-readonly`)가 있고, 무효면 열이 `aria-invalid`를 낸다. 새 부품 `Wheel.HiddenInput`. 연도 열은 숫자를 치면 그 해로 이동한다(입력이 멈춘 뒤 한 번 확정). 열 inline style에 `touch-action: none`.
-> 8. `useWheelDate`가 `SharedPickerProps`를 지킨다: `WheelDateApi`에 `validity`·`isInvalid`·`isDisabled`·`isReadOnly`·`focus()`·`getWheelRootProps()`(`<Wheel.Root>`에 펼칠 컴포넌트 props, DOM props 아님)·`getHiddenInputProps()`. 선택 전에는 현재 오늘을 따른다. M4 WheelDatePicker는 `<Wheel.Root {...wheel.getWheelRootProps()}>`와 `<Wheel.HiddenInput {...wheel.getHiddenInputProps()} />`를 그린다. 부모 값이 min/max 밖이면 `fields`는 잘린 날짜를 보이고 `value`는 원래 값이므로, 확인 흐름은 `selectDay(fields.day)`로 확정한다.
+> 8. `useWheelDate`가 `SharedPickerProps`를 지킨다: `WheelDateApi`에 `validity`·`isInvalid`·`isDisabled`·`isReadOnly`·`focus()`·`getWheelRootProps()`(`<Wheel.Root>`에 펼칠 컴포넌트 props, DOM props 아님)·`getHiddenInputProps()`. 선택 전에는 현재 오늘을 따른다. M4 WheelDatePicker는 `<Wheel.Root {...wheel.getWheelRootProps()}>`를 그리고 폼 참여는 picker의 `HiddenInput`이 맡는다(§3.5 M4-T10). 부모 값이 min/max 밖이면 `fields`는 잘린 날짜를 보이고 `value`는 원래 값이므로, 확인 흐름은 `selectDay(fields.day)`로 확정한다.
 > 9. Popover: 어떤 경로로 닫히든(Esc, 바깥 클릭, `Close`, 부모의 `open=false`) 포커스가 콘텐츠 안에 있었거나 사라졌으면 트리거로 돌아간다. 사용자가 다른 곳으로 옮긴 포커스는 건드리지 않는다. `closeAndRestoreFocus`는 이제 `setOpen(false)`와 같다.
 > 10. 새 공개 export: `useSheetContext`, `DateRangeInput`(M4는 `RangeValueInput`을 따로 만들지 않고 이것을 import), `WheelDateRootProps`, `Wheel.HiddenInput`, `DateRangeFieldRenderState`.
 
@@ -454,6 +454,7 @@ usePickerSelection(): PickerSelection     // DateRangePicker의 presets·footer 
 // 확인 버튼은 !validity.isValid일 때만 비활성(빈 draft는 incomplete라 비활성, isOpenEndAllowed면 시작만 있어도 활성).
 ```
 
+- [M4-T10] 다섯 완성형 모두 공개 `HiddenInput` 하나(범위는 둘)로 폼에 참여한다. MonthPicker와 시트 WheelDatePicker는 입력 칸이 없어 트리거가 `ref`·`onBlur`·`onInvalidValue`를 늘 맡는다. 값을 보이는 트리거(MonthPicker, 시트 WheelDatePicker)의 이름은 `aria-labelledby`로 "보이는 값 + 동작 라벨"(앱이 aria-labelledby를 주면 "보이는 값 + 앱 라벨", 값이 비면 동작 라벨) — WCAG 2.5.3. TimePicker도 `onPick?(value: TimeString)`. disabled·readOnly인 동안 picker는 팝업을 절대 보이지 않으며(defaultOpen, 제어 open, 열린 채 막힘 모두), 열린 채 막힐 때마다 `onOpenChange(false)`를 한 번 부른다 — §3.3 #1의 entryCalendar처럼 "사용자 조작만 보고" 규칙의 예외. 그래서 프리셋도 막힌 동안 보이지 않고 `usePickerSelection().setRange`의 막힘 검사는 방어용이다. readOnly DatePicker·DateRangePicker는 제어 open으로도 달력을 보여 주지 않는다. WheelDatePicker는 `getWheelRootProps()`를 펼치고 폼은 picker의 HiddenInput이 맡는다(`Wheel.HiddenInput`은 직접 조립용). 시트의 draft 휠은 값을 min/max 안으로 보정한 날에서 시작하고(무효 표시 없음), 확인은 보이는 날을 확정하며(값과 같으면 조용히 닫음) min > max로 고를 날이 없을 때만 비활성이다. 취소·닫기는 draft를 버린다. 스펙 §7.5와 달리 v1 MonthPicker는 값 트리거 + 월 격자다(월 입력 칸 없음).
 - 완성형은 폼 참여를 직접 맡는다: 공개 `HiddenInput`(M4-T8부터 공개 export)을 한 개(DateRangePicker는 startName·endName 두 개, 폼 reset은 한 입력만 처리해 한 번만 보고, 끝은 required && !isOpenEndAllowed일 때만 필수, isOpenEndAllowed가 아니면 시작만 있는 범위는 제출·data-invalid·reset 보고에서 빈 값으로 봄, 끝 입력의 검증 포커스는 종료일 첫 칸) 그려 name·form·required와 폼 reset(비제어는 마운트 시점 기본값, 제어는 무시)을 처리하고, 안의 달력·입력 칸에는 name·form을 넘기지 않는다. `ref`·`onBlur`·`onInvalidValue`는 입력 칸이 맡고, `renderTrigger` 모드에서는 트리거가 맡는다(onBlur는 닫힌 상태에서 트리거를 떠날 때). 시트 표시 + 즉시 모드에는 `Sheet.Close`(labels.close)가 보인다. picker는 `onPick`으로 닫는다 [M4-T8].
 - 확인 모드의 확인·취소는 완성형 footer가 그린다. 직접 조립할 때는 `Popover.Close onClick={() => calendar.commit()}`처럼 쓴다 [M5-T5].
 - `src/pickers/**`는 `src/index.ts`, `src/contract/**`, `src/settings/**`, `src/utilities/**`, `src/pickers/**`만 import한다(dependency-cruiser) [M4-T11].
@@ -462,7 +463,7 @@ usePickerSelection(): PickerSelection     // DateRangePicker의 presets·footer 
 
 ## 4. `@lunisolar-picker/theme` 🟡 [M3-T10, M4-T6]
 
-> **계약 변경(M4-T9)**: `PARTS_WITHOUT_RULES`에는 M4-T10 부품과 `live-region`만 남는다. `picker-presets`는 버튼 자식을 footer 보조 버튼처럼 꾸민다.
+> **계약 변경(M4-T10)**: `PARTS_WITHOUT_RULES`에는 `live-region`만 남는다. 포털 콘텐츠는 `body`의 글꼴을 물려받으므로 글꼴은 `html`/`body`에 둔다(M5 문서, 선택적으로 `:root` 토큰). `picker-presets`는 버튼 자식을 footer 보조 버튼처럼 꾸민다.
 > **M5 메모**: 완성형 레시피는 내부 `pickers/*` 도우미(`PickerSurface`, `PickerFooter`, `useAppTriggerProps`, `useFieldRemount`, `useInvalidValueReport`)에 기대므로, 문서에서 인라인하거나 `/pickers`에서 공개할지 정한다. 범위 파싱은 depcruise 경계 때문에 pickers 안에 복사본이 있다(공개 파싱 도우미를 내보내면 제거).
 
 > **계약 변경(2026-10-14, M3 전체 리뷰)**: `popover-trigger`(`[data-open]` 포함)도 스타일한다. `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`는 아직 규칙이 없는 M4 부품 목록이다. M4는 `PART_NAMES`에 부품을 더하거나 스타일을 붙일 때마다 이 목록을 줄인다(모든 부품에 규칙이 있는지 검사함). 새 토큰 `--lsp-focus`·`--lsp-placeholder`(스펙 §8.1). 포털 콘텐츠 때문에 `.dark`·`data-theme`은 `html`이나 `body`에 둔다.
