@@ -429,12 +429,12 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 | `Calendar.{Root, Header, Heading, PrevButton, NextButton, TodayButton, CalendarToggle, ViewButton, Grid, HeadCell, Cell, MonthGrid, YearGrid, Layout}` | `Grid({ monthIndex?, children?: (cell: MonthGridCell) => ReactNode })`, `Cell({ cell, children?: ReactNode \| ((info: CellRenderInfo) => ReactNode) })`, `Layout({ renderCell? })` |
 | `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`(포커스 가능한 칸 버튼은 `data-autofocus`를 가져 열릴 때 선택한 날, 없으면 오늘로 포커스), `selectEpochDay`, `isTodayVisible`, `isInvalid`(보이는 무효: `incomplete` 제외), `getRootProps()`(`onBlur`는 포커스가 달력 전체를 벗어날 때, `calendar` 부품 속성, `ref` 포함 — 직접 조립할 때 자기 ref로 덮어쓰지 말고 합칠 것) [M4-T1]. `CalendarApi.getHiddenInputProps()`는 M3 훅과 같은 모양(비제어는 폼 reset 때 마운트 시점 기본값, 그 역법이 빠졌으면 빈 값). disabled 달력은 탭 정지·키보드·월 이동이 모두 멈추고 readOnly는 월 이동만 된다. `Calendar.Cell`의 `tabIndex`·`aria-disabled`·`data-autofocus`·`disabled`와 `Calendar.ViewButton`의 `aria-labelledby`는 예약 속성이다 [M4-T2·T3]. 격자 이름은 보이는 제목과 같은 텍스트의 `aria-label`이라 `ViewButton`과 `Heading`을 함께 써도 id가 겹치지 않는다(`headingId`는 제거) [M4-T3]. `requestFocus()`: 월·연을 고르면 눌렀던 버튼이 사라지므로 다음 보기의 탭 정지로 포커스를 넘긴다. 직접 조립할 때는 `requestFocus` 뒤에 탭 정지를 그리는 보기가 와야 한다 [M4-T3]. 연 보기에서 보기 버튼은 비활성(맨 위 단계) |
 | `RangeCalendar.Root`, `useRangeCalendar(props): RangeCalendarApi`, `useRangeCalendarContext()` | `RangeCalendarApi`: `selection`, `value`, `draftValue`, `validity`, `announcement`, `rootRef`, `setRange`, `commit`, `cancel`, `getHiddenInputProps(side)`. 범위 props에 `startName`·`endName`(범위 훅은 `name`을 받지 않음: `Omit<SharedPickerProps, 'name'>`, M3 DateRangeField 포함). `validity`는 화면에 보이는 범위(선택 중이면 draft)의 유효성이고, `data-invalid`는 확정 값 기준이다(단일 `CalendarApi.validity`는 확정 값). `aria-selected`는 범위 안 모든 날(선택 중이면 anchor~미리보기 포함), 격자는 `aria-multiselectable`, `data-selected`는 양 끝만. 안내(`live-region`)는 기본으로 화면에서 숨겨져 있고 마운트 때는 말하지 않으며 선택이 바뀔 때만 알린다. 끝이 열린 채 확정된 범위는 안내하지 않는다(전용 로케일 키는 M5 후보) [M4-T4] |
-| `MonthCalendar.Root`, `TimeList.Root`, `listTimes(minuteStep, isEndOfDayAllowed)` | `onPick?(value)`(`Calendar.Root`·`MonthCalendar.Root`·`TimeList.Root` 공통): 뷰 API를 거친 모든 받아들여진 선택(칸 클릭, Enter/Space, `selectEpochDay`)마다 불린다. 같은 값 재선택과 확인 모드의 draft 선택 포함. disabled·readOnly·제약에 막힌 날·이동·`sendSelection`·부모 동기화에는 불리지 않는다. `onValueChange` 다음에 불리며, 완성형 picker는 `onPick`으로 닫는다(부모가 값을 거부해도 닫히고 부모 값을 보여 줌) [M4-T7]. 범위 달력의 `onPick`(범위가 완성될 때, 재선택 포함, `range.set`·프리셋 제외)은 M4-T9에서 추가 |
+| `MonthCalendar.Root`, `TimeList.Root`, `listTimes(minuteStep, isEndOfDayAllowed)` | `onPick?(value)`(`Calendar.Root`·`MonthCalendar.Root`·`TimeList.Root` 공통): 뷰 API를 거친 모든 받아들여진 선택(칸 클릭, Enter/Space, `selectEpochDay`)마다 불린다. 같은 값 재선택과 확인 모드의 draft 선택 포함. disabled·readOnly·제약에 막힌 날·이동·`sendSelection`·부모 동기화에는 불리지 않는다. `onValueChange` 다음에 불리며, 완성형 picker는 `onPick`으로 닫는다(부모가 값을 거부해도 닫히고 부모 값을 보여 줌) [M4-T7]. 범위 달력 `onPick?(value: DateRangeValue)`: 사용자 조작이 범위를 완성할 때(`date.select`, 두 번째 마우스 누름 `pointer.down`, 끌기·끝점 끌기의 `pointer.up`) 불린다. 같은 범위 재선택과 확인 모드 draft 포함, `onValueChange` 다음. `setRange`·프리셋·`commit`·`cancel`·`clear`·부모 동기화·이동·disabled/readOnly·막힌 날에는 불리지 않는다 [M4-T9] |
 | `type CellRenderInfo = MonthGridCell & CellState` | `CellState { isSelected; isToday; isDisabled; isOutsideMonth; isInRange; isRangeStart; isRangeEnd; isPreview; isFocused }` |
 
 `UseCalendarProps`: `SharedPickerProps & DateConstraints & { value?; defaultValue?; onValueChange?; commitMode?; numberOfMonths?; displayCalendar?; defaultDisplayCalendar?; onDisplayCalendarChange?; getCellLabel? }`
 
-- 표시 역법: `displayCalendar`·`defaultDisplayCalendar`가 없으면 값의 역법으로 연다(입력 부품의 "값의 역법이 이긴다"와 같은 규칙), 값도 없으면 양력 [M4 preflight 3.11]. 사용자 선택(즉시 모드)과 확인 모드 `commit()`은 호출 시점에 `onValueChange`를 부른다(같은 클릭에서 닫혀 언마운트돼도 값이 전달됨). 공개 `sendSelection`으로 직접 보낸 이벤트는 이펙트가 알린다 [M4 preflight 1.4, M4-T1 리뷰]. 범위 달력(M4-T4)도 `date.select`·`pointer.up`·`range.set`·`commit` 뒤에 같은 `reportCommitted`를 부른다. 콜백은 사용자 조작에만 불린다.
+- 표시 역법: `displayCalendar`·`defaultDisplayCalendar`가 없으면 값의 역법으로 연다(입력 부품의 "값의 역법이 이긴다"와 같은 규칙), 값도 없으면 양력 [M4 preflight 3.11]. 사용자 선택(즉시 모드)과 확인 모드 `commit()`은 호출 시점에 `onValueChange`를 부른다(같은 클릭에서 닫혀 언마운트돼도 값이 전달됨). 공개 `sendSelection`으로 직접 보낸 이벤트는 이펙트가 알린다 [M4 preflight 1.4, M4-T1 리뷰]. 범위 달력(M4-T4)도 `date.select`·`pointer.*`·`range.set`·`clear`·`commit` 뒤에 같은 `reportCommitted`를 부른다. 콜백은 사용자 조작에만 불린다.
 
 ### 3.5 완성형 (`@lunisolar-picker/react/pickers`) [M4-T8~T10]
 
@@ -443,22 +443,27 @@ interface TriggerRenderProps { readonly displayValue: string; readonly isOpen: b
 interface PickerOpenProps { open?; defaultOpen?; onOpenChange? }
 
 DatePicker: UseCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; footer?; className? }   // + aria-label·aria-labelledby·aria-describedby·id(입력 칸, 트리거 모드면 트리거로), onPick [M4-T8]
-DateRangePicker: UseRangeCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; presets?: ReactNode; footer?; className? }
+DateRangePicker: UseRangeCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; presets?: ReactNode; footer?; className? }   // + aria-label·aria-labelledby·aria-describedby·id, ref(시작일 첫 칸, 트리거 모드면 트리거), onPick. 대화상자 이름은 aria-label ?? labels.chooseDateRange [M4-T9]
 MonthPicker: { value?; defaultValue?; onValueChange?: (value: MonthString | null, details) => void; min?; max? } & SharedPickerProps & PickerOpenProps & { presentation?; renderTrigger? }
 WheelDatePicker: SharedPickerProps & DateConstraints(isDateDisabled 제외) & PickerOpenProps & { value?; defaultValue?; onValueChange?; presentation?: 'inline' | 'sheet'; renderTrigger? }
 TimePicker: SharedPickerProps & PickerOpenProps & { value?; defaultValue?; onValueChange?: (value: TimeString | null, details) => void; minuteStep?; isEndOfDayAllowed?; renderTrigger? }
 
 interface PickerSelection { readonly draftRange: DateRangeValue | null; readonly validity: Validity; setRange(range: { start: string; end: string | null } | null): void; commit(): void; cancel(): void }
 usePickerSelection(): PickerSelection     // DateRangePicker의 presets·footer 안에서만 [M4-T9, M5 제안 3]
+// [M4-T9] setRange(range: DateRangeInput | null). 즉시 모드에서 양 끝이 있는 프리셋은 확정 후 닫는다(같은 범위여도). 읽을 수 없는 프리셋은 picker의 onInvalidValue로 알리고 열어 둔다. disabled·readOnly면 무시. 알려진 한계: 저장소가 거부하는 프리셋(역법에 쓸 수 없는 끝)은 변화 없이 닫히고, isOpenEndAllowed가 아닐 때 시작만 있는 프리셋은 조용히 무시됨. commit·cancel은 닫는다. draftRange·validity는 보이는 draft 기준. presets·footer 밖에서 부르면 LunisolarPickerError.
+// 확인 버튼은 !validity.isValid일 때만 비활성(빈 draft는 incomplete라 비활성, isOpenEndAllowed면 시작만 있어도 활성).
 ```
 
-- 완성형은 폼 참여를 직접 맡는다: 공개 `HiddenInput`(M4-T8부터 공개 export)을 한 개 그려 name·form·required와 폼 reset(비제어는 마운트 시점 기본값, 제어는 무시)을 처리하고, 안의 달력·입력 칸에는 name·form을 넘기지 않는다. `ref`·`onBlur`·`onInvalidValue`는 입력 칸이 맡고, `renderTrigger` 모드에서는 트리거가 맡는다(onBlur는 닫힌 상태에서 트리거를 떠날 때). 시트 표시 + 즉시 모드에는 `Sheet.Close`(labels.close)가 보인다. picker는 `onPick`으로 닫는다 [M4-T8].
+- 완성형은 폼 참여를 직접 맡는다: 공개 `HiddenInput`(M4-T8부터 공개 export)을 한 개(DateRangePicker는 startName·endName 두 개, 폼 reset은 한 입력만 처리해 한 번만 보고, 끝은 required && !isOpenEndAllowed일 때만 필수, isOpenEndAllowed가 아니면 시작만 있는 범위는 제출·data-invalid·reset 보고에서 빈 값으로 봄, 끝 입력의 검증 포커스는 종료일 첫 칸) 그려 name·form·required와 폼 reset(비제어는 마운트 시점 기본값, 제어는 무시)을 처리하고, 안의 달력·입력 칸에는 name·form을 넘기지 않는다. `ref`·`onBlur`·`onInvalidValue`는 입력 칸이 맡고, `renderTrigger` 모드에서는 트리거가 맡는다(onBlur는 닫힌 상태에서 트리거를 떠날 때). 시트 표시 + 즉시 모드에는 `Sheet.Close`(labels.close)가 보인다. picker는 `onPick`으로 닫는다 [M4-T8].
 - 확인 모드의 확인·취소는 완성형 footer가 그린다. 직접 조립할 때는 `Popover.Close onClick={() => calendar.commit()}`처럼 쓴다 [M5-T5].
 - `src/pickers/**`는 `src/index.ts`, `src/contract/**`, `src/settings/**`, `src/utilities/**`, `src/pickers/**`만 import한다(dependency-cruiser) [M4-T11].
 
 ---
 
 ## 4. `@lunisolar-picker/theme` 🟡 [M3-T10, M4-T6]
+
+> **계약 변경(M4-T9)**: `PARTS_WITHOUT_RULES`에는 M4-T10 부품과 `live-region`만 남는다. `picker-presets`는 버튼 자식을 footer 보조 버튼처럼 꾸민다.
+> **M5 메모**: 완성형 레시피는 내부 `pickers/*` 도우미(`PickerSurface`, `PickerFooter`, `useAppTriggerProps`, `useFieldRemount`, `useInvalidValueReport`)에 기대므로, 문서에서 인라인하거나 `/pickers`에서 공개할지 정한다. 범위 파싱은 depcruise 경계 때문에 pickers 안에 복사본이 있다(공개 파싱 도우미를 내보내면 제거).
 
 > **계약 변경(2026-10-14, M3 전체 리뷰)**: `popover-trigger`(`[data-open]` 포함)도 스타일한다. `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`는 아직 규칙이 없는 M4 부품 목록이다. M4는 `PART_NAMES`에 부품을 더하거나 스타일을 붙일 때마다 이 목록을 줄인다(모든 부품에 규칙이 있는지 검사함). 새 토큰 `--lsp-focus`·`--lsp-placeholder`(스펙 §8.1). 포털 콘텐츠 때문에 `.dark`·`data-theme`은 `html`이나 `body`에 둔다.
 
