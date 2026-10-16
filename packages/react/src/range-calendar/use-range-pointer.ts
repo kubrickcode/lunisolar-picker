@@ -204,8 +204,7 @@ const grabbableHandleAt = (selection: RangeSelectionState, epochDay: EpochDay): 
   return null;
 };
 
-const hasFocusWithin = (root: HTMLElement | null): boolean =>
-  root !== null && root.contains(root.ownerDocument.activeElement);
+const hasFocusWithin = (root: HTMLElement | null): boolean => root?.contains(root.ownerDocument.activeElement) ?? false;
 
 // Constraint: 펜이 화면에 닿는 기기는 누른 요소(칸 안의 글자 요소일 수 있음)에 포인터를 암묵적으로 캡처할 수 있어 다른 칸에 pointerover가 오지 않음. 캡처를 새로 걸지 않고 브라우저가 건 것만 풂
 const releaseImplicitCapture = (event: PointerEvent<HTMLButtonElement>): void => {

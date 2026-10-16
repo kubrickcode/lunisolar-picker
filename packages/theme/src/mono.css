@@ -393,8 +393,10 @@
   }
 
   @media (forced-colors: active) {
+    /* 자동 조정이 글자 뒤에 Canvas 판을 깔아 Highlight 위 글자를 가리므로 끄고 시스템 색을 직접 씀 */
     [data-lsp-part="date-field-segment"][data-focused],
     [data-lsp-part="time-field-segment"][data-focused] {
+      forced-color-adjust: none;
       background: Highlight;
       color: HighlightText;
       outline: 2px solid Highlight;
@@ -599,7 +601,7 @@
     font-weight: 400;
   }
 
-  [data-lsp-part="calendar-cell"][data-selected] [data-lsp-part="calendar-cell-secondary"] {
+  [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) [data-lsp-part="calendar-cell-secondary"] {
     color: inherit;
     opacity: 0.7;
   }
@@ -695,12 +697,6 @@
     opacity: 0.4;
   }
 
-  [data-lsp-part="calendar-cell"][data-selected][data-today] > button {
-    box-shadow:
-      inset 0 0 0 2px var(--lsp-accent),
-      inset 0 0 0 3px var(--lsp-accent-fg);
-  }
-
   [data-lsp-part="calendar-month-grid"]:not([data-disabled]) [data-disabled] > button,
   [data-lsp-part="calendar-year-grid"]:not([data-disabled]) [data-disabled] > button {
     color: var(--lsp-muted);
@@ -709,21 +705,35 @@
   }
 
   /* 범위 띠 위 회색 글자는 4.4:1이라 다른 달의 날도 띠 안에서는 본래 글자색을 씀 */
-  [data-lsp-part="calendar-cell"][data-in-range][data-outside]:not([data-selected]) > button {
+  /* 두 달을 보이면 끝 날이 옆 달의 바깥 칸에도 나오므로 그 사본은 채우지 않고 띠의 한 날로만 그려 끝이 두 번 보이지 않게 함 */
+  [data-lsp-part="calendar-cell"][data-in-range][data-outside] > button {
+    background: transparent;
     color: var(--lsp-fg);
   }
 
-  [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-selected] > button {
+  [data-lsp-part="calendar-cell"][data-selected][data-today]:not([data-outside]) > button {
+    box-shadow:
+      inset 0 0 0 2px var(--lsp-accent),
+      inset 0 0 0 3px var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button {
     background: var(--lsp-danger);
   }
 
-  /* 월 전환 슬라이드는 180ms (스펙 8.3). 팝오버 토큰 --lsp-duration(140ms)과 길이가 달라 시트처럼 값을 직접 씀 */
-  [data-lsp-part="calendar-grid"] > tbody[data-slide="next"] {
-    animation: lsp-slide-from-end 180ms ease-out;
+  /* 오늘 표시의 안쪽 간격은 채움색과 같아야 빨간 칸 안에 검은 테두리가 생기지 않음 */
+  [data-lsp-part="calendar"][data-invalid]
+    [data-lsp-part="calendar-cell"][data-selected][data-today]:not([data-outside])
+    > button {
+    box-shadow:
+      inset 0 0 0 2px var(--lsp-danger),
+      inset 0 0 0 3px var(--lsp-accent-fg);
   }
 
-  [data-lsp-part="calendar-grid"] > tbody[data-slide="previous"] {
-    animation: lsp-slide-from-start 180ms ease-out;
+  /* 월 전환은 180ms (스펙 8.3). 팝오버 토큰 --lsp-duration(140ms)과 길이가 달라 시트처럼 값을 직접 씀 */
+  /* Constraint: 이동 방향은 RTL에서 뒤집혀야 하는데 transform에는 논리 방향이 없고 [dir]은 계약 밖, :dir()은 Chrome 99 기준선 밖이라 다음·이전 모두 페이드만 씀 */
+  [data-lsp-part="calendar-grid"] > tbody[data-slide] {
+    animation: lsp-month-fade-in 180ms ease-out;
   }
 
   @media (hover: hover) {
@@ -768,17 +778,9 @@
     outline-offset: 1px;
   }
 
-  @keyframes lsp-slide-from-end {
+  @keyframes lsp-month-fade-in {
     from {
       opacity: 0;
-      transform: translateX(8px);
-    }
-  }
-
-  @keyframes lsp-slide-from-start {
-    from {
-      opacity: 0;
-      transform: translateX(-8px);
     }
   }
 
@@ -789,10 +791,11 @@
   }
 
   @media (forced-colors: active) {
-    [data-lsp-part="calendar-cell"][data-selected] > button,
+    /* 강제 색상은 글자 뒤에 Canvas 판을 깔아 Highlight 채움 위 글자를 흰 덩어리로 가림. 선택 항목만 자동 조정을 끄고 시스템 색을 직접 지정함 */
     [data-lsp-part="calendar-toggle"] > button[data-selected],
     [data-lsp-part="calendar-month-grid"] [data-selected] > button,
     [data-lsp-part="calendar-year-grid"] [data-selected] > button {
+      forced-color-adjust: none;
       background: Highlight;
       color: HighlightText;
     }
@@ -800,6 +803,15 @@
     [data-lsp-part="calendar-cell"][data-in-range] {
       outline: 1px solid Highlight;
       outline-offset: -1px;
+    }
+
+    /* 위험색 테두리가 CanvasText로 바뀌므로 두께로 구분함. 점선은 읽기 전용이 씀 */
+    [data-lsp-part="calendar"][data-invalid] {
+      border-width: 2px;
+    }
+
+    [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-in-range] {
+      outline-style: dashed;
     }
 
     [data-lsp-part="calendar-cell"][data-today] > button {
@@ -811,6 +823,39 @@
     [data-lsp-part="calendar-month-grid"] [data-disabled] > button,
     [data-lsp-part="calendar-year-grid"] [data-disabled] > button {
       color: GrayText;
+    }
+
+    [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button {
+      forced-color-adjust: none;
+      background: Highlight;
+      color: HighlightText;
+    }
+
+    [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button * {
+      forced-color-adjust: none;
+      color: HighlightText;
+    }
+
+    [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])[data-today] > button {
+      box-shadow:
+        inset 0 0 0 2px Highlight,
+        inset 0 0 0 3px HighlightText;
+    }
+
+    /* 일반 규칙의 위험색 채움을 같은 우선순위로 덮음. 그림자는 강제 색상에서 지워지므로 오류는 점선 테두리로 알림 */
+    [data-lsp-part="calendar"][data-invalid]
+      [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])
+      > button {
+      border: 2px dashed HighlightText;
+      background: Highlight;
+    }
+
+    [data-lsp-part="calendar"][data-invalid]
+      [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])[data-today]
+      > button {
+      box-shadow:
+        inset 0 0 0 2px Highlight,
+        inset 0 0 0 3px HighlightText;
     }
 
     [data-lsp-part="calendar-nav-button"]:focus-visible,
