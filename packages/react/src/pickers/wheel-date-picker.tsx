@@ -7,6 +7,7 @@ import {
   findCalendar,
   type LocaleLabels,
   resolveConstraints,
+  VALID,
 } from '@lunisolar-picker/core';
 import { type ReactElement, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
@@ -21,9 +22,10 @@ import {
   type WheelDateApi,
 } from '../index';
 import type { PickerOpenProps } from './date-picker';
-import { dateValidityOf, parseDateValue } from './date-value';
+import { dateValidityOf, moveDateOffRemovedCalendar, parseDateValue, useValueOnProvidedCalendars } from './date-value';
 import { CalendarIcon, ValueTrigger } from './default-trigger';
 import { formatDisplayDate } from './format-display-value';
+import { PickerClearButton } from './picker-clear-button';
 import { PickerFooter } from './picker-footer';
 import { PickerSurface } from './picker-surface';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
@@ -65,6 +67,8 @@ export interface WheelDatePickerProps extends UseWheelDateProps, PickerOpenProps
   readonly 'aria-labelledby'?: string | undefined;
   readonly className?: string | undefined;
   readonly id?: string | undefined;
+  // Goal: 값이 있고 비활성·읽기 전용이 아니면 휠(시트면 트리거) 옆에 지우기 버튼을 보임. false면 그리지 않음 (스펙 2 clearable)
+  readonly isClearable?: boolean | undefined;
   readonly placeholder?: string | undefined;
   // Goal: 생년월일처럼 휠을 화면에 바로 두거나(inline), 모바일에서 시트로 열어 확인을 눌러 반영함(sheet)
   readonly presentation?: 'inline' | 'sheet' | undefined;
@@ -93,6 +97,7 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
     defaultValue,
     form,
     id,
+    isClearable = true,
     name,
     onBlur,
     onInvalidValue,
@@ -115,6 +120,14 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
     parseDateValue(defaultValue ?? null, settings.calendars).value,
     undefined,
   );
+  useValueOnProvidedCalendars({
+    isControlled: value !== undefined,
+    moveValue: (current, previousCalendars) =>
+      moveDateOffRemovedCalendar({ calendars: settings.calendars, previousCalendars, value: current }),
+    settings,
+    setValue: setCurrentValue,
+    value: currentValue,
+  });
   const [isOpen, setOpen] = useControllableState<boolean>(open, defaultOpen ?? false, onOpenChange);
   const [mountedDefault] = useState(() => defaultValue ?? null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -174,6 +187,14 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
     });
   };
 
+  // Constraint: 빈 값은 VALID로 알림. 포커스를 먼저 옮겨, 값이 비며 사라지는 지우기 버튼과 함께 포커스가 body로 떨어지지 않게 함
+  // Constraint: 휠은 값이 비어도 보이던 날에 머물므로 form reset처럼 다시 마운트해 오늘을 보이고, 새 휠의 첫 열로 포커스함
+  const clearValue = (): void => {
+    if (isSheet) focusInput();
+    else remountField({ shouldFocusField: true });
+    changeValue(null, { validity: VALID });
+  };
+
   const renderPickerTrigger = (triggerProps: PickerTriggerProps): ReactElement => {
     const appTriggerProps = toAppTriggerProps(triggerProps);
     const displayValue = formatDisplayDate(currentValue, settings, separator);
@@ -192,6 +213,8 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
   const isVisiblyInvalid =
     wheelProps.invalid === true ||
     !dateValidityOf({ calendars: settings.calendars, constraints: props, value: parsedValue }).isValid;
+  const isClearShown =
+    isClearable && parsedValue !== null && wheelProps.disabled !== true && wheelProps.readOnly !== true;
   return (
     <div
       ref={rootRef}
@@ -206,7 +229,8 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
         <PickerSurface
           presentation="sheet"
           isOpen={isOpen}
-          isDisabled={wheelProps.disabled === true || wheelProps.readOnly === true}
+          isDisabled={wheelProps.disabled === true}
+          isReadOnly={wheelProps.readOnly === true}
           onOpenChange={setOpen}
           label={ariaLabel ?? labels.chooseDate}
           renderTrigger={renderPickerTrigger}
@@ -229,6 +253,7 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
           wheelProps={{ ...wheelProps, onBlur, onInvalidValue, value: currentValue, onValueChange: changeValue }}
         />
       )}
+      {isClearShown ? <PickerClearButton label={labels.clear} onClear={clearValue} /> : null}
       <HiddenInput
         name={name}
         form={form}

@@ -1,3 +1,4 @@
+import { VALID } from '@lunisolar-picker/core';
 import { en } from '@lunisolar-picker/core/locales/en';
 import { ja } from '@lunisolar-picker/core/locales/ja';
 import { ko } from '@lunisolar-picker/core/locales/ko';
@@ -129,6 +130,18 @@ describe('Calendar', () => {
         .element(screen.getByRole('gridcell', { name: dayLabel('2026-10-22') }))
         .toHaveAttribute('aria-selected', 'true');
       expect(onValueChange.mock.calls.map(([value]) => value)).toEqual(['2026-10-21', '2026-10-22']);
+    });
+  });
+
+  describe('outside days', () => {
+    it('keeps focus on the clicked outside day when its month comes into view', async () => {
+      const screen = await renderCalendar(<Calendar.Root defaultValue="2026-10-20" />);
+      await focusOnce(screen.getByRole('button', { name: dayLabel('2026-10-20') }));
+
+      await screen.getByRole('button', { name: dayLabel('2026-09-30') }).click();
+
+      await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName(2026, 'M09'));
+      await expect.element(screen.getByRole('button', { name: dayLabel('2026-09-30') })).toHaveFocus();
     });
   });
 
@@ -533,6 +546,22 @@ describe('Calendar', () => {
         .toHaveAttribute('aria-selected', 'true');
       expect(hiddenInputOf(screen.container, 'installedOn').value).toBe('2026-10-20');
       expect(onValueChange.mock.calls.map(([value]) => value)).toEqual(['2026-10-22', '2026-10-20']);
+    });
+
+    it('reports an emptied required calendar as valid on form reset', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderCalendar(
+        <form aria-label="install">
+          <Calendar.Root name="installedOn" required onValueChange={onValueChange} />
+        </form>,
+      );
+      await screen.getByRole('button', { name: dayLabel('2026-10-22') }).click();
+      await expect.poll(() => hiddenInputOf(screen.container, 'installedOn').value).toBe('2026-10-22');
+
+      formElementOf(screen.getByRole('form')).reset();
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)).toEqual([null, { validity: VALID }]);
+      expect(hiddenInputOf(screen.container, 'installedOn').checkValidity()).toBe(false);
     });
 
     it('resets to the default given at mount, not a later defaultValue', async () => {

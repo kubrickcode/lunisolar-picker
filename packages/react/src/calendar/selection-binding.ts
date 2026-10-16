@@ -1,13 +1,9 @@
 import type { CalendarId, CalendarSystem } from '@lunisolar-picker/calendar';
-import { invalidBecause, type Validity } from '@lunisolar-picker/core';
 import { type RefObject, useState } from 'react';
 import { focusInitialElement } from '../focus/focusable-elements';
 import type { ControlledInput } from '../value/use-parsed-value';
 import { isCalendarProvided } from './provided-calendar';
 import type { SelectionSync } from './use-selection-sync';
-
-// Goal: 비어 있는 required 달력의 확정 값 유효성. 'incomplete'라 isVisiblyInvalid가 빨간 표시는 하지 않음
-export const MISSING_REQUIRED: Validity = invalidBecause(['incomplete']);
 
 export type CommittedReporterInput<State> = {
   readonly getSnapshot: () => State;

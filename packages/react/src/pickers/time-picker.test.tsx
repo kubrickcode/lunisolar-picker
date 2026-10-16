@@ -252,6 +252,49 @@ describe('TimePicker', () => {
     });
   });
 
+  describe('clear', () => {
+    it.each([
+      ['with a value', { defaultValue: '09:30' }, true],
+      ['while empty', {}, false],
+      ['while disabled', { defaultValue: '09:30', disabled: true }, false],
+      ['while read-only', { defaultValue: '09:30', readOnly: true }, false],
+      ['when turned off', { defaultValue: '09:30', isClearable: false }, false],
+    ] as const)('shows the clear button %s', async (_, stateProps, isShown) => {
+      const screen = await renderPicker(<TimePicker presentation="popover" {...stateProps} />);
+      await expect.element(screen.getByRole('button', { name: ko.labels.chooseTime })).toBeInTheDocument();
+
+      const clear = screen.getByRole('button', { name: ko.labels.clear });
+      if (isShown) await expect.element(clear).toBeVisible();
+      else await expect.element(clear).not.toBeInTheDocument();
+    });
+
+    it('empties the value once, returns focus to the first segment and leaves a required form invalid', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <TimePicker
+            presentation="popover"
+            name={FIELD_NAME}
+            required
+            defaultValue="09:30"
+            onValueChange={onValueChange}
+          />
+        </form>,
+      );
+      const form = formElementOf(screen.getByRole('form', { name: FORM_LABEL }));
+      expect(form.checkValidity()).toBe(true);
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.hour })).toHaveFocus();
+      await expect.element(screen.getByRole('button', { name: ko.labels.clear })).not.toBeInTheDocument();
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('');
+      expect(form.checkValidity()).toBe(false);
+    });
+  });
+
   describe('form', () => {
     it('submits the value through a single input while the list is open', async () => {
       const screen = await renderPicker(

@@ -266,17 +266,127 @@ describe('WheelDatePicker', () => {
       expect(onInvalidValue.mock.calls).toEqual([['1990-02-30', 'invalid-date']]);
     });
 
-    it.each([
-      ['disabled', { disabled: true }],
-      ['read-only', { readOnly: true }],
-    ] as const)('cannot be opened while %s', async (_, stateProps) => {
-      const screen = await renderPicker(<WheelDatePicker presentation="sheet" {...stateProps} />);
+    it('cannot be opened or focused while disabled', async () => {
+      const screen = await renderPicker(<WheelDatePicker presentation="sheet" disabled />);
 
       await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeDisabled();
+    });
+
+    it('keeps the read-only sheet trigger focusable through the ref without opening the sheet', async () => {
+      const ref = createRef<{ focus(): void }>();
+      const onOpenChange = vi.fn();
+      const screen = await renderPicker(
+        <WheelDatePicker
+          presentation="sheet"
+          readOnly
+          defaultValue="1990-03-15"
+          ref={ref}
+          onOpenChange={onOpenChange}
+        />,
+      );
+      const trigger = screen.getByRole('button', { name: TRIGGER_NAME });
+      await expect.element(trigger).toHaveAttribute('aria-disabled', 'true');
+
+      ref.current?.focus();
+      await expect.element(trigger).toHaveFocus();
+      await trigger.click({ force: true });
+      await settleEffects();
+
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clear', () => {
+    it.each([
+      ['with a value', { defaultValue: '1990-03-15' }, true],
+      ['while empty', {}, false],
+      ['while disabled', { defaultValue: '1990-03-15', disabled: true }, false],
+      ['while read-only', { defaultValue: '1990-03-15', readOnly: true }, false],
+      ['when turned off', { defaultValue: '1990-03-15', isClearable: false }, false],
+    ] as const)('shows the sheet clear button %s', async (_, stateProps, isShown) => {
+      const screen = await renderPicker(<WheelDatePicker presentation="sheet" {...stateProps} />);
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeInTheDocument();
+
+      const clear = screen.getByRole('button', { name: ko.labels.clear });
+      if (isShown) await expect.element(clear).toBeVisible();
+      else await expect.element(clear).not.toBeInTheDocument();
+    });
+
+    it('empties a sheet value once, returns focus to the trigger and leaves a required form invalid', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <WheelDatePicker
+            presentation="sheet"
+            name={FIELD_NAME}
+            required
+            placeholder={CHIP_PLACEHOLDER}
+            defaultValue="1990-03-15"
+            onValueChange={onValueChange}
+          />
+        </form>,
+      );
+      const form = formElementOf(screen.getByRole('form', { name: FORM_LABEL }));
+      expect(form.checkValidity()).toBe(true);
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveFocus();
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveTextContent(CHIP_PLACEHOLDER);
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('');
+      expect(form.checkValidity()).toBe(false);
+    });
+
+    it('empties an inline value and moves focus to the first column of the reset wheel', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <WheelDatePicker name={FIELD_NAME} defaultValue="1990-03-15" onValueChange={onValueChange} />,
+      );
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year })).toHaveFocus();
+      await expect
+        .element(screen.getByRole('spinbutton', { name: ko.labels.year }))
+        .toHaveAttribute('aria-valuetext', FIXED_TODAY.slice(0, 4));
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('');
     });
   });
 
   describe('form', () => {
+    it.each(['inline', 'sheet'] as const)(
+      'keeps an uncontrolled %s value as the same gregorian day when its calendar is removed',
+      async (presentation) => {
+        const onInvalidValue = vi.fn();
+        const onValueChange = vi.fn();
+        const pickerIn = (hasLunar: boolean) => (
+          <KoreanProvider hasLunar={hasLunar}>
+            <WheelDatePicker
+              presentation={presentation}
+              name={FIELD_NAME}
+              defaultValue="1990-06-22[u-ca=dangi]"
+              onInvalidValue={onInvalidValue}
+              onValueChange={onValueChange}
+            />
+          </KoreanProvider>
+        );
+        const screen = await render(pickerIn(true));
+        await expect.poll(() => hiddenInputNamed(FIELD_NAME).value).toBe('1990-06-22[u-ca=dangi]');
+
+        await screen.rerender(pickerIn(false));
+
+        await expect.poll(() => hiddenInputNamed(FIELD_NAME).value).toBe('1990-06-22');
+        await settleEffects();
+        expect(onInvalidValue).not.toHaveBeenCalled();
+        expect(onValueChange).not.toHaveBeenCalled();
+      },
+    );
+
     it.each([
       ['inline', 'inline'],
       ['sheet', 'sheet'],

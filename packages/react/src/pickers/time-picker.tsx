@@ -15,6 +15,7 @@ import {
 } from '../index';
 import type { PickerOpenProps } from './date-picker';
 import { ClockIcon, DefaultTrigger } from './default-trigger';
+import { PickerClearButton } from './picker-clear-button';
 import { PickerCloseFooter } from './picker-footer';
 import { PickerSurface } from './picker-surface';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
@@ -40,6 +41,8 @@ export interface TimePickerProps extends UseTimeFieldProps, PickerOpenProps {
   readonly 'aria-labelledby'?: string | undefined;
   readonly className?: string | undefined;
   readonly id?: string | undefined;
+  // Goal: 값이 있고 비활성·읽기 전용이 아니면 입력 칸(앱 트리거를 쓰면 트리거) 옆에 지우기 버튼을 보임. false면 그리지 않음 (스펙 2 clearable)
+  readonly isClearable?: boolean | undefined;
   // Goal: 받아들인 목록 고르기마다(이미 고른 시각을 다시 골라도) 알림. onValueChange는 값이 바뀔 때만 (계약 §3.4 onPick)
   readonly onPick?: ((value: TimeString) => void) | undefined;
   readonly placeholder?: string | undefined;
@@ -61,6 +64,7 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
     defaultValue,
     form,
     id,
+    isClearable = true,
     isEndOfDayAllowed = false,
     minuteStep = DEFAULT_MINUTE_STEP,
     name,
@@ -145,6 +149,12 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
     onValueChange?.(restoredPublic, { validity: VALID });
   };
 
+  // Constraint: 빈 값은 VALID로 알림. 포커스를 먼저 옮겨, 값이 비며 사라지는 지우기 버튼과 함께 포커스가 body로 떨어지지 않게 함
+  const clearValue = (): void => {
+    focusInput();
+    changeValue(null, { validity: VALID });
+  };
+
   const renderPickerTrigger = (triggerProps: PickerTriggerProps): ReactElement =>
     renderTrigger ? (
       renderTrigger({
@@ -159,6 +169,9 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
 
   // Constraint: 허용되지 않은 24:00은 형식 오류가 아니라 제약 위반이라 입력 칸처럼 무효로 보임 (계약 §3.3 TimeField)
   const isVisiblyInvalid = sharedProps.invalid === true || (parsedTime !== null && publicTime === null);
+  const isClearShown =
+    isClearable && parsedTime !== null && sharedProps.disabled !== true && sharedProps.readOnly !== true;
+  const clearButton = isClearShown ? <PickerClearButton label={labels.clear} onClear={clearValue} /> : null;
   return (
     <div
       ref={rootRef}
@@ -183,10 +196,13 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
           onValueChange={changeValue}
         />
       )}
+      {isTriggerMode ? null : clearButton}
       <PickerSurface
         presentation={resolvedPresentation}
         isOpen={isOpen}
-        isDisabled={sharedProps.disabled === true || sharedProps.readOnly === true}
+        // Constraint: 입력 칸이 있으면 읽기 전용이어도 입력 칸이 포커스를 받으므로 아이콘 버튼은 비활성으로 둠. 앱 트리거는 입력 자리라 포커스를 받게 둠
+        isDisabled={sharedProps.disabled === true || (sharedProps.readOnly === true && !isTriggerMode)}
+        isReadOnly={sharedProps.readOnly === true}
         onOpenChange={setOpen}
         label={ariaLabel ?? labels.chooseTime}
         renderTrigger={renderPickerTrigger}
@@ -202,6 +218,7 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
         />
         {resolvedPresentation === 'sheet' ? <PickerCloseFooter label={labels.close} /> : null}
       </PickerSurface>
+      {isTriggerMode ? clearButton : null}
       <HiddenInput
         name={name}
         form={form}

@@ -66,6 +66,7 @@ export const PART_NAMES = [
   'month-picker',
   'time-picker',
   'wheel-date-picker',
+  'picker-clear',
 ] as const;
 
 export type DataAttribute = (typeof DATA_ATTRIBUTES)[number];

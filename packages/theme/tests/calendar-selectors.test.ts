@@ -19,6 +19,8 @@ const MONO_FILE = '../src/mono.css';
 const OUT_OF_RANGE_MONTH_SELECTOR =
   '[data-lsp-part="calendar-month-grid"]:not([data-disabled]) [data-disabled] > button';
 const PART_PATTERN = /\[data-lsp-part="[a-z-]+"\]/;
+const PREVIEW_CELL_PARTS = ['[data-lsp-part="calendar-cell"]', '[data-preview]'];
+const RANGE_CELL_PART = '[data-lsp-part="calendar-cell"][data-in-range]';
 const REDUCED_MOTION_QUERY = '@media (prefers-reduced-motion: reduce)';
 const SELECTED_ITEM_SELECTORS = [
   '[data-lsp-part="calendar-cell"][data-selected]',
@@ -90,6 +92,9 @@ const isInvalidEndpointRule = (rule: CssRule): boolean =>
 
 const isInvalidSelectedMonthRule = (rule: CssRule): boolean =>
   rule.selectors.some((selector) => INVALID_SELECTED_MONTH_PARTS.every((part) => selector.includes(part)));
+
+const isPreviewRule = (rule: CssRule): boolean =>
+  rule.selectors.some((selector) => PREVIEW_CELL_PARTS.every((part) => selector.includes(part)));
 
 const isUnadjustedRule = (rule: CssRule): boolean => /forced-color-adjust:\s*none/.test(rule.declarations);
 
@@ -223,6 +228,30 @@ describe('mono.css calendar', () => {
           (selector) => selector.includes(SELECTED_ITEM_SELECTORS[0] ?? '') && selector.endsWith(' *'),
         ),
       ).toBe(true);
+    });
+
+    // Constraint: 미리보기의 점선 무늬는 배경 그림이라 강제 색상에서 지워짐. 범위 테두리 모양으로 확정 범위와 구분해야 함
+    it('draws the dragged preview range with a dotted outline that beats every other range outline', async () => {
+      const forcedRules = await readForcedColorRules();
+      const previewRule = forcedRules.find(
+        (rule) => isPreviewRule(rule) && /outline-style:\s*dotted/.test(rule.declarations),
+      );
+      if (!previewRule) throw new Error('mono.css should outline the preview range in forced colors');
+      const rangeOutlineRules = forcedRules.filter(
+        (rule) =>
+          !isPreviewRule(rule) &&
+          rule.selectors.some((selector) => selector.includes(RANGE_CELL_PART)) &&
+          /(^|[;\s])outline(-style)?\s*:/.test(rule.declarations),
+      );
+
+      expect(rangeOutlineRules.length).toBeGreaterThan(0);
+      expect(
+        rangeOutlineRules.filter(
+          (rule) =>
+            compareSpecificity(highestSpecificity(previewRule), highestSpecificity(rule)) < 0 ||
+            previewRule.index < rule.index,
+        ),
+      ).toEqual([]);
     });
 
     it('repaints the invalid range endpoints with system colors', async () => {

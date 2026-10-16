@@ -276,6 +276,22 @@ describe('MonthCalendar', () => {
       ]);
     });
 
+    it('reports an emptied required month calendar as valid on form reset', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderMonthCalendar(
+        <form aria-label="report">
+          <MonthCalendar.Root name="closingMonth" required onValueChange={onValueChange} />
+        </form>,
+      );
+      await screen.getByRole('button', { name: monthName(12) }).click();
+      await expect.poll(() => hiddenInputOf(screen.container, 'closingMonth').value).toBe('2026-12');
+
+      formElementOf(screen.getByRole('form')).reset();
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)).toEqual([null, VALID_DETAILS]);
+      expect(hiddenInputOf(screen.container, 'closingMonth').checkValidity()).toBe(false);
+    });
+
     it('ignores form reset while controlled', async () => {
       const onValueChange = vi.fn();
       const screen = await renderMonthCalendar(

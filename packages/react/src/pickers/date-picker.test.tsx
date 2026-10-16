@@ -11,6 +11,7 @@ import { focusOnce } from '../testing/focus-once';
 import { formElementOf } from '../testing/form-element';
 import { dayLabel, FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
 import { hiddenInputNamed, inputsNamed, renderChipTrigger, stubCoarseNarrowScreen } from '../testing/picker-fixture';
+import { dispatchPointer } from '../testing/pointer';
 import { settleEffects } from '../testing/settle-effects';
 import { DatePicker } from './index';
 
@@ -110,6 +111,21 @@ describe('DatePicker', () => {
       await screen.getByRole('button', { name: dayLabel('2026-10-20') }).click();
 
       await expect.element(screen.getByRole('button', { name: ko.labels.confirm })).toBeEnabled();
+    });
+
+    it('keeps focus in the calendar when an outside day brings in its month', async () => {
+      const screen = await renderPicker(
+        <DatePicker presentation="popover" commitMode="confirm" defaultValue="2026-10-20" />,
+      );
+      const trigger = screen.getByRole('button', { name: ko.labels.chooseDate });
+      await focusOnce(trigger);
+      await trigger.click();
+      await expect.element(screen.getByRole('button', { name: dayLabel('2026-10-20') })).toHaveFocus();
+
+      await screen.getByRole('button', { name: dayLabel('2026-09-30') }).click();
+
+      await expect.element(screen.getByRole('button', { name: dayLabel('2026-09-30') })).toHaveFocus();
+      await expect.element(screen.getByRole('dialog')).toBeVisible();
     });
 
     it('labels the footer in the locale given to the picker', async () => {
@@ -444,6 +460,54 @@ describe('DatePicker', () => {
       await expect.poll(() => onBlur.mock.calls.length).toBe(1);
     });
 
+    it('reports a real leave after a press released outside the trigger', async () => {
+      const onBlur = vi.fn();
+      const screen = await renderPicker(
+        <>
+          <DatePicker
+            presentation="popover"
+            placeholder={CHIP_PLACEHOLDER}
+            onBlur={onBlur}
+            renderTrigger={renderChipTrigger}
+          />
+          <button type="button">{OUTSIDE_BUTTON_LABEL}</button>
+        </>,
+      );
+      const chip = screen.getByRole('button', { name: CHIP_PLACEHOLDER });
+      await focusOnce(chip);
+
+      dispatchPointer(chip.element(), 'pointerdown');
+      dispatchPointer(document, 'pointerup');
+      await focusDirectly(screen.getByRole('button', { name: OUTSIDE_BUTTON_LABEL }));
+
+      await expect.poll(() => onBlur.mock.calls.length).toBe(1);
+    });
+
+    it('keeps a read-only app trigger focusable through the ref without opening the calendar', async () => {
+      const ref = createRef<{ focus(): void }>();
+      const onOpenChange = vi.fn();
+      const screen = await renderPicker(
+        <DatePicker
+          presentation="popover"
+          placeholder={CHIP_PLACEHOLDER}
+          readOnly
+          ref={ref}
+          onOpenChange={onOpenChange}
+          renderTrigger={renderChipTrigger}
+        />,
+      );
+      const chip = screen.getByRole('button', { name: CHIP_PLACEHOLDER });
+      await expect.element(chip).toHaveAttribute('aria-disabled', 'true');
+
+      ref.current?.focus();
+      await expect.element(chip).toHaveFocus();
+      await chip.click({ force: true });
+      await settleEffects();
+
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
     it.each([
       ['field', undefined],
       ['app trigger', renderChipTrigger],
@@ -462,6 +526,70 @@ describe('DatePicker', () => {
       await settleEffects();
 
       expect(onInvalidValue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clear', () => {
+    it.each([
+      ['with a value', { defaultValue: '2026-10-20' }, true],
+      ['while empty', {}, false],
+      ['while disabled', { defaultValue: '2026-10-20', disabled: true }, false],
+      ['while read-only', { defaultValue: '2026-10-20', readOnly: true }, false],
+      ['when turned off', { defaultValue: '2026-10-20', isClearable: false }, false],
+    ] as const)('shows the clear button %s', async (_, stateProps, isShown) => {
+      const screen = await renderPicker(<DatePicker presentation="popover" {...stateProps} />);
+      await expect.element(screen.getByRole('button', { name: ko.labels.chooseDate })).toBeInTheDocument();
+
+      const clear = screen.getByRole('button', { name: ko.labels.clear });
+      if (isShown) await expect.element(clear).toBeVisible();
+      else await expect.element(clear).not.toBeInTheDocument();
+    });
+
+    it('empties the value once, returns focus to the first segment and leaves a required form invalid', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <DatePicker
+            presentation="popover"
+            name={FIELD_NAME}
+            required
+            defaultValue="2026-10-20"
+            onValueChange={onValueChange}
+          />
+        </form>,
+      );
+      const form = formElementOf(screen.getByRole('form', { name: FORM_LABEL }));
+      expect(form.checkValidity()).toBe(true);
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year })).toHaveFocus();
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.day })).not.toHaveTextContent('20');
+      await expect.element(screen.getByRole('button', { name: ko.labels.clear })).not.toBeInTheDocument();
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('');
+      expect(form.checkValidity()).toBe(false);
+    });
+
+    it('only reports the clear while controlled and returns focus to the app trigger', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <DatePicker
+          presentation="popover"
+          name={FIELD_NAME}
+          value="2026-10-20"
+          onValueChange={onValueChange}
+          renderTrigger={renderChipTrigger}
+        />,
+      );
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByTestId('chip')).toHaveFocus();
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('2026-10-20');
     });
   });
 
@@ -594,7 +722,33 @@ describe('DatePicker', () => {
       await expect.poll(() => onValueChange.mock.calls.at(-1)).toEqual([null, VALID_DETAILS]);
     });
 
-    it('stays silent on form reset when the value and the default both fall out of the given calendars', async () => {
+    it('keeps an uncontrolled value as the same gregorian day when its calendar is removed', async () => {
+      const onInvalidValue = vi.fn();
+      const onValueChange = vi.fn();
+      const pickerIn = (hasLunar: boolean) => (
+        <KoreanProvider hasLunar={hasLunar}>
+          <DatePicker
+            presentation="popover"
+            name={FIELD_NAME}
+            defaultValue="2026-10-20[u-ca=dangi]"
+            onInvalidValue={onInvalidValue}
+            onValueChange={onValueChange}
+          />
+        </KoreanProvider>
+      );
+      const screen = await render(pickerIn(true));
+      await expect.poll(() => hiddenInputNamed(FIELD_NAME).value).toBe('2026-10-20[u-ca=dangi]');
+
+      await screen.rerender(pickerIn(false));
+
+      await expect.poll(() => hiddenInputNamed(FIELD_NAME).value).toBe('2026-10-20');
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.day })).toHaveTextContent('20');
+      await settleEffects();
+      expect(onInvalidValue).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('reports emptying on form reset when the default calendar was removed after the value moved to gregorian', async () => {
       const onValueChange = vi.fn();
       const pickerIn = (hasLunar: boolean) => (
         <KoreanProvider hasLunar={hasLunar}>
@@ -610,11 +764,12 @@ describe('DatePicker', () => {
       );
       const screen = await render(pickerIn(true));
       await screen.rerender(pickerIn(false));
+      await expect.poll(() => hiddenInputNamed(FIELD_NAME).value).toBe('2026-10-20');
 
       formElementOf(screen.getByRole('form', { name: FORM_LABEL })).reset();
-      await settleEffects();
 
-      expect(onValueChange).not.toHaveBeenCalled();
+      await expect.poll(() => onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('');
     });
 
     it('ignores form reset while controlled', async () => {

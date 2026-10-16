@@ -1,6 +1,9 @@
 import {
   type CalendarId,
   type CalendarSystem,
+  calendarIdOf,
+  type DateString,
+  epochDayOf,
   gregory,
   LunisolarPickerError,
   toMonthCode,
@@ -67,6 +70,8 @@ export type DateFieldStore = {
 export type DateFieldStoreOptions = {
   // Constraint: 범위 필드는 범위 제약(maxDays 등)도 넘김. 컨텍스트가 범위 검증에 쓸 수 있게 해석해 둠
   readonly constraints: RangeConstraints;
+  // Goal: 제어 중일 때 이 렌더의 역법 구성으로 해석한 부모 값. 역법 구성이 바뀌어 store를 다시 만들 때 칸에 둘 값 (비제어면 쓰지 않음)
+  readonly controlledSelected: SelectedDay | null;
   // Constraint: 초기 값이 있으면 무시됨. 값이 있으면 값의 역법이 입력 역법이 됨 (계약 §2.7 ②)
   readonly initialEntryCalendarId: CalendarId;
   readonly initialSelected: SelectedDay | null;
@@ -102,6 +107,7 @@ export type DateFieldRootProps = HTMLAttributes<HTMLDivElement> &
 
 type CalendarRemovalInput = {
   readonly context: PickerContext;
+  readonly controlledSelected: SelectedDay | null;
   readonly isControlled: boolean;
   // Constraint: 직전 렌더의 입력 역법. 앱이 calendars에서 뺀 뒤에는 context에 없으므로 여기서만 날짜를 구할 수 있음
   readonly previousEntryCalendar: CalendarSystem;
@@ -117,6 +123,9 @@ type DescribeDateSegmentInput = {
 
 export const useDateFieldCore = (options: DateFieldCoreOptions): DateFieldCore =>
   useDateFieldSegments(useDateFieldStore(options), options);
+
+export const selectedDayOf = (date: DateString | null): SelectedDay | null =>
+  date === null ? null : { epochDay: epochDayOf(date), calendarId: calendarIdOf(date) };
 
 // Goal: 범위 필드가 양 끝 결과로 범위 무효 여부를 먼저 정한 뒤 칸을 만들 수 있게 store 단계와 칸 단계를 나눔 (한 렌더 지연 없음)
 export const useDateFieldSegments = (store: DateFieldStore, options: DateFieldSegmentsOptions): DateFieldCore => {
@@ -196,6 +205,7 @@ export const useDateFieldStore = (options: DateFieldStoreOptions): DateFieldStor
           })
         : moveOffRemovedCalendar({
             context,
+            controlledSelected: options.controlledSelected,
             isControlled: options.isControlled,
             previousEntryCalendar: previousEntryCalendarRef.current,
             state: reorderForLocale(previous, context),
@@ -271,17 +281,26 @@ const hasLeapMonthIn = (
 };
 
 // Goal: 앱이 calendars에서 지금 입력 역법을 빼면 양력으로 돌아감. 비제어면 직전 입력 역법으로 구한 같은 날을 양력으로 다시 적음 (입력 역법을 바꿀 때와 같은 규칙)
-// Constraint: 제어 중이면 부모의 값이 해석 불가가 되어 onInvalidValue로 알려지므로 칸을 비움. 같은 날을 다시 적으면 부모가 고르지 않은 값을 알리게 됨
+// Constraint: 제어 중이면 칸은 부모의 지금 값을 보임. 부모 값이 해석 불가가 되면 비고 onInvalidValue로 알려짐. 같은 날을 스스로 다시 적으면 부모가 고르지 않은 값을 알리게 됨
+// Constraint: 완성형 picker처럼 부모가 같은 렌더에서 값을 양력으로 옮겨 주면 그 값을 그대로 받아, 비웠다가 다시 채우며 알리지 않음 (계약 §3.3 #6)
 // Constraint: 직전 역법이 상태의 역법과 다르면(같은 렌더 안에서 역법이 두 번 바뀐 경우) 날짜를 구할 수 없어 비움
 const moveOffRemovedCalendar = ({
   context,
+  controlledSelected,
   isControlled,
   previousEntryCalendar,
   state,
 }: CalendarRemovalInput): DateFieldState => {
   const isProvided = context.calendars.some((calendar) => calendar.id === state.entryCalendarId);
   if (isProvided) return state;
-  const canReadPreviousDay = !isControlled && previousEntryCalendar.id === state.entryCalendarId;
+  if (isControlled) {
+    const synced = createDateFieldState(context, {
+      selected: controlledSelected,
+      entryCalendarId: controlledSelected?.calendarId ?? gregory.id,
+    });
+    return { ...synced, focusedIndex: state.focusedIndex };
+  }
+  const canReadPreviousDay = previousEntryCalendar.id === state.entryCalendarId;
   const { epochDay } = canReadPreviousDay
     ? dateFieldResult(state, { ...context, calendars: [...context.calendars, previousEntryCalendar] })
     : { epochDay: null };

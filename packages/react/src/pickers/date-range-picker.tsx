@@ -26,8 +26,10 @@ import {
   type ValueChangeDetails,
 } from '../index';
 import type { PickerOpenProps } from './date-picker';
+import { moveDateOffRemovedCalendar, useValueOnProvidedCalendars } from './date-value';
 import { CalendarIcon, DefaultTrigger } from './default-trigger';
 import { formatDisplayRange } from './format-display-value';
+import { PickerClearButton } from './picker-clear-button';
 import { PickerCloseFooter, PickerFooter } from './picker-footer';
 import { type PickerSelection, PickerSelectionContext } from './picker-selection';
 import { PickerSurface } from './picker-surface';
@@ -48,6 +50,8 @@ export interface DateRangePickerProps extends UseRangeCalendarProps, PickerOpenP
   readonly className?: string | undefined;
   readonly footer?: ReactNode;
   readonly id?: string | undefined;
+  // Goal: 값이 있고 비활성·읽기 전용이 아니면 입력 칸(앱 트리거를 쓰면 트리거) 옆에 지우기 버튼을 보임. 누르면 양 끝을 함께 비움. false면 그리지 않음 (스펙 2 clearable)
+  readonly isClearable?: boolean | undefined;
   readonly placeholder?: string | undefined;
   readonly presentation?: Presentation | undefined;
   // Goal: '최근 7일' 같은 프리셋 버튼은 앱이 그리고, 안에서 usePickerSelection으로 범위를 넣음 (스펙 2.2)
@@ -67,6 +71,12 @@ type ParsedRange = {
 type RangeConfirmFooterProps = {
   readonly labels: Pick<LocaleLabels, 'cancel' | 'confirm'>;
   readonly onClose: () => void;
+};
+
+type RangeMoveInput = {
+  readonly calendars: readonly CalendarSystem[];
+  readonly previousCalendars: readonly CalendarSystem[];
+  readonly range: DateRangeInput | null;
 };
 
 type SelectionBridgeProps = {
@@ -100,6 +110,7 @@ export const DateRangePicker = (props: DateRangePickerProps): ReactElement => {
     form,
     getCellLabel,
     id,
+    isClearable = true,
     numberOfMonths,
     onBlur,
     onDisplayCalendarChange,
@@ -128,6 +139,14 @@ export const DateRangePicker = (props: DateRangePickerProps): ReactElement => {
     parseRange(defaultValue ?? null, settings.calendars).value,
     undefined,
   );
+  useValueOnProvidedCalendars({
+    isControlled: value !== undefined,
+    moveValue: (current, previousCalendars) =>
+      moveRangeOffRemovedCalendar({ calendars: settings.calendars, previousCalendars, range: current }),
+    settings,
+    setValue: setCurrentValue,
+    value: currentValue,
+  });
   const [isOpen, setOpen] = useControllableState<boolean>(open, defaultOpen ?? false, onOpenChange);
   const [mountedDefault] = useState(() => defaultValue ?? null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -200,6 +219,12 @@ export const DateRangePicker = (props: DateRangePickerProps): ReactElement => {
     });
   };
 
+  // Constraint: 빈 값은 VALID로 알림. 포커스를 먼저 옮겨, 값이 비며 사라지는 지우기 버튼과 함께 포커스가 body로 떨어지지 않게 함
+  const clearValue = (): void => {
+    focusSide('start');
+    changeValue(null, { validity: VALID });
+  };
+
   const renderPickerTrigger = (triggerProps: PickerTriggerProps): ReactElement =>
     renderTrigger ? (
       renderTrigger({
@@ -215,6 +240,10 @@ export const DateRangePicker = (props: DateRangePickerProps): ReactElement => {
   const isVisiblyInvalid =
     sharedProps.invalid === true ||
     (publicValue !== null && !validateRange(publicValue, props, { calendars: settings.calendars }).isValid);
+  // Constraint: 열린 끝이 허용되지 않은 반쪽 범위도 입력 칸에 보이므로 지울 수 있게 보이는 범위로 판단함
+  const isClearShown =
+    isClearable && parsedValue !== null && sharedProps.disabled !== true && sharedProps.readOnly !== true;
+  const clearButton = isClearShown ? <PickerClearButton label={labels.clear} onClear={clearValue} /> : null;
   return (
     <div
       ref={rootRef}
@@ -238,10 +267,13 @@ export const DateRangePicker = (props: DateRangePickerProps): ReactElement => {
           onValueChange={changeValue}
         />
       )}
+      {isTriggerMode ? null : clearButton}
       <PickerSurface
         presentation={resolvedPresentation}
         isOpen={isOpen}
-        isDisabled={sharedProps.disabled === true || sharedProps.readOnly === true}
+        // Constraint: 입력 칸이 있으면 읽기 전용이어도 입력 칸이 포커스를 받으므로 아이콘 버튼은 비활성으로 둠. 앱 트리거는 입력 자리라 포커스를 받게 둠
+        isDisabled={sharedProps.disabled === true || (sharedProps.readOnly === true && !isTriggerMode)}
+        isReadOnly={sharedProps.readOnly === true}
         onOpenChange={setOpen}
         label={ariaLabel ?? labels.chooseDateRange}
         renderTrigger={renderPickerTrigger}
@@ -268,6 +300,7 @@ export const DateRangePicker = (props: DateRangePickerProps): ReactElement => {
           </SelectionBridge>
         </RangeCalendar.Root>
       </PickerSurface>
+      {isTriggerMode ? clearButton : null}
       {/* Constraint: 두 입력은 같은 form에 속하므로 reset은 그려지는 첫 입력 하나만 받아 한 번만 알림 */}
       <HiddenInput
         name={startName}
@@ -342,6 +375,18 @@ const SelectionBridge = ({ children, isConfirmMode, onClose, onInvalidValue }: S
 
 // Constraint: M3 범위 부품이 onInvalidValue에 넘기는 모양과 같음
 const describeRange = (input: DateRangeInput): string => `${input.start}/${input.end ?? ''}`;
+
+// Constraint: 범위의 두 끝은 같은 역법이라 따로 옮겨도 같은 양력 범위가 됨. 바뀐 게 없으면 같은 참조를 돌려줘 다시 렌더하지 않음
+const moveRangeOffRemovedCalendar = ({
+  calendars,
+  previousCalendars,
+  range,
+}: RangeMoveInput): DateRangeInput | null => {
+  if (range === null) return null;
+  const start = moveDateOffRemovedCalendar({ calendars, previousCalendars, value: range.start }) ?? range.start;
+  const end = moveDateOffRemovedCalendar({ calendars, previousCalendars, value: range.end });
+  return start === range.start && end === range.end ? range : { start, end };
+};
 
 const parseRange = (input: DateRangeInput | null, calendars: readonly CalendarSystem[]): ParsedRange => {
   if (input === null) return EMPTY_RANGE;

@@ -3,7 +3,6 @@ import {
   type CalendarSystem,
   calendarIdOf,
   type DateRangeValue,
-  type DateString,
   type EpochDay,
   epochDayOf,
   gregory,
@@ -17,14 +16,18 @@ import {
   type EpochRange,
   invalidBecause,
   type RangeConstraints,
-  type SelectedDay,
   VALID,
   type Validity,
   validateEpochRange,
 } from '@lunisolar-picker/core';
 import { type FocusEvent, type HTMLAttributes, useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
-import { type DateFieldCore, useDateFieldSegments, useDateFieldStore } from '../date-field/use-date-field-core';
+import {
+  type DateFieldCore,
+  selectedDayOf,
+  useDateFieldSegments,
+  useDateFieldStore,
+} from '../date-field/use-date-field-core';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
@@ -114,9 +117,14 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
   };
   const startStore = useDateFieldStore({
     ...storeOptions,
+    controlledSelected: selectedDayOf(controlled.value?.start ?? null),
     initialSelected: selectedDayOf(initialValue?.start ?? null),
   });
-  const endStore = useDateFieldStore({ ...storeOptions, initialSelected: selectedDayOf(initialValue?.end ?? null) });
+  const endStore = useDateFieldStore({
+    ...storeOptions,
+    controlledSelected: selectedDayOf(controlled.value?.end ?? null),
+    initialSelected: selectedDayOf(initialValue?.end ?? null),
+  });
   const isOpenEndAllowed = props.isOpenEndAllowed === true;
 
   // Goal: store가 담고 있는 범위(시작일만 있어도 끝 null로 둠). 열린 끝 허용 여부와 무관하게 비교해야 반쪽 제어 값이 마운트에서 알림을 내지 않음
@@ -253,9 +261,6 @@ export const useDateRangeField = (props: UseDateRangeFieldProps): DateRangeField
     }),
   };
 };
-
-const selectedDayOf = (date: DateString | null): SelectedDay | null =>
-  date === null ? null : { epochDay: epochDayOf(date), calendarId: calendarIdOf(date) };
 
 const combineRange = ({ calendar, endEpochDay, startEpochDay }: CombineRangeInput): DateRangeValue | null => {
   const startValue = formatOrNull(startEpochDay, calendar);

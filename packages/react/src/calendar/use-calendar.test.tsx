@@ -1,6 +1,6 @@
 import type { CalendarId } from '@lunisolar-picker/calendar';
 import { dangi } from '@lunisolar-picker/calendar/dangi';
-import type { CommitMode, MonthGridCell } from '@lunisolar-picker/core';
+import { type CommitMode, type MonthGridCell, VALID } from '@lunisolar-picker/core';
 import { type ReactElement, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, renderHook } from 'vitest-browser-react';
@@ -305,10 +305,10 @@ describe('useCalendar', () => {
   });
 
   describe('validity', () => {
-    it('does not look invalid while a required calendar is still empty', async () => {
+    it('treats an empty required calendar as valid and leaves required to the form', async () => {
       const { result } = await renderCalendar({ required: true });
 
-      expect(result.current.validity.isValid).toBe(false);
+      expect(result.current.validity).toEqual(VALID);
       expect(result.current.isInvalid).toBe(false);
     });
 

@@ -13,8 +13,10 @@ import { RangeCalendar } from './index';
 import { PRESS_CLICK_WINDOW_MILLISECONDS } from './use-range-pointer';
 
 const EDGE_OVERSHOOT_PIXELS = 20;
-// Constraint: 머묾 판정(500ms)과 판정 주기를 넘기되 두 번째 넘김(1000ms)에는 닿지 않는 시간
+// Constraint: 끌기를 끝낸 뒤 넘김이 없어야 함을 보려면 머묾 판정(500ms)과 판정 주기를 넘겨 기다려야 함. 넘김이 일어나는 쪽은 고정 대기 없이 달이 바뀔 때까지 기다림
 const EDGE_WAIT_MS = 800;
+// Constraint: 부하가 걸린 병렬 실행에서도 첫 넘김(500ms 머묾 + 판정 주기)을 기다릴 만큼 넉넉하게 둠. 넘김을 보자마자 끝나므로 빠른 실행은 기다리지 않음
+const FIRST_PAGING_TIMEOUT_MS = 3000;
 const IN_RANGE_SELECTOR = '[data-lsp-part="calendar-cell"][data-in-range]:not([data-outside])';
 const LIVE_REGION_SELECTOR = '[data-lsp-part="live-region"]';
 const OTHER_POINTER_ID = 2;
@@ -172,8 +174,14 @@ describe('RangeCalendar pointer', () => {
 
         dispatchPointer(dayButton(screen, '2026-10-14'), 'pointerdown');
         dispatchPointer(document, 'pointermove', outsidePoint);
-        await wait(EDGE_WAIT_MS);
+        // Goal: 넘김을 확인하자마자 놓아 두 번째 넘김(1000ms)에 닿기 전에 끌기를 끝냄. 부하에 따라 늘어나는 고정 대기를 쓰지 않음
+        await expect
+          .poll(() => screen.getByRole('grid').element().getAttribute('aria-label'), {
+            timeout: FIRST_PAGING_TIMEOUT_MS,
+          })
+          .toBe(monthName(expectedMonth));
         dispatchPointer(document, 'pointerup', outsidePoint);
+        await settleEffects();
 
         await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName(expectedMonth));
       },

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { type PointerEvent, useRef } from 'react';
 import type { PickerTriggerProps } from './trigger-render-props';
 
 type AppTriggerOptions = {
@@ -21,9 +21,19 @@ export const useAppTriggerProps = ({
   // Constraint: 팝오버 안으로 옮겨 가는 포커스는 picker를 떠난 것이 아니므로 닫혀 있을 때만 알림
   // Constraint: Safari는 누른 버튼에 포커스를 주지 않아 트리거를 누르는 순간 트리거가 blur됨. 여는 동작이라 떠남으로 보지 않음
   // Constraint: 누름 때문의 blur는 pointerdown 중에 일어나므로 누름이 끝나면 표시를 지워 이후의 진짜 떠남을 삼키지 않음
-  const releaseTriggerPress = (): void => {
+  // Constraint: 누른 채 트리거 밖으로 끌어 놓으면 트리거에는 pointerup이 오지 않으므로 문서에서 캡처 단계로 한 번만 받아 지움
+  const pressTrigger = (event: PointerEvent<HTMLButtonElement>): void => {
     // 의도적 변경: 렌더와 무관한 누름 표시
-    isPressingTriggerRef.current = false;
+    isPressingTriggerRef.current = true;
+    const pressEnd = new AbortController();
+    const releaseTriggerPress = (): void => {
+      // 의도적 변경: 렌더와 무관한 누름 표시
+      isPressingTriggerRef.current = false;
+      pressEnd.abort();
+    };
+    const listenerOptions = { capture: true, signal: pressEnd.signal };
+    event.currentTarget.ownerDocument.addEventListener('pointerup', releaseTriggerPress, listenerOptions);
+    event.currentTarget.ownerDocument.addEventListener('pointercancel', releaseTriggerPress, listenerOptions);
   };
 
   const leaveTrigger = (): void => {
@@ -42,11 +52,6 @@ export const useAppTriggerProps = ({
       isPressingTriggerRef.current = false;
       triggerProps.onClick?.(event);
     },
-    onPointerCancel: releaseTriggerPress,
-    onPointerDown: () => {
-      // 의도적 변경: 렌더와 무관한 누름 표시
-      isPressingTriggerRef.current = true;
-    },
-    onPointerUp: releaseTriggerPress,
+    onPointerDown: pressTrigger,
   });
 };

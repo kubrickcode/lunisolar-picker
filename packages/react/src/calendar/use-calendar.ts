@@ -24,13 +24,7 @@ import { useParsedValue } from '../value/use-parsed-value';
 import { type CalendarViewApi, createCalendarViewApi } from './calendar-view-api';
 import { parseSelection, selectionKey } from './parsed-selection';
 import { toProvidedCalendar } from './provided-calendar';
-import {
-  createCommittedReporter,
-  focusTabbableDay,
-  MISSING_REQUIRED,
-  restorableDefault,
-  useMountSelections,
-} from './selection-binding';
+import { createCommittedReporter, focusTabbableDay, restorableDefault, useMountSelections } from './selection-binding';
 import { type CalendarFoundationProps, useCalendarFoundation } from './use-calendar-foundation';
 import { useSelectionSync } from './use-selection-sync';
 
@@ -47,7 +41,6 @@ export interface CalendarApi extends CalendarViewApi {
 type CommittedValidityInput = {
   readonly committed: SelectedDay | null;
   readonly constraints: ResolvedConstraints;
-  readonly isRequired: boolean;
 };
 
 export interface UseCalendarProps extends CalendarFoundationProps, DateConstraints {
@@ -89,10 +82,9 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     { resetKey: settings.calendarKey },
   );
   const value = singleValue(selection, context);
-  const isRequired = props.required === true;
   const validity = useMemo(
-    () => committedValidityOf({ committed: selection.committed, constraints: context.constraints, isRequired }),
-    [selection.committed, context.constraints, isRequired],
+    () => committedValidityOf({ committed: selection.committed, constraints: context.constraints }),
+    [selection.committed, context.constraints],
   );
   const controlledSelected = useMemo(() => parseSelection(controlled.value), [controlled.value]);
 
@@ -109,7 +101,7 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
     keyOf: (snapshot) => selectionKey(snapshot.committed),
     report: (snapshot) =>
       props.onValueChange?.(singleValue(snapshot, context), {
-        validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints, isRequired }),
+        validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints }),
       }),
     selectionSync,
   });
@@ -182,8 +174,9 @@ export const useCalendar = (props: UseCalendarProps): CalendarApi => {
 };
 
 // Goal: 확정 값의 유효성. 확인 모드의 임시 선택은 확정 전이라 반영하지 않음 (계약 §2.6 (b))
-const committedValidityOf = ({ committed, constraints, isRequired }: CommittedValidityInput): Validity => {
-  if (committed === null) return isRequired ? MISSING_REQUIRED : VALID;
+// Constraint: 완전히 빈 값은 required여도 VALID로 알림. required는 숨은 입력의 네이티브 required 검증만 맡음 (M3 입력 부품·완성형 picker와 같음)
+const committedValidityOf = ({ committed, constraints }: CommittedValidityInput): Validity => {
+  if (committed === null) return VALID;
   return validateEpochDay(committed.epochDay, constraints);
 };
 

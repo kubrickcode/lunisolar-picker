@@ -22,7 +22,6 @@ import { isCalendarProvided, providedCalendarOf, toProvidedCalendar } from '../c
 import {
   createCommittedReporter,
   focusTabbableDay,
-  MISSING_REQUIRED,
   restorableDefault,
   useMountSelections,
 } from '../calendar/selection-binding';
@@ -51,7 +50,6 @@ const PICK_EVENT_TYPES: ReadonlySet<RangeSelectionEvent['type']> = new Set([
 type CommittedValidityInput = {
   readonly committed: SelectedRange | null;
   readonly constraints: ResolvedConstraints;
-  readonly isRequired: boolean;
 };
 
 type CompletedPickInput = {
@@ -125,10 +123,9 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
   );
   const value = rangeValue(selection, context);
   const validity = useMemo(() => rangeValidity(selection, context), [selection, context]);
-  const isRequired = props.required === true;
   const committedValidity = useMemo(
-    () => committedValidityOf({ committed: selection.committed, constraints: context.constraints, isRequired }),
-    [selection.committed, context.constraints, isRequired],
+    () => committedValidityOf({ committed: selection.committed, constraints: context.constraints }),
+    [selection.committed, context.constraints],
   );
   const controlledSelected = useMemo(() => parseRangeSelection(controlled.value), [controlled.value]);
 
@@ -145,7 +142,7 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
     keyOf: (snapshot) => rangeSelectionKey(snapshot.committed),
     report: (snapshot) =>
       props.onValueChange?.(rangeValue(snapshot, context), {
-        validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints, isRequired }),
+        validity: committedValidityOf({ committed: snapshot.committed, constraints: context.constraints }),
       }),
     selectionSync,
   });
@@ -205,6 +202,7 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
   const [mountedSelection] = useState(selection);
   const hasSelectionChanged = selection !== mountedSelection;
 
+  const isRequired = props.required === true;
   const isRequiredBySide: Readonly<Record<RangeSide, boolean>> = {
     start: isRequired,
     // Constraint: 열린 끝이 허용되면 종료일은 선택 입력 (DateRangeField와 같음)
@@ -260,8 +258,9 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
 };
 
 // Goal: 확정 범위의 유효성. 확인 모드의 임시 범위와 고르는 중인 시작일은 확정 전이라 반영하지 않음 (계약 §2.6 (b))
-const committedValidityOf = ({ committed, constraints, isRequired }: CommittedValidityInput): Validity => {
-  if (committed === null) return isRequired ? MISSING_REQUIRED : VALID;
+// Constraint: 완전히 빈 값은 required여도 VALID로 알림. required는 숨은 입력의 네이티브 required 검증만 맡음 (M3 입력 부품·완성형 picker와 같음)
+const committedValidityOf = ({ committed, constraints }: CommittedValidityInput): Validity => {
+  if (committed === null) return VALID;
   return validateEpochRange(committed.range, constraints);
 };
 

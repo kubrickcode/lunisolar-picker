@@ -131,13 +131,42 @@ describe('MonthPicker', () => {
       },
     );
 
-    it.each([
-      ['disabled', { disabled: true }],
-      ['read-only', { readOnly: true }],
-    ] as const)('cannot be opened while %s', async (_, stateProps) => {
-      const screen = await renderPicker(<MonthPicker presentation="popover" {...stateProps} />);
+    it('cannot be opened or focused while disabled', async () => {
+      const screen = await renderPicker(<MonthPicker presentation="popover" disabled />);
 
       await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeDisabled();
+    });
+
+    it('keeps the read-only trigger focusable for the ref and form validation without opening it', async () => {
+      const ref = createRef<{ focus(): void }>();
+      const onOpenChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <MonthPicker
+            presentation="popover"
+            name={FIELD_NAME}
+            readOnly
+            defaultValue="2026-10"
+            ref={ref}
+            onOpenChange={onOpenChange}
+          />
+          <button type="button">{OUTSIDE_BUTTON_LABEL}</button>
+        </form>,
+      );
+      const trigger = screen.getByRole('button', { name: TRIGGER_NAME });
+      await expect.element(trigger).toHaveAttribute('aria-disabled', 'true');
+      await expect.element(trigger).not.toHaveAttribute('disabled');
+
+      ref.current?.focus();
+      await expect.element(trigger).toHaveFocus();
+      await focusOnce(screen.getByRole('button', { name: OUTSIDE_BUTTON_LABEL }));
+      hiddenInputNamed(FIELD_NAME).dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      await expect.element(trigger).toHaveFocus();
+      await trigger.click({ force: true });
+      await settleEffects();
+
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
     });
   });
 
@@ -245,6 +274,51 @@ describe('MonthPicker', () => {
       await settleEffects();
 
       expect(onInvalidValue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clear', () => {
+    it.each([
+      ['with a value', { defaultValue: '2026-10' }, true],
+      ['while empty', {}, false],
+      ['while disabled', { defaultValue: '2026-10', disabled: true }, false],
+      ['while read-only', { defaultValue: '2026-10', readOnly: true }, false],
+      ['when turned off', { defaultValue: '2026-10', isClearable: false }, false],
+    ] as const)('shows the clear button %s', async (_, stateProps, isShown) => {
+      const screen = await renderPicker(<MonthPicker presentation="popover" {...stateProps} />);
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toBeInTheDocument();
+
+      const clear = screen.getByRole('button', { name: ko.labels.clear });
+      if (isShown) await expect.element(clear).toBeVisible();
+      else await expect.element(clear).not.toBeInTheDocument();
+    });
+
+    it('empties the value once, returns focus to the trigger and leaves a required form invalid', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <MonthPicker
+            presentation="popover"
+            name={FIELD_NAME}
+            required
+            defaultValue="2026-10"
+            onValueChange={onValueChange}
+          />
+        </form>,
+      );
+      const form = formElementOf(screen.getByRole('form', { name: FORM_LABEL }));
+      expect(form.checkValidity()).toBe(true);
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByRole('button', { name: TRIGGER_NAME })).toHaveFocus();
+      await expect
+        .element(screen.getByRole('button', { name: TRIGGER_NAME }))
+        .not.toHaveTextContent(ko.formatHeading({ year: 2026, monthCode: 'M10' }, 'gregory'));
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(FIELD_NAME).value).toBe('');
+      expect(form.checkValidity()).toBe(false);
     });
   });
 

@@ -1,4 +1,4 @@
-import { type CalendarId, calendarIdOf, type DateString, epochDayOf, gregory } from '@lunisolar-picker/calendar';
+import { type CalendarId, calendarIdOf, type DateString, gregory } from '@lunisolar-picker/calendar';
 import type { DateConstraints } from '@lunisolar-picker/core';
 import { useCallback, useMemo, useState } from 'react';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
@@ -8,7 +8,7 @@ import type { HiddenInputProps } from '../value/hidden-input';
 import { parseOptionalDate } from '../value/parse-controlled-value';
 import { useParsedValue } from '../value/use-parsed-value';
 import { useValueBridge } from '../value/use-value-bridge';
-import { type DateFieldCore, useDateFieldCore } from './use-date-field-core';
+import { type DateFieldCore, selectedDayOf, useDateFieldCore } from './use-date-field-core';
 
 export interface DateFieldApi extends DateFieldCore {
   readonly value: DateString | null;
@@ -44,8 +44,8 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
     settings,
     constraints: props,
     isControlled: controlled.isControlled,
-    initialSelected:
-      initialValue === null ? null : { epochDay: epochDayOf(initialValue), calendarId: calendarIdOf(initialValue) },
+    controlledSelected: selectedDayOf(controlled.value),
+    initialSelected: selectedDayOf(initialValue),
     initialEntryCalendarId: props.entryCalendar ?? props.defaultEntryCalendar ?? gregory.id,
     requestedEntryCalendarId: props.entryCalendar,
     separator: props.separator,
@@ -65,7 +65,7 @@ export const useDateField = (props: UseDateFieldProps): DateFieldApi => {
   const syncValue = (next: DateString | null): void => {
     core.send({
       type: 'value.sync',
-      selected: next === null ? null : { epochDay: epochDayOf(next), calendarId: calendarIdOf(next) },
+      selected: selectedDayOf(next),
       entryCalendarId: next === null ? core.state.entryCalendarId : calendarIdOf(next),
     });
   };

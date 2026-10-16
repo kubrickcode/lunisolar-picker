@@ -669,7 +669,79 @@ describe('DateRangePicker', () => {
     });
   });
 
+  describe('clear', () => {
+    it.each([
+      ['with a range', { defaultValue: RANGE }, true],
+      ['while empty', {}, false],
+      ['while disabled', { defaultValue: RANGE, disabled: true }, false],
+      ['while read-only', { defaultValue: RANGE, readOnly: true }, false],
+      ['when turned off', { defaultValue: RANGE, isClearable: false }, false],
+    ] as const)('shows the clear button %s', async (_, stateProps, isShown) => {
+      const screen = await renderPicker(<DateRangePicker presentation="popover" {...stateProps} />);
+      await expect.element(screen.getByRole('button', { name: ko.labels.chooseDateRange })).toBeInTheDocument();
+
+      const clear = screen.getByRole('button', { name: ko.labels.clear });
+      if (isShown) await expect.element(clear).toBeVisible();
+      else await expect.element(clear).not.toBeInTheDocument();
+    });
+
+    it('empties both ends once, returns focus to the start field and leaves a required form invalid', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <DateRangePicker
+            presentation="popover"
+            startName={START_NAME}
+            endName={END_NAME}
+            required
+            defaultValue={RANGE}
+            onValueChange={onValueChange}
+          />
+        </form>,
+      );
+      const form = formElementOf(screen.getByRole('form', { name: FORM_LABEL }));
+      expect(form.checkValidity()).toBe(true);
+
+      await screen.getByRole('button', { name: ko.labels.clear }).click();
+
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year }).first()).toHaveFocus();
+      await expect.element(screen.getByRole('button', { name: ko.labels.clear })).not.toBeInTheDocument();
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([[null, VALID_DETAILS]]);
+      expect(hiddenInputNamed(START_NAME).value).toBe('');
+      expect(hiddenInputNamed(END_NAME).value).toBe('');
+      expect(form.checkValidity()).toBe(false);
+    });
+  });
+
   describe('form', () => {
+    it('keeps an uncontrolled range as the same gregorian days when its calendar is removed', async () => {
+      const onInvalidValue = vi.fn();
+      const onValueChange = vi.fn();
+      const pickerIn = (hasLunar: boolean) => (
+        <KoreanProvider hasLunar={hasLunar}>
+          <DateRangePicker
+            presentation="popover"
+            startName={START_NAME}
+            endName={END_NAME}
+            defaultValue={{ start: '2026-10-13[u-ca=dangi]', end: '2026-10-17[u-ca=dangi]' }}
+            onInvalidValue={onInvalidValue}
+            onValueChange={onValueChange}
+          />
+        </KoreanProvider>
+      );
+      const screen = await render(pickerIn(true));
+      await expect.poll(() => hiddenInputNamed(START_NAME).value).toBe('2026-10-13[u-ca=dangi]');
+
+      await screen.rerender(pickerIn(false));
+
+      await expect.poll(() => hiddenInputNamed(START_NAME).value).toBe('2026-10-13');
+      expect(hiddenInputNamed(END_NAME).value).toBe('2026-10-17');
+      await settleEffects();
+      expect(onInvalidValue).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
     it('submits each end through a single input while the calendar is open', async () => {
       const screen = await renderPicker(
         <form>

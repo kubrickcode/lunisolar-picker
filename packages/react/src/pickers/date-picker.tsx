@@ -1,5 +1,5 @@
 import type { DateString } from '@lunisolar-picker/calendar';
-import { type LocaleLabels, validateDate } from '@lunisolar-picker/core';
+import { type LocaleLabels, VALID, validateDate } from '@lunisolar-picker/core';
 import { type ReactElement, type ReactNode, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
 import {
@@ -15,9 +15,10 @@ import {
   useSingleCalendar,
   type ValueChangeDetails,
 } from '../index';
-import { dateValidityOf, parseDateValue } from './date-value';
+import { dateValidityOf, moveDateOffRemovedCalendar, parseDateValue, useValueOnProvidedCalendars } from './date-value';
 import { CalendarIcon, DefaultTrigger } from './default-trigger';
 import { formatDisplayDate } from './format-display-value';
+import { PickerClearButton } from './picker-clear-button';
 import { PickerCloseFooter, PickerFooter } from './picker-footer';
 import { PickerSurface } from './picker-surface';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
@@ -34,6 +35,8 @@ export interface DatePickerProps extends UseCalendarProps, PickerOpenProps {
   readonly className?: string | undefined;
   readonly footer?: ReactNode;
   readonly id?: string | undefined;
+  // Goal: 값이 있고 비활성·읽기 전용이 아니면 입력 칸(앱 트리거를 쓰면 트리거) 옆에 지우기 버튼을 보임. false면 그리지 않음 (스펙 2 clearable)
+  readonly isClearable?: boolean | undefined;
   readonly placeholder?: string | undefined;
   readonly presentation?: Presentation | undefined;
   // Goal: ref.focus()가 입력 칸의 첫 칸(앱 트리거를 쓰면 그 트리거)에 포커스함. react-hook-form이 검증 실패 칸으로 포커스를 옮길 때 씀 (스펙 7.6, preflight 3.7)
@@ -71,6 +74,7 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
     form,
     getCellLabel,
     id,
+    isClearable = true,
     name,
     numberOfMonths,
     onBlur,
@@ -98,6 +102,14 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
     parseDateValue(defaultValue ?? null, settings.calendars).value,
     undefined,
   );
+  useValueOnProvidedCalendars({
+    isControlled: value !== undefined,
+    moveValue: (current, previousCalendars) =>
+      moveDateOffRemovedCalendar({ calendars: settings.calendars, previousCalendars, value: current }),
+    settings,
+    setValue: setCurrentValue,
+    value: currentValue,
+  });
   const [isOpen, setOpen] = useControllableState<boolean>(open, defaultOpen ?? false, onOpenChange);
   const [mountedDefault] = useState(() => defaultValue ?? null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -156,6 +168,12 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
     });
   };
 
+  // Constraint: 빈 값은 VALID로 알림. 포커스를 먼저 옮겨, 값이 비며 사라지는 지우기 버튼과 함께 포커스가 body로 떨어지지 않게 함
+  const clearValue = (): void => {
+    focusInput();
+    changeValue(null, { validity: VALID });
+  };
+
   const renderPickerTrigger = (triggerProps: PickerTriggerProps): ReactElement =>
     renderTrigger ? (
       renderTrigger({
@@ -171,6 +189,9 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
   const isVisiblyInvalid =
     sharedProps.invalid === true ||
     (parsedValue !== null && !validateDate(parsedValue, props, { calendars: settings.calendars }).isValid);
+  const isClearShown =
+    isClearable && parsedValue !== null && sharedProps.disabled !== true && sharedProps.readOnly !== true;
+  const clearButton = isClearShown ? <PickerClearButton label={labels.clear} onClear={clearValue} /> : null;
   return (
     <div
       ref={rootRef}
@@ -194,10 +215,13 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
           onValueChange={changeValue}
         />
       )}
+      {isTriggerMode ? null : clearButton}
       <PickerSurface
         presentation={resolvedPresentation}
         isOpen={isOpen}
-        isDisabled={sharedProps.disabled === true || sharedProps.readOnly === true}
+        // Constraint: 입력 칸이 있으면 읽기 전용이어도 입력 칸이 포커스를 받으므로 아이콘 버튼은 비활성으로 둠. 앱 트리거는 입력 자리라 포커스를 받게 둠
+        isDisabled={sharedProps.disabled === true || (sharedProps.readOnly === true && !isTriggerMode)}
+        isReadOnly={sharedProps.readOnly === true}
         onOpenChange={setOpen}
         label={ariaLabel ?? labels.chooseDate}
         renderTrigger={renderPickerTrigger}
@@ -221,6 +245,7 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
           {!isConfirmMode && resolvedPresentation === 'sheet' ? <PickerCloseFooter label={labels.close} /> : null}
         </Calendar.Root>
       </PickerSurface>
+      {isTriggerMode ? clearButton : null}
       <HiddenInput
         name={name}
         form={form}

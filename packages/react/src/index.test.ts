@@ -4,6 +4,7 @@ import {
   HiddenInput,
   type PickerSettings,
   useControllableState,
+  useMonthCalendar,
   usePickerSettings,
   useSheetContext,
 } from './index';
@@ -24,6 +25,11 @@ describe('package entry', () => {
     expect(typeof usePickerSettings).toBe('function');
     expect(typeof useControllableState).toBe('function');
     expect(typeof readWeekStart).toBe('function');
+  });
+
+  it('exposes the month calendar hook next to its public props type', () => {
+    // Goal: Calendar·RangeCalendar처럼 MonthCalendar도 훅으로 직접 조립할 수 있음 (M4 final review M5)
+    expect(typeof useMonthCalendar).toBe('function');
   });
 
   it('exposes the standalone hidden input that completed pickers submit their value through', () => {

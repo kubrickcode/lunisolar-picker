@@ -13,6 +13,7 @@ import type {
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import { AUTOFOCUS_ATTRIBUTE } from '../focus/focusable-elements';
 import { createFocusLeaveListener } from '../utilities/focus-leave';
+import { hasFocusWithin } from '../utilities/has-focus-within';
 import { isRightToLeft } from '../utilities/is-right-to-left';
 import { calendarKeyAction } from './calendar-key-action';
 import { buildCellLabel } from './cell-label';
@@ -91,10 +92,14 @@ export const createCalendarViewApi = ({ behavior, foundation, interaction }: Cal
       selection: behavior.selectionFlags(cell),
     });
 
+  // Constraint: 바깥 달의 날을 누르면 그 달로 넘어가며 누른 버튼이 사라지므로, 포커스가 달력 안에 있으면 새 달의 같은 날로 DOM 포커스를 옮겨 body로 떨어지지 않게 함 (끌기 끝의 finishDrag와 같은 조건)
+  // Constraint: 포커스가 달력 밖이면(누른 버튼에 포커스를 주지 않는 macOS Safari·Firefox, 앱의 selectEpochDay 호출) 탭 정지점만 옮기고 포커스를 끌어오지 않음
   const selectEpochDay = (epochDay: EpochDay): void => {
     if (!isInteractive) return;
     behavior.selectEpochDay(epochDay);
-    foundation.sendNavigation({ type: 'focus.set', epochDay });
+    const focusEvent: NavigationEvent = { type: 'focus.set', epochDay };
+    if (hasFocusWithin(foundation.rootRef.current)) foundation.navigateWithFocus(focusEvent);
+    else foundation.sendNavigation(focusEvent);
   };
 
   const getCellProps = (cell: MonthGridCell): CellProps => {

@@ -647,6 +647,23 @@ describe('RangeCalendar', () => {
         ]);
     });
 
+    it('reports an emptied required range as valid on form reset', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderRangeCalendar(
+        <form aria-label="stay">
+          <RangeCalendar.Root startName="from" endName="to" required onValueChange={onValueChange} />
+        </form>,
+      );
+      await tapDay(screen, '2026-10-20');
+      await tapDay(screen, '2026-10-22');
+      await expect.poll(() => hiddenInputOf(screen.container, 'to').value).toBe('2026-10-22');
+
+      formElementOf(screen.getByRole('form')).reset();
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)).toEqual([null, { validity: VALID }]);
+      expect(hiddenInputOf(screen.container, 'from').checkValidity()).toBe(false);
+    });
+
     it('ignores form reset while controlled', async () => {
       const onValueChange = vi.fn();
       const screen = await renderRangeCalendar(

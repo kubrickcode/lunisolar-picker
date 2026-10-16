@@ -9,7 +9,7 @@ import {
 import { invalidBecause, type LocaleData, VALID, type Validity } from '@lunisolar-picker/core';
 import { type FocusEvent, type RefObject, useRef, useState } from 'react';
 import type { ButtonGridItem } from '../calendar/month-button-grid';
-import { focusTabbableDay, MISSING_REQUIRED, useMountSelections } from '../calendar/selection-binding';
+import { focusTabbableDay, useMountSelections } from '../calendar/selection-binding';
 import { type DataAttributeProps, partAttributes } from '../contract/data-attributes';
 import type { SharedPickerProps, ValueChangeDetails } from '../settings/shared-picker-props';
 import { usePickerSettings } from '../settings/use-picker-settings';
@@ -29,7 +29,8 @@ type MonthBounds = {
   readonly min: MonthString | null;
 };
 
-export type MonthCalendarApi = {
+// Constraint: useMonthCalendar가 공개 훅이라 돌려주는 모양도 공개 API이므로 interface로 둠
+export interface MonthCalendarApi {
   readonly isDisabled: boolean;
   readonly isReadOnly: boolean;
   readonly items: readonly ButtonGridItem[];
@@ -41,7 +42,7 @@ export type MonthCalendarApi = {
   getHiddenInputProps(): HiddenInputProps;
   getRootProps(): MonthCalendarRootDomProps;
   showYear(year: number): void;
-};
+}
 
 export type MonthCalendarRootDomProps = DataAttributeProps & {
   readonly onBlur: (event: FocusEvent<HTMLElement>) => void;
@@ -50,11 +51,10 @@ export type MonthCalendarRootDomProps = DataAttributeProps & {
 
 type MonthValidityInput = {
   readonly bounds: MonthBounds;
-  readonly isRequired: boolean;
   readonly month: MonthString | null;
 };
 
-export type UseMonthCalendarProps = SharedPickerProps & {
+export interface UseMonthCalendarProps extends SharedPickerProps {
   readonly defaultValue?: string | null | undefined;
   readonly max?: string | undefined;
   readonly min?: string | undefined;
@@ -62,7 +62,7 @@ export type UseMonthCalendarProps = SharedPickerProps & {
   readonly onPick?: ((value: MonthString) => void) | undefined;
   readonly onValueChange?: ((value: MonthString | null, details: ValueChangeDetails) => void) | undefined;
   readonly value?: string | null | undefined;
-};
+}
 
 // Goal: 단일 달력과 같은 값 규칙을 월 단위로 지킴. 콜백은 사용자 조작에만 호출 시점에 부르고, 부모가 거부하면 부모 값을 보이며, form reset은 비제어만 마운트 때 기본값으로 돌아감
 // Constraint: MonthString은 양력 연·월이라 역법 구성(calendars)과 무관함. 월 이름도 늘 양력으로 적음
@@ -84,10 +84,9 @@ export const useMonthCalendar = (props: UseMonthCalendarProps): MonthCalendarApi
   const rootRef = useRef<HTMLDivElement | null>(null);
   // Constraint: 형식이 틀린 min·max는 제약으로 쓰지 않음
   const bounds: MonthBounds = { min: parseOptionalMonth(props.min).value, max: parseOptionalMonth(props.max).value };
-  const isRequired = props.required === true;
   const isDisabled = props.disabled === true;
   const isReadOnly = props.readOnly === true;
-  const validityOf = (month: MonthString | null): Validity => monthValidity({ bounds, isRequired, month });
+  const validityOf = (month: MonthString | null): Validity => monthValidity({ bounds, month });
   const isInvalid = isVisiblyInvalid({ invalid: props.invalid === true, reasons: validityOf(selected).reasons });
 
   const report = (month: MonthString | null): void => {
@@ -117,7 +116,7 @@ export const useMonthCalendar = (props: UseMonthCalendarProps): MonthCalendarApi
       label: name,
       accessibleName: name,
       isSelected: candidate !== null && candidate === selected,
-      isDisabled: candidate === null || !monthValidity({ bounds, isRequired: false, month: candidate }).isValid,
+      isDisabled: candidate === null || !monthValidity({ bounds, month: candidate }).isValid,
       onPick: () => {
         if (candidate !== null) pick(candidate);
       },
@@ -153,8 +152,9 @@ export const useMonthCalendar = (props: UseMonthCalendarProps): MonthCalendarApi
   };
 };
 
-const monthValidity = ({ bounds, isRequired, month }: MonthValidityInput): Validity => {
-  if (month === null) return isRequired ? MISSING_REQUIRED : VALID;
+// Constraint: 완전히 빈 값은 required여도 VALID로 알림. required는 숨은 입력의 네이티브 required 검증만 맡음 (M3 입력 부품·완성형 picker와 같음)
+const monthValidity = ({ bounds, month }: MonthValidityInput): Validity => {
+  if (month === null) return VALID;
   if (bounds.min !== null && month < bounds.min) return invalidBecause(['before-min']);
   if (bounds.max !== null && month > bounds.max) return invalidBecause(['after-max']);
   return VALID;

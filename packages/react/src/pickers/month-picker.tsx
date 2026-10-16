@@ -14,6 +14,7 @@ import {
 } from '../index';
 import type { PickerOpenProps } from './date-picker';
 import { CalendarIcon, ValueTrigger } from './default-trigger';
+import { PickerClearButton } from './picker-clear-button';
 import { PickerCloseFooter } from './picker-footer';
 import { PickerSurface } from './picker-surface';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
@@ -35,6 +36,8 @@ export interface MonthPickerProps extends UseMonthCalendarProps, PickerOpenProps
   readonly 'aria-labelledby'?: string | undefined;
   readonly className?: string | undefined;
   readonly id?: string | undefined;
+  // Goal: 값이 있고 비활성·읽기 전용이 아니면 트리거 옆에 지우기 버튼을 보임. false면 그리지 않음 (스펙 2 clearable)
+  readonly isClearable?: boolean | undefined;
   readonly placeholder?: string | undefined;
   readonly presentation?: Presentation | undefined;
   // Goal: ref.focus()가 트리거에 포커스함. 입력 칸이 없으므로 트리거가 picker의 입력 자리임 (스펙 7.6, preflight 3.7)
@@ -64,6 +67,7 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
     defaultValue,
     form,
     id,
+    isClearable = true,
     name,
     onBlur,
     onInvalidValue,
@@ -142,6 +146,12 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
     onValueChange?.(restored, { validity: monthValidityOf({ bounds, month: restored }) });
   };
 
+  // Constraint: 빈 값은 VALID로 알림. 포커스를 먼저 옮겨, 값이 비며 사라지는 지우기 버튼과 함께 포커스가 body로 떨어지지 않게 함
+  const clearValue = (): void => {
+    focusTrigger();
+    changeValue(null, { validity: VALID });
+  };
+
   const renderPickerTrigger = (triggerProps: PickerTriggerProps): ReactElement => {
     const appTriggerProps = toTriggerProps(triggerProps);
     return renderTrigger ? (
@@ -157,6 +167,8 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
   };
 
   const isVisiblyInvalid = calendarProps.invalid === true || !monthValidityOf({ bounds, month: parsedMonth }).isValid;
+  const isClearShown =
+    isClearable && parsedMonth !== null && calendarProps.disabled !== true && calendarProps.readOnly !== true;
   return (
     <div
       className={className}
@@ -165,7 +177,8 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
       <PickerSurface
         presentation={resolvedPresentation}
         isOpen={isOpen}
-        isDisabled={calendarProps.disabled === true || calendarProps.readOnly === true}
+        isDisabled={calendarProps.disabled === true}
+        isReadOnly={calendarProps.readOnly === true}
         onOpenChange={setOpen}
         label={ariaLabel ?? labels.chooseMonth}
         renderTrigger={renderPickerTrigger}
@@ -174,6 +187,7 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
         <MonthCalendar.Root {...calendarProps} value={currentValue} onValueChange={changeValue} onPick={closeOnPick} />
         {resolvedPresentation === 'sheet' ? <PickerCloseFooter label={labels.close} /> : null}
       </PickerSurface>
+      {isClearShown ? <PickerClearButton label={labels.clear} onClear={clearValue} /> : null}
       <HiddenInput
         name={name}
         form={form}

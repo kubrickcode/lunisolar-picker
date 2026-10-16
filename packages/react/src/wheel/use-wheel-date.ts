@@ -125,12 +125,11 @@ export const useWheelDate = (props: UseWheelDateProps): WheelDateApi => {
   const providedCalendar = settings.calendars.find((candidate) => candidate.id === position.calendarId);
   const calendar = providedCalendar ?? gregory;
   // Constraint: 위치의 역법도 양력으로 맞춰 둠. 그대로 두면 앱이 역법을 다시 넣을 때 아무도 고르지 않은 값으로 되돌아가 알림이 나감
-  // Constraint: 제어 중이면 위치를 비움. 부모의 값이 해석 불가가 되어 onInvalidValue로 알려지고, 같은 날을 다시 적으면 부모가 고르지 않은 값을 알리게 됨
+  // Constraint: 제어 중이면 위치는 부모의 지금 값을 따름. 부모 값이 해석 불가가 되면 비고 onInvalidValue로 알려짐. 같은 날을 스스로 다시 적으면 부모가 고르지 않은 값을 알리게 됨
+  // Constraint: 완성형 picker처럼 부모가 같은 렌더에서 값을 양력으로 옮겨 주면 그 값을 그대로 받아, 비웠다가 다시 채우며 알리지 않음 (계약 §3.3 #6)
   if (providedCalendar === undefined) {
     setPosition(
-      controlled.isControlled
-        ? { calendarId: gregory.id, epochDay: null, hasSelection: false }
-        : { ...position, calendarId: gregory.id },
+      controlled.isControlled ? controlledPositionOf(controlled.value) : { ...position, calendarId: gregory.id },
     );
   }
   const bounds = useMemo(() => boundsFor(calendar, context.constraints), [calendar, context.constraints]);
@@ -243,6 +242,9 @@ export const useWheelDate = (props: UseWheelDateProps): WheelDateApi => {
     }),
   };
 };
+
+const controlledPositionOf = (value: DateString | null): WheelDatePosition =>
+  value === null ? { calendarId: gregory.id, epochDay: null, hasSelection: false } : selectedPositionOf(value);
 
 const initialPositionOf = ({ emptyCalendarId, value }: InitialPositionInput): WheelDatePosition =>
   value === null ? { calendarId: emptyCalendarId, epochDay: null, hasSelection: false } : selectedPositionOf(value);
