@@ -75,6 +75,14 @@ module.exports = {
       },
     },
     {
+      name: 'pickers-public-api-only',
+      comment:
+        '완성형이 부품 내부에 기대면 앱이 복사해 고쳐 쓸 수 없으므로 공개 진입점과 계약 상수만 쓰게 함 (스펙 7.5, ADR-0001). 테스트는 testing 헬퍼를 쓰므로 예외',
+      severity: 'error',
+      from: { path: '^packages/react/src/pickers/', pathNot: '\\.test\\.tsx?$' },
+      to: { path: '^packages/react/src/(?!pickers/|index\\.ts$|contract/)' },
+    },
+    {
       name: 'react-src-no-node-builtins',
       severity: 'error',
       from: { path: '^packages/react/src' },

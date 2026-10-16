@@ -10,6 +10,12 @@ const SIZE_BUDGETS: readonly SizeBudget[] = [
   { label: '@lunisolar-picker/core/locales/ko', entry: 'packages/core/dist/locales/ko.js', maxGzipBytes: 1536 },
   { label: '@lunisolar-picker/core/locales/en', entry: 'packages/core/dist/locales/en.js', maxGzipBytes: 1536 },
   { label: '@lunisolar-picker/core/locales/ja', entry: 'packages/core/dist/locales/ja.js', maxGzipBytes: 1536 },
+  {
+    label: '@lunisolar-picker/react/pickers DatePicker',
+    entry: 'packages/react/test/size/date-picker-entry.ts',
+    external: ['react', 'react-dom', 'react/jsx-runtime'],
+    maxGzipBytes: 15360,
+  },
 ];
 
 type BudgetResult = {
@@ -19,6 +25,7 @@ type BudgetResult = {
 
 type SizeBudget = {
   readonly entry: string;
+  readonly external?: readonly string[];
   readonly label: string;
   readonly maxGzipBytes: number;
 };
@@ -34,22 +41,23 @@ const checkBundleSizes = async (): Promise<void> => {
 };
 
 const measureBudget = async (budget: SizeBudget): Promise<BudgetResult> => {
-  const gzipBytes = await measureGzipBytes(budget.entry);
+  const gzipBytes = await measureGzipBytes(budget);
   console.info(`${budget.label}: ${gzipBytes} B gzip (budget ${budget.maxGzipBytes} B)`);
   return { isOverBudget: gzipBytes > budget.maxGzipBytes, label: budget.label };
 };
 
-const measureGzipBytes = async (entry: string): Promise<number> => {
+const measureGzipBytes = async (budget: SizeBudget): Promise<number> => {
   const result = await build({
-    entryPoints: [entry],
+    entryPoints: [budget.entry],
     bundle: true,
     minify: true,
     format: 'esm',
     platform: 'neutral',
     write: false,
+    external: [...(budget.external ?? [])],
   });
   const output = result.outputFiles[0];
-  if (!output) throw new Error(`esbuild produced no output for ${entry}`);
+  if (!output) throw new Error(`esbuild produced no output for ${budget.entry}`);
   return gzipSync(output.contents).byteLength;
 };
 

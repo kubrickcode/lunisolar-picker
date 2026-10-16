@@ -23,6 +23,11 @@
       "types": "./dist/contract.d.ts",
       "default": "./dist/contract.js"
     },
+    "./pickers": {
+      "@lunisolar-picker/source": "./src/pickers/index.ts",
+      "types": "./dist/pickers.d.ts",
+      "default": "./dist/pickers.js"
+    },
     "./package.json": "./package.json"
   },
   "engines": {
