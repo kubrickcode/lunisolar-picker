@@ -7,5 +7,5 @@
     "isolatedDeclarations": false,
     "declaration": false
   },
-  "include": ["scripts", "*.config.ts", "vitest.setup.ts"]
+  "include": ["scripts", "*.config.ts", "vitest.setup.ts", "vitest.visual.setup.ts"]
 }

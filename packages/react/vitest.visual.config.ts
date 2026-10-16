@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: { conditions: ['@lunisolar-picker/source', ...defaultClientConditions] },
   test: {
     include: ['src/**/*.visual.test.tsx'],
-    setupFiles: ['./vitest.setup.ts'],
+    setupFiles: ['./vitest.setup.ts', './vitest.visual.setup.ts'],
     browser: {
       enabled: true,
       headless: true,
