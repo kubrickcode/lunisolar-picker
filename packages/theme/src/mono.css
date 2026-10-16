@@ -414,3 +414,413 @@
     }
   }
 }
+
+/* 달력 부품 (M4). 같은 이름의 layer 블록은 위 블록과 하나로 합쳐짐 */
+@layer lunisolar-picker {
+  [data-lsp-part="calendar"] {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font-variant-numeric: tabular-nums;
+    color-scheme: var(--lsp-color-scheme);
+  }
+
+  /* 팝오버·시트가 이미 테두리와 여백을 그리므로 안에 든 달력은 겹쳐 그리지 않음 */
+  [data-lsp-part="popover"] [data-lsp-part="calendar"],
+  [data-lsp-part="sheet"] [data-lsp-part="calendar"] {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  [data-lsp-part="calendar"][data-invalid] {
+    border-color: var(--lsp-danger);
+  }
+
+  /* 읽기 전용은 둘러볼 수 있어 흐리게 하지 않고 입력 칸처럼 점선 테두리로만 구분함 */
+  [data-lsp-part="calendar"][data-readonly] {
+    border-style: dashed;
+  }
+
+  [data-lsp-part="calendar-header"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  [data-lsp-part="calendar-view-button"],
+  [data-lsp-part="calendar-heading"] {
+    padding: 4px 6px;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  [data-lsp-part="calendar-view-button"] {
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  [data-lsp-part="calendar-nav-button"],
+  [data-lsp-part="calendar-today-button"] {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 26px;
+    block-size: 26px;
+    padding-inline: 6px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* 기본 배치(이전·보기·다음·역법·오늘)에서 달 이동 묶음과 나머지 버튼을 양쪽으로 나눔 */
+  [data-lsp-part="calendar-view-button"] + [data-lsp-part="calendar-nav-button"] {
+    margin-inline-end: auto;
+  }
+
+  [data-lsp-part="calendar-toggle"] {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 1px);
+  }
+
+  [data-lsp-part="calendar-toggle"] > button {
+    padding: 3px 9px;
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 3px);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* 선택은 잉크색 채움. 옅은 배경만으로는 선택 상태가 배경과 3:1 대비를 못 넘음 */
+  [data-lsp-part="calendar-toggle"] > button[data-selected] {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  /* 연 보기의 보기 버튼은 더 내려갈 단계가 없어 data-disabled지만 지금 단계를 보여 주므로 흐리게 하지 않음 */
+  [data-lsp-part="calendar-view-button"][data-view="years"] {
+    cursor: default;
+  }
+
+  [data-lsp-part="calendar-nav-button"][data-disabled],
+  [data-lsp-part="calendar-today-button"][data-disabled],
+  [data-lsp-part="calendar-view-button"][data-disabled]:not([data-view="years"]),
+  [data-lsp-part="calendar"][data-disabled] [data-lsp-part="calendar-view-button"],
+  [data-lsp-part="calendar-toggle"] > button[data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  /* 둘째 달부터는 격자 위에 제목이 붙으므로 아래쪽에 맞춰 나란한 격자의 줄을 맞춤 */
+  [data-lsp-part="calendar-months"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+  }
+
+  [data-lsp-part="calendar-month"] {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  [data-lsp-part="calendar-grid"] {
+    border-collapse: separate;
+    border-spacing: 0 2px;
+  }
+
+  [data-lsp-part="calendar-head-cell"] {
+    padding: 0;
+    padding-block-end: 6px;
+    color: var(--lsp-muted);
+    font-size: 10.5px;
+    font-weight: 400;
+    text-align: center;
+  }
+
+  [data-lsp-part="calendar-cell"] {
+    padding: 0;
+  }
+
+  [data-lsp-part="calendar-cell"][data-in-range] {
+    background: var(--lsp-range-bg);
+  }
+
+  /* 끌어서 고르는 중인 미리보기 범위는 위아래 점선으로 확정 범위와 구분함. 4px 무늬라 36·44px 칸 경계에서 이어짐 */
+  [data-lsp-part="calendar-cell"][data-preview] {
+    background:
+      linear-gradient(to right, var(--lsp-muted) 50%, transparent 0) 0 0 / 4px 1px repeat-x,
+      linear-gradient(to right, var(--lsp-muted) 50%, transparent 0) 0 100% / 4px 1px repeat-x,
+      var(--lsp-range-bg);
+  }
+
+  [data-lsp-part="calendar-cell"][data-range-start],
+  [data-lsp-part="calendar-cell"][data-in-range]:first-child {
+    border-start-start-radius: calc(var(--lsp-radius) - 2px);
+    border-end-start-radius: calc(var(--lsp-radius) - 2px);
+  }
+
+  [data-lsp-part="calendar-cell"][data-range-end],
+  [data-lsp-part="calendar-cell"][data-in-range]:last-child {
+    border-start-end-radius: calc(var(--lsp-radius) - 2px);
+    border-end-end-radius: calc(var(--lsp-radius) - 2px);
+  }
+
+  [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-in-range] {
+    box-shadow:
+      inset 0 1px 0 var(--lsp-danger),
+      inset 0 -1px 0 var(--lsp-danger);
+  }
+
+  /* 음력 보조 숫자만 대비가 낮은 --lsp-subtle을 씀. 칸 이름에 음력 날짜가 들어 있어 화면 낭독기에는 숨김 (스펙 8.3) */
+  [data-lsp-part="calendar-cell-secondary"] {
+    color: var(--lsp-subtle);
+    font-size: 8.5px;
+    font-weight: 400;
+  }
+
+  [data-lsp-part="calendar-cell"][data-selected] [data-lsp-part="calendar-cell-secondary"] {
+    color: inherit;
+    opacity: 0.7;
+  }
+
+  [data-lsp-part="calendar-month-grid"],
+  [data-lsp-part="calendar-year-grid"] {
+    inline-size: 100%;
+    border-spacing: 4px;
+  }
+
+  [data-lsp-part="calendar-month-grid"] td,
+  [data-lsp-part="calendar-year-grid"] td {
+    padding: 0;
+  }
+
+  /* 날짜 칸·월·연 버튼 규칙은 우선순위가 낮은 것부터 둠. 같은 단계 안에서는 서로 다른 속성만 정하므로 순서가 결과를 바꾸지 않음 */
+  /* touch-action은 기본값으로 둬 터치로 달력 위를 스크롤할 수 있게 함. 글자 선택만 막아 마우스·펜 끌기가 날짜를 고르게 함 (스펙 10.5) */
+  [data-lsp-part="calendar-cell"] > button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    inline-size: var(--lsp-cell-size);
+    block-size: var(--lsp-cell-size);
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  [data-lsp-part="calendar-month-grid"] button,
+  [data-lsp-part="calendar-year-grid"] button {
+    inline-size: 100%;
+    min-inline-size: 64px;
+    block-size: 36px;
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  /* 다른 달의 날은 --lsp-subtle이 아니라 --lsp-muted로 낮춰 글자 대비 4.5:1을 지킴 (스펙 8.3) */
+  [data-lsp-part="calendar-cell"][data-outside] > button {
+    color: var(--lsp-muted);
+  }
+
+  [data-lsp-part="calendar-cell"][data-disabled] > button {
+    color: var(--lsp-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  [data-lsp-part="calendar-cell"][data-today] > button {
+    box-shadow: inset 0 0 0 1px var(--lsp-muted);
+  }
+
+  /* 범위 달력은 양 끝에만 data-selected가 있음. 띠는 data-in-range가 그림 */
+  [data-lsp-part="calendar-cell"][data-selected] > button {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar-month-grid"] [data-selected] > button,
+  [data-lsp-part="calendar-year-grid"] [data-selected] > button {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar-month-grid"][data-disabled] button,
+  [data-lsp-part="calendar-year-grid"][data-disabled] button {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  [data-lsp-part="calendar"][data-readonly] [data-lsp-part="calendar-cell"] > button {
+    cursor: default;
+  }
+
+  [data-lsp-part="calendar"][data-disabled] [data-lsp-part="calendar-cell"] > button {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  [data-lsp-part="calendar-cell"][data-selected][data-today] > button {
+    box-shadow:
+      inset 0 0 0 2px var(--lsp-accent),
+      inset 0 0 0 3px var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar-month-grid"]:not([data-disabled]) [data-disabled] > button,
+  [data-lsp-part="calendar-year-grid"]:not([data-disabled]) [data-disabled] > button {
+    color: var(--lsp-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  /* 범위 띠 위 회색 글자는 4.4:1이라 다른 달의 날도 띠 안에서는 본래 글자색을 씀 */
+  [data-lsp-part="calendar-cell"][data-in-range][data-outside]:not([data-selected]) > button {
+    color: var(--lsp-fg);
+  }
+
+  [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-selected] > button {
+    background: var(--lsp-danger);
+  }
+
+  /* 월 전환 슬라이드는 180ms (스펙 8.3). 팝오버 토큰 --lsp-duration(140ms)과 길이가 달라 시트처럼 값을 직접 씀 */
+  [data-lsp-part="calendar-grid"] > tbody[data-slide="next"] {
+    animation: lsp-slide-from-end 180ms ease-out;
+  }
+
+  [data-lsp-part="calendar-grid"] > tbody[data-slide="previous"] {
+    animation: lsp-slide-from-start 180ms ease-out;
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="calendar-nav-button"]:not([data-disabled]):hover,
+    [data-lsp-part="calendar-today-button"]:not([data-disabled]):hover,
+    [data-lsp-part="calendar-view-button"]:not([data-disabled]):hover,
+    [data-lsp-part="calendar-toggle"] > button:not([data-selected], [data-disabled]):hover,
+    [data-lsp-part="calendar-month-grid"]:not([data-disabled]) td:not([data-selected], [data-disabled]) > button:hover,
+    [data-lsp-part="calendar-year-grid"]:not([data-disabled]) td:not([data-selected], [data-disabled]) > button:hover {
+      background: var(--lsp-range-bg);
+    }
+
+    [data-lsp-part="calendar"]:not([data-disabled], [data-readonly])
+      [data-lsp-part="calendar-cell"]:not([data-selected], [data-disabled])
+      > button:hover {
+      background: var(--lsp-range-bg);
+    }
+
+    /* 띠 위에서는 띠와 같은 색이 보이지 않으므로 한 단계 진한 선 색으로 칠함 */
+    [data-lsp-part="calendar"]:not([data-disabled], [data-readonly])
+      [data-lsp-part="calendar-cell"][data-in-range]:not([data-selected], [data-disabled])
+      > button:hover {
+      background: var(--lsp-border);
+    }
+  }
+
+  [data-lsp-part="calendar-nav-button"]:focus-visible,
+  [data-lsp-part="calendar-today-button"]:focus-visible,
+  [data-lsp-part="calendar-view-button"]:focus-visible,
+  [data-lsp-part="calendar-toggle"] > button:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  /* 이웃 칸이 나중에 그려져 테두리를 덮지 않도록 포커스된 칸을 위로 올림 */
+  [data-lsp-part="calendar-cell"] > button:focus-visible,
+  [data-lsp-part="calendar-month-grid"] button:focus-visible,
+  [data-lsp-part="calendar-year-grid"] button:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 1px;
+  }
+
+  @keyframes lsp-slide-from-end {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+  }
+
+  @keyframes lsp-slide-from-start {
+    from {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-lsp-part="calendar-grid"] > tbody[data-slide] {
+      animation: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    [data-lsp-part="calendar-cell"][data-selected] > button,
+    [data-lsp-part="calendar-toggle"] > button[data-selected],
+    [data-lsp-part="calendar-month-grid"] [data-selected] > button,
+    [data-lsp-part="calendar-year-grid"] [data-selected] > button {
+      background: Highlight;
+      color: HighlightText;
+    }
+
+    [data-lsp-part="calendar-cell"][data-in-range] {
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
+
+    [data-lsp-part="calendar-cell"][data-today] > button {
+      outline: 1px solid CanvasText;
+      outline-offset: -1px;
+    }
+
+    [data-lsp-part="calendar-cell"][data-disabled] > button,
+    [data-lsp-part="calendar-month-grid"] [data-disabled] > button,
+    [data-lsp-part="calendar-year-grid"] [data-disabled] > button {
+      color: GrayText;
+    }
+
+    [data-lsp-part="calendar-nav-button"]:focus-visible,
+    [data-lsp-part="calendar-today-button"]:focus-visible,
+    [data-lsp-part="calendar-view-button"]:focus-visible,
+    [data-lsp-part="calendar-toggle"] > button:focus-visible,
+    [data-lsp-part="calendar-cell"] > button:focus-visible,
+    [data-lsp-part="calendar-month-grid"] button:focus-visible,
+    [data-lsp-part="calendar-year-grid"] button:focus-visible {
+      outline: 2px solid Highlight;
+    }
+  }
+}

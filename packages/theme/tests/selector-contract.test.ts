@@ -7,28 +7,15 @@ const ALLOWED_EXTRA_ATTRIBUTES = [PART_ATTRIBUTE, 'data-theme'];
 const ATTRIBUTE_SELECTOR_PATTERN = /\[(data-[a-z-]+)/g;
 const CLASS_SELECTOR_PATTERN = /\.([a-zA-Z_][\w-]*)/g;
 const FORBIDDEN_SELECTOR_PATTERN = /\[\s*(aria-[a-z-]+|role)\b/g;
+// Constraint: translate·rotate·scale 개별 속성은 Chrome 104부터라 기준선(Chrome 99) 밖임. transform 함수만 씀 (preflight 4.9)
+const INDIVIDUAL_TRANSFORM_PROPERTY_PATTERN = /(^|[;{\s])(translate|rotate|scale)\s*:/;
 const LAYER_OPENING = '@layer lunisolar-picker {';
 const MONO_FILE = '../src/mono.css';
 // Constraint: M4가 만들 달력·picker 부품이라 아직 규칙이 없음. M4는 부품에 스타일을 넣을 때 이 목록에서 지움(남겨 두면 아래 테스트가 실패함)
 // Constraint: M3 부품은 순수 래퍼까지 모두 규칙이 있어 이 목록에 없음. 규칙이 필요 없는 래퍼 부품을 새로 만들면 이유와 함께 여기에 더함
 const PARTS_WITHOUT_RULES: readonly PartName[] = [
-  'calendar',
-  'calendar-header',
-  'calendar-heading',
-  'calendar-nav-button',
-  'calendar-today-button',
-  'calendar-toggle',
-  'calendar-view-button',
-  'calendar-grid',
-  'calendar-head-cell',
-  'calendar-cell',
-  'calendar-month-grid',
-  'calendar-year-grid',
   'picker-footer',
   'picker-presets',
-  'calendar-months',
-  'calendar-month',
-  'calendar-cell-secondary',
   // Constraint: 부품이 인라인 sr-only 스타일로 숨기므로 테마가 꾸밀 것이 없음 (M4-T4 fix 1)
   'live-region',
 ];
@@ -128,5 +115,8 @@ describe('theme selector contract', () => {
 
     expect(css).not.toMatch(/\babs\(/);
     expect(css).not.toMatch(/plaintext-only/);
+    expect(css).not.toMatch(/color-mix\(/);
+    expect(css).not.toMatch(/:has\(/);
+    expect(css).not.toMatch(INDIVIDUAL_TRANSFORM_PROPERTY_PATTERN);
   });
 });
