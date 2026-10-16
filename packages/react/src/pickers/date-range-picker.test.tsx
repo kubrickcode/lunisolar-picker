@@ -351,6 +351,33 @@ describe('DateRangePicker', () => {
       await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
     });
 
+    it.each([
+      ['read-only', { readOnly: true }],
+      ['disabled', { disabled: true }],
+    ] as const)('ignores a preset while %s', async (_, stateProps) => {
+      const onOpenChange = vi.fn();
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <DateRangePicker
+          presentation="popover"
+          open
+          presets={<LastWeekPreset />}
+          onOpenChange={onOpenChange}
+          onValueChange={onValueChange}
+          {...stateProps}
+        />,
+      );
+      await expect.element(screen.getByRole('dialog')).toBeVisible();
+
+      // Constraint: 비활성·읽기 전용이어도 앱 프리셋 버튼은 앱 것이라 눌림. picker가 무시해야 함
+      await screen.getByRole('button', { name: LAST_WEEK_LABEL }).click();
+      await settleEffects();
+
+      await expect.element(screen.getByRole('dialog')).toBeVisible();
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
     it('cannot be used outside DateRangePicker', () => {
       expect(() => renderToString(<LastWeekPreset />)).toThrow(LunisolarPickerError);
     });
@@ -681,6 +708,55 @@ describe('DateRangePicker', () => {
       await expect
         .element(screen.getByRole('spinbutton', { name: ko.labels.year }).first())
         .toHaveAttribute('aria-required', 'true');
+    });
+
+    it('submits a start-only default as empty while the end may not stay open', async () => {
+      const screen = await renderPicker(
+        <form>
+          <DateRangePicker
+            presentation="popover"
+            startName={START_NAME}
+            endName={END_NAME}
+            defaultValue={{ start: '2026-10-13', end: null }}
+          />
+        </form>,
+      );
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.day }).first()).toHaveTextContent('13');
+
+      expect(hiddenInputNamed(START_NAME).value).toBe('');
+      expect(hiddenInputNamed(END_NAME).value).toBe('');
+      expect(screen.container.querySelector('[data-lsp-part="date-range-picker"]')?.hasAttribute('data-invalid')).toBe(
+        false,
+      );
+    });
+
+    it('reports an empty value once when reset returns to a start-only default', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <DateRangePicker
+            presentation="popover"
+            startName={START_NAME}
+            endName={END_NAME}
+            defaultValue={{ start: '2026-10-01', end: null }}
+            onValueChange={onValueChange}
+          />
+        </form>,
+      );
+      await openPicker(screen);
+      await tapDay(screen, '2026-10-13');
+      await tapDay(screen, '2026-10-17');
+      await expect.poll(() => hiddenInputNamed(END_NAME).value).toBe('2026-10-17');
+
+      formElementOf(screen.getByRole('form', { name: FORM_LABEL })).reset();
+
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.day }).first()).toHaveTextContent('01');
+      await settleEffects();
+      expect(onValueChange.mock.calls).toEqual([
+        [RANGE, VALID_DETAILS],
+        [null, VALID_DETAILS],
+      ]);
+      expect(hiddenInputNamed(START_NAME).value).toBe('');
     });
 
     it('requires only the start when the end may stay open', async () => {

@@ -8,7 +8,7 @@ type AppTriggerOptions = {
 };
 
 // Goal: 입력 칸이 없으므로 picker가 받은 라벨·id가 트리거의 것이 됨
-export type TriggerLabelProps = Pick<PickerTriggerProps, 'aria-describedby' | 'aria-label' | 'aria-labelledby' | 'id'>;
+type TriggerLabelProps = Pick<PickerTriggerProps, 'aria-describedby' | 'aria-label' | 'aria-labelledby' | 'id'>;
 
 // Goal: 앱 트리거 모드에서는 입력 칸 대신 트리거가 picker의 이름과 떠남(onBlur)을 맡음 (계약 §3.5)
 export const useAppTriggerProps = ({

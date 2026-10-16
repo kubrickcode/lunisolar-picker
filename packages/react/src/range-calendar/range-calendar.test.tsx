@@ -331,11 +331,9 @@ describe('RangeCalendar', () => {
 
   describe('picks', () => {
     it('reports a range once it is complete, after the value change', async () => {
-      const reports: string[] = [];
-      const onPick = vi.fn(() => reports.push('pick'));
-      const screen = await renderRangeCalendar(
-        <RangeCalendar.Root onValueChange={() => reports.push('change')} onPick={onPick} />,
-      );
+      const onValueChange = vi.fn();
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(<RangeCalendar.Root onValueChange={onValueChange} onPick={onPick} />);
 
       await tapDay(screen, '2026-10-13');
       await expect
@@ -346,7 +344,7 @@ describe('RangeCalendar', () => {
       await tapDay(screen, '2026-10-17');
 
       expect(onPick.mock.calls).toEqual([[{ start: '2026-10-13', end: '2026-10-17' }]]);
-      expect(reports).toEqual(['change', 'pick']);
+      expect(onValueChange.mock.invocationCallOrder[0]).toBeLessThan(onPick.mock.invocationCallOrder[0] ?? 0);
     });
 
     it('reports a re-pick of the selected range through onPick without a value change', async () => {
@@ -438,6 +436,32 @@ describe('RangeCalendar', () => {
         .element(screen.getByRole('button', { name: dayLabel('2026-10-20') }))
         .toHaveAttribute('aria-disabled', 'true');
       expect(onPick).not.toHaveBeenCalled();
+    });
+
+    // Goal: 끝 손잡이를 잡으면 고르는 중(anchor)이면서 임시 범위는 아직 옛 완성 범위라, 막힌 날을 고르려다 거절돼도 완성으로 보면 안 됨
+    it('ignores a blocked day picked while an end handle is held', async () => {
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root
+          defaultValue={{ start: '2026-10-13', end: '2026-10-15' }}
+          maxDays={3}
+          limitMode="block"
+          onPick={onPick}
+        />,
+      );
+      dispatchPointer(dayButtonOf(screen, '2026-10-15'), 'pointerdown');
+      const blockedDay = screen.getByRole('button', { name: dayLabel('2026-10-20') });
+      await expect.element(blockedDay).toHaveAttribute('aria-disabled', 'true');
+
+      try {
+        await focusDirectly(blockedDay);
+        await userEvent.keyboard('{Enter}');
+        await settleEffects();
+
+        expect(onPick).not.toHaveBeenCalled();
+      } finally {
+        dispatchPointer(document, 'pointerup');
+      }
     });
   });
 
