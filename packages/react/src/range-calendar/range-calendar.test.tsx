@@ -14,6 +14,7 @@ import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { focusDirectly } from '../testing/focus-directly';
 import { formElementOf } from '../testing/form-element';
 import { dayLabel, epochDayAt, FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
+import { dispatchPointer } from '../testing/pointer';
 import { settleEffects } from '../testing/settle-effects';
 import { RangeCalendar, type UseRangeCalendarProps, useRangeCalendarContext } from './index';
 
@@ -30,6 +31,12 @@ type Screen = Awaited<ReturnType<typeof render>>;
 
 const renderRangeCalendar = (element: ReactElement): Promise<Screen> =>
   render(<KoreanProvider>{element}</KoreanProvider>);
+
+const dayButtonOf = (screen: Screen, isoDate: string): HTMLElement => {
+  const element = screen.getByRole('button', { name: dayLabel(isoDate) }).element();
+  if (!(element instanceof HTMLElement)) throw new Error(`day ${isoDate} should render a button`);
+  return element;
+};
 
 // Constraint: 범위 달력 칸은 마우스 클릭이 포인터 경로(Task 5)로 가므로, 탭·키보드 선택 경로인 Enter로 고름
 const tapDayNamed = async (screen: Screen, dayName: string): Promise<void> => {
@@ -322,6 +329,118 @@ describe('RangeCalendar', () => {
     });
   });
 
+  describe('picks', () => {
+    it('reports a range once it is complete, after the value change', async () => {
+      const reports: string[] = [];
+      const onPick = vi.fn(() => reports.push('pick'));
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root onValueChange={() => reports.push('change')} onPick={onPick} />,
+      );
+
+      await tapDay(screen, '2026-10-13');
+      await expect
+        .element(screen.getByRole('status'))
+        .toHaveTextContent(ko.labels.formatRangeStartSelected(dayLabel('2026-10-13')));
+      await settleEffects();
+      expect(onPick).not.toHaveBeenCalled();
+      await tapDay(screen, '2026-10-17');
+
+      expect(onPick.mock.calls).toEqual([[{ start: '2026-10-13', end: '2026-10-17' }]]);
+      expect(reports).toEqual(['change', 'pick']);
+    });
+
+    it('reports a re-pick of the selected range through onPick without a value change', async () => {
+      const onValueChange = vi.fn();
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root
+          defaultValue={{ start: '2026-10-13', end: '2026-10-17' }}
+          onValueChange={onValueChange}
+          onPick={onPick}
+        />,
+      );
+
+      await tapDay(screen, '2026-10-13');
+      await tapDay(screen, '2026-10-17');
+      await settleEffects();
+
+      expect(onPick.mock.calls).toEqual([[{ start: '2026-10-13', end: '2026-10-17' }]]);
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('reports a range picked with two mouse clicks once', async () => {
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(<RangeCalendar.Root onPick={onPick} />);
+
+      await screen.getByRole('button', { name: dayLabel('2026-10-13') }).click();
+      await screen.getByRole('button', { name: dayLabel('2026-10-17') }).click();
+      await expect.poll(() => onPick.mock.calls.length).toBe(1);
+      await settleEffects();
+
+      expect(onPick.mock.calls).toEqual([[{ start: '2026-10-13', end: '2026-10-17' }]]);
+    });
+
+    it('reports a range a mouse drag ends', async () => {
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(<RangeCalendar.Root onPick={onPick} />);
+
+      dispatchPointer(dayButtonOf(screen, '2026-10-06'), 'pointerdown');
+      dispatchPointer(dayButtonOf(screen, '2026-10-09'), 'pointerover');
+      dispatchPointer(document, 'pointerup');
+
+      await expect.poll(() => onPick.mock.calls).toEqual([[{ start: '2026-10-06', end: '2026-10-09' }]]);
+    });
+
+    it('reports a range completed in confirm mode before it is committed', async () => {
+      const onValueChange = vi.fn();
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root commitMode="confirm" onValueChange={onValueChange} onPick={onPick} />,
+      );
+
+      await tapDay(screen, '2026-10-13');
+      await tapDay(screen, '2026-10-17');
+      await settleEffects();
+
+      expect(onPick.mock.calls).toEqual([[{ start: '2026-10-13', end: '2026-10-17' }]]);
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('ignores a range the app sets through setRange, even in the middle of a pick', async () => {
+      const onValueChange = vi.fn();
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root onValueChange={onValueChange} onPick={onPick}>
+          <Calendar.Layout />
+          <PresetButton />
+        </RangeCalendar.Root>,
+      );
+      await tapDay(screen, '2026-10-20');
+
+      await screen.getByRole('button', { name: 'preset' }).click();
+
+      await expect
+        .poll(() => onValueChange.mock.lastCall)
+        .toEqual([{ start: '2026-10-08', end: '2026-10-14' }, { validity: VALID }]);
+      await settleEffects();
+      expect(onPick).not.toHaveBeenCalled();
+    });
+
+    it('ignores an end the range limit blocks', async () => {
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(<RangeCalendar.Root maxDays={3} limitMode="block" onPick={onPick} />);
+
+      await tapDay(screen, '2026-10-13');
+      await tapDay(screen, '2026-10-20');
+      await settleEffects();
+
+      await expect
+        .element(screen.getByRole('button', { name: dayLabel('2026-10-20') }))
+        .toHaveAttribute('aria-disabled', 'true');
+      expect(onPick).not.toHaveBeenCalled();
+    });
+  });
+
   describe('accessibility', () => {
     it('has no axe violations in Korean with a selected range apart from the accepted label-in-name exception', async () => {
       const screen = await renderRangeCalendar(
@@ -361,7 +480,10 @@ describe('RangeCalendar', () => {
 
     it('ignores grid keys', async () => {
       const onValueChange = vi.fn();
-      const screen = await renderRangeCalendar(<RangeCalendar.Root disabled onValueChange={onValueChange} />);
+      const onPick = vi.fn();
+      const screen = await renderRangeCalendar(
+        <RangeCalendar.Root disabled onValueChange={onValueChange} onPick={onPick} />,
+      );
 
       // Constraint: 비활성 칸은 탭 정지점도 클릭 포커스도 기대할 수 없어 직접 포커스한 뒤 키를 보냄
       await tapDay(screen, '2026-10-13');
@@ -371,17 +493,20 @@ describe('RangeCalendar', () => {
       await expect.element(screen.getByRole('button', { name: dayLabel('2026-10-13') })).toHaveFocus();
       expect(screen.container.querySelectorAll(IN_RANGE_SELECTOR)).toHaveLength(0);
       expect(onValueChange).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
     });
   });
 
   describe('read-only', () => {
     it('navigates but keeps the range', async () => {
       const onValueChange = vi.fn();
+      const onPick = vi.fn();
       const screen = await renderRangeCalendar(
         <RangeCalendar.Root
           readOnly
           defaultValue={{ start: '2026-10-13', end: '2026-10-17' }}
           onValueChange={onValueChange}
+          onPick={onPick}
         />,
       );
       await expect.element(screen.getByRole('grid')).toBeVisible();
@@ -392,6 +517,7 @@ describe('RangeCalendar', () => {
       await settleEffects();
       expect(screen.container.querySelectorAll(IN_RANGE_SELECTOR)).toHaveLength(5);
       expect(onValueChange).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
 
       await userEvent.keyboard('{PageDown}');
       await expect.element(screen.getByRole('grid')).toHaveAccessibleName(monthName(2026, 'M11'));

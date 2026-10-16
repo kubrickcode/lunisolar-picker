@@ -995,10 +995,11 @@
   }
 }
 
-/* 완성형 picker (M4-T8). 팝오버·시트·트리거·달력은 위 규칙을 그대로 씀 */
+/* 완성형 picker (M4-T8·T9). 팝오버·시트·트리거·달력은 위 규칙을 그대로 씀 */
 @layer lunisolar-picker {
   /* 입력 칸 옆에 달력 버튼을 붙여 한 줄로 둠 */
-  [data-lsp-part="date-picker"] {
+  [data-lsp-part="date-picker"],
+  [data-lsp-part="date-range-picker"] {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -1013,7 +1014,18 @@
     border-block-start: 1px solid var(--lsp-border);
   }
 
-  [data-lsp-part="picker-footer"] > button {
+  /* 앱이 넣는 프리셋 버튼 줄. 푸터와 대칭으로 아래쪽 선으로만 달력 머리와 구분함 */
+  [data-lsp-part="picker-presets"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-block-end: 8px;
+    border-block-end: 1px solid var(--lsp-border);
+  }
+
+  /* 프리셋은 앱 버튼이지만 맨 버튼이면 푸터의 보조 버튼과 같은 모양을 줌. layer 밖 앱 스타일이 늘 이 규칙보다 앞섬 */
+  [data-lsp-part="picker-footer"] > button,
+  [data-lsp-part="picker-presets"] > button {
     min-block-size: 32px;
     padding-inline: 12px;
     border: 1px solid var(--lsp-border);
@@ -1035,30 +1047,35 @@
     font-weight: 600;
   }
 
-  [data-lsp-part="picker-footer"] > button:disabled {
+  [data-lsp-part="picker-footer"] > button:disabled,
+  [data-lsp-part="picker-presets"] > button:disabled {
     cursor: not-allowed;
     opacity: 0.5;
   }
 
   @media (hover: hover) {
-    [data-lsp-part="picker-footer"] > button:first-child:not(:disabled):hover {
+    [data-lsp-part="picker-footer"] > button:first-child:not(:disabled):hover,
+    [data-lsp-part="picker-presets"] > button:not(:disabled):hover {
       background: var(--lsp-range-bg);
     }
   }
 
-  [data-lsp-part="picker-footer"] > button:focus-visible {
+  [data-lsp-part="picker-footer"] > button:focus-visible,
+  [data-lsp-part="picker-presets"] > button:focus-visible {
     outline: 2px solid var(--lsp-focus);
     outline-offset: 2px;
   }
 
   @media (forced-colors: active) {
     /* 흐림만으로는 강제 색상에서 비활성이 드러나지 않으므로 시스템 비활성 색을 씀 */
-    [data-lsp-part="picker-footer"] > button:disabled {
+    [data-lsp-part="picker-footer"] > button:disabled,
+    [data-lsp-part="picker-presets"] > button:disabled {
       border-color: GrayText;
       color: GrayText;
     }
 
-    [data-lsp-part="picker-footer"] > button:focus-visible {
+    [data-lsp-part="picker-footer"] > button:focus-visible,
+    [data-lsp-part="picker-presets"] > button:focus-visible {
       outline: 2px solid Highlight;
     }
   }

@@ -33,6 +33,7 @@ const RANGE_CALENDAR_PROP_NAMES = [
   'onBlur',
   'onDisplayCalendarChange',
   'onInvalidValue',
+  'onPick',
   'onValueChange',
   'readOnly',
   'required',

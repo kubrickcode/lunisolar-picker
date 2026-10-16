@@ -4,15 +4,15 @@ import { createRef, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
-import { COARSE_NARROW_SCREEN_QUERY } from '../presentation/use-presentation';
 import { clickToFocus } from '../testing/click-to-focus';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { focusDirectly } from '../testing/focus-directly';
 import { focusOnce } from '../testing/focus-once';
 import { formElementOf } from '../testing/form-element';
 import { dayLabel, FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
+import { hiddenInputNamed, inputsNamed, renderChipTrigger, stubCoarseNarrowScreen } from '../testing/picker-fixture';
 import { settleEffects } from '../testing/settle-effects';
-import { DatePicker, type TriggerRenderProps } from './index';
+import { DatePicker } from './index';
 
 const CHIP_PLACEHOLDER = '설치일';
 const FIELD_NAME = 'installedOn';
@@ -21,36 +21,7 @@ const OUTSIDE_BUTTON_LABEL = '바깥';
 const POPOVER_OFFSET_PIXELS = 8;
 const VALID_DETAILS = { validity: { isValid: true, reasons: [] } };
 
-const hiddenInputNamed = (name: string): HTMLInputElement => {
-  const inputs = inputsNamed(name);
-  const [input] = inputs;
-  if (inputs.length !== 1 || !input) throw new Error(`expected one input named ${name}, found ${inputs.length}`);
-  return input;
-};
-
-const inputsNamed = (name: string): HTMLInputElement[] =>
-  Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`));
-
-const renderChipTrigger = ({ displayValue, placeholder, triggerProps }: TriggerRenderProps): ReactElement => (
-  <button {...triggerProps} type="button" data-testid="chip">
-    {displayValue || placeholder}
-  </button>
-);
-
 const renderPicker = (element: ReactElement) => render(<KoreanProvider>{element}</KoreanProvider>);
-
-// Goal: 터치 기기의 좁은 화면 판정만 참이 되게 함. 다른 미디어 질의는 그대로 거짓
-const stubCoarseNarrowScreen = () =>
-  vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
-    addEventListener: vi.fn(),
-    addListener: vi.fn(),
-    dispatchEvent: vi.fn(() => false),
-    matches: query === COARSE_NARROW_SCREEN_QUERY,
-    media: query,
-    onchange: null,
-    removeEventListener: vi.fn(),
-    removeListener: vi.fn(),
-  }));
 
 describe('DatePicker', () => {
   describe('immediate mode', () => {

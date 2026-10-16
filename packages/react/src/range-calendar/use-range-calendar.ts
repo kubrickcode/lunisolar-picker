@@ -41,10 +41,24 @@ import { describeRangeAnnouncement } from './range-announcement';
 import { rangeCellFlags } from './range-cell-flags';
 import { useRangePointer } from './use-range-pointer';
 
+// Goal: 사용자가 날을 골라 범위를 끝낼 수 있는 이벤트. range.set(프리셋)·commit·cancel·clear는 앱이나 picker가 보내므로 고르기가 아님
+const PICK_EVENT_TYPES: ReadonlySet<RangeSelectionEvent['type']> = new Set([
+  'date.select',
+  'pointer.down',
+  'pointer.up',
+]);
+
 type CommittedValidityInput = {
   readonly committed: SelectedRange | null;
   readonly constraints: ResolvedConstraints;
   readonly isRequired: boolean;
+};
+
+type CompletedPickInput = {
+  readonly calendars: readonly CalendarSystem[];
+  readonly event: RangeSelectionEvent;
+  readonly next: RangeSelectionState;
+  readonly previous: RangeSelectionState;
 };
 
 export interface RangeCalendarApi extends CalendarViewApi {
@@ -68,6 +82,8 @@ export interface UseRangeCalendarProps extends Omit<CalendarFoundationProps, 'na
   readonly value?: DateRangeInput | null | undefined;
   readonly defaultValue?: DateRangeInput | null | undefined;
   readonly onValueChange?: ((value: DateRangeValue | null, details: ValueChangeDetails) => void) | undefined;
+  // Goal: 사용자가 범위를 끝낼 때마다(같은 범위를 다시 골라도, 확인 모드의 임시 범위도) 알림. 완성형 picker가 닫을 때를 정함. 프리셋(setRange)은 앱이 넣은 범위라 알리지 않음 (계약 §3.4 onPick)
+  readonly onPick?: ((value: DateRangeValue) => void) | undefined;
   readonly startName?: string | undefined;
   readonly endName?: string | undefined;
 }
@@ -135,9 +151,13 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
   });
 
   // Constraint: 확정 범위를 바꿀 수 있는 사용자 이벤트(date.select·pointer.*·range.set·clear·commit)는 모두 이 경로로 보냄. 확정 값이 그대로면 알리지 않음
+  // Constraint: onPick은 onValueChange 다음에 부름. picker가 onPick에서 닫아도 바뀐 값은 이미 전달됨
   const sendUserSelection = (event: RangeSelectionEvent): void => {
+    const previous = getSnapshot();
     sendSelection(event);
     reportCommitted();
+    const picked = completedPickOf({ calendars: context.calendars, event, next: getSnapshot(), previous });
+    if (picked !== null) props.onPick?.(picked);
   };
 
   const isDisabled = props.disabled === true;
@@ -243,6 +263,13 @@ export const useRangeCalendar = (props: UseRangeCalendarProps): RangeCalendarApi
 const committedValidityOf = ({ committed, constraints, isRequired }: CommittedValidityInput): Validity => {
   if (committed === null) return isRequired ? MISSING_REQUIRED : VALID;
   return validateEpochRange(committed.range, constraints);
+};
+
+// Goal: 고르는 중(anchor 있음)이던 범위가 이 이벤트로 끝났으면 끝난 범위. 막힌 날·비활성으로 store가 받지 않은 고르기는 anchor가 남으므로 알리지 않음
+const completedPickOf = ({ calendars, event, next, previous }: CompletedPickInput): DateRangeValue | null => {
+  if (!PICK_EVENT_TYPES.has(event.type) || previous.anchor === null || next.anchor !== null) return null;
+  const picked = draftValueOf(next.draft, calendars);
+  return picked?.end == null ? null : picked;
 };
 
 // Constraint: 렌더 중이라 던지지 않음. 적을 수 없는 끝이 있으면 값 없음으로 둠
