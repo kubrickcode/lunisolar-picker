@@ -35,6 +35,8 @@ export * from './time-list/index';
 export { useToday } from './today/use-today';
 export type { RenderProp } from './utilities/render-element';
 export { useControllableState } from './utilities/use-controllable-state';
+export type { HiddenInputProps } from './value/hidden-input';
+export { HiddenInput } from './value/hidden-input';
 export type { DateRangeInput } from './value/parse-controlled-value';
 export * as Wheel from './wheel/parts';
 export type { UseWheelProps, WheelApi } from './wheel/use-wheel';

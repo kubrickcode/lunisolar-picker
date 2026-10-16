@@ -1026,11 +1026,13 @@
     cursor: pointer;
   }
 
-  /* 확정 버튼(마지막)은 선택과 같은 잉크색 채움으로 주된 동작임을 보임 */
-  [data-lsp-part="picker-footer"] > button:last-child {
+  /* 확정 버튼(취소 뒤 마지막)은 선택과 같은 잉크색 채움으로 주된 동작임을 보임. 시트의 닫기 버튼만 있으면 채우지 않음 */
+  /* 굵기는 강제 색상에서도 남으므로 채움이 사라져도 주된 동작이 구분됨 */
+  [data-lsp-part="picker-footer"] > button:last-child:not(:first-child) {
     border-color: var(--lsp-accent);
     background: var(--lsp-accent);
     color: var(--lsp-accent-fg);
+    font-weight: 600;
   }
 
   [data-lsp-part="picker-footer"] > button:disabled {
@@ -1039,7 +1041,7 @@
   }
 
   @media (hover: hover) {
-    [data-lsp-part="picker-footer"] > button:not(:last-child, :disabled):hover {
+    [data-lsp-part="picker-footer"] > button:first-child:not(:disabled):hover {
       background: var(--lsp-range-bg);
     }
   }

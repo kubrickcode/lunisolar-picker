@@ -1,10 +1,11 @@
-import type { ButtonHTMLAttributes, ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import type { PickerTriggerProps } from './trigger-render-props';
 
-export interface DefaultTriggerProps {
+type DefaultTriggerProps = {
   readonly icon: ReactNode;
   readonly label: string;
-  readonly triggerProps: ButtonHTMLAttributes<HTMLButtonElement>;
-}
+  readonly triggerProps: PickerTriggerProps;
+};
 
 // Constraint: 부품 이름(popover-trigger)과 data-open은 PickerSurface가 triggerProps에 담아 주므로 앱 트리거와 같은 스타일 계약을 탐
 export const DefaultTrigger = ({ triggerProps, label, icon }: DefaultTriggerProps): ReactElement => (

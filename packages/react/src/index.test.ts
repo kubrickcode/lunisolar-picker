@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   type DateRangeInput,
+  HiddenInput,
   type PickerSettings,
   useControllableState,
   usePickerSettings,
@@ -23,5 +24,10 @@ describe('package entry', () => {
     expect(typeof usePickerSettings).toBe('function');
     expect(typeof useControllableState).toBe('function');
     expect(typeof readWeekStart).toBe('function');
+  });
+
+  it('exposes the standalone hidden input that completed pickers submit their value through', () => {
+    // Goal: 완성형 picker가 입력 칸 유무와 관계없이 폼 참여를 직접 맡음 (M4-T8 fix 1)
+    expect(typeof HiddenInput).toBe('function');
   });
 });
