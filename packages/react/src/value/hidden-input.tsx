@@ -5,7 +5,8 @@ import { VISUALLY_HIDDEN_STYLE } from '../utilities/visually-hidden';
 // Goal: M3 숨은 입력의 모양(투명도 0 포함)을 그대로 둠. 이 입력은 보조 기술에서도 aria-hidden이라 읽힐 필요가 없음
 const HIDDEN_INPUT_STYLE: CSSProperties = { ...VISUALLY_HIDDEN_STYLE, opacity: 0 };
 
-export type HiddenInputProps = {
+// Constraint: 완성형 picker가 쓰는 공개 타입이라 interface로 둠 (preflight 4.3)
+export interface HiddenInputProps {
   readonly disabled?: boolean | undefined;
   readonly form?: string | undefined;
   readonly name?: string | undefined;
@@ -14,7 +15,7 @@ export type HiddenInputProps = {
   readonly onFormReset?: (() => void) | undefined;
   readonly required?: boolean | undefined;
   readonly value: string;
-};
+}
 
 // Goal: 네이티브 form 제출과 required 검증을 받기 위한 숨은 입력. type=hidden은 required 검증에서 빠지므로 text로 두고 화면에서만 숨김
 export const HiddenInput = ({

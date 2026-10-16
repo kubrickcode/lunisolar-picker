@@ -449,6 +449,49 @@ describe('DatePicker', () => {
       await focusDirectly(screen.getByRole('button', { name: OUTSIDE_BUTTON_LABEL }));
       await expect.poll(() => onBlur.mock.calls.length).toBe(1);
     });
+
+    it('reports a real leave after a press that was cancelled', async () => {
+      const onBlur = vi.fn();
+      const screen = await renderPicker(
+        <>
+          <DatePicker
+            presentation="popover"
+            placeholder={CHIP_PLACEHOLDER}
+            onBlur={onBlur}
+            renderTrigger={renderChipTrigger}
+          />
+          <button type="button">{OUTSIDE_BUTTON_LABEL}</button>
+        </>,
+      );
+      const chip = screen.getByRole('button', { name: CHIP_PLACEHOLDER });
+      await focusOnce(chip);
+
+      chip.element().dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      chip.element().dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }));
+      await focusDirectly(screen.getByRole('button', { name: OUTSIDE_BUTTON_LABEL }));
+
+      await expect.poll(() => onBlur.mock.calls.length).toBe(1);
+    });
+
+    it.each([
+      ['field', undefined],
+      ['app trigger', renderChipTrigger],
+    ] as const)('parses an unreadable default value silently with the %s', async (_, renderTrigger) => {
+      const onInvalidValue = vi.fn();
+      const screen = await renderPicker(
+        <DatePicker
+          presentation="popover"
+          placeholder={CHIP_PLACEHOLDER}
+          defaultValue="2026-02-30"
+          onInvalidValue={onInvalidValue}
+          renderTrigger={renderTrigger}
+        />,
+      );
+      await expect.element(screen.getByRole('button').first()).toBeVisible();
+      await settleEffects();
+
+      expect(onInvalidValue).not.toHaveBeenCalled();
+    });
   });
 
   describe('form', () => {
@@ -545,6 +588,62 @@ describe('DatePicker', () => {
       formElementOf(screen.getByRole('form', { name: FORM_LABEL })).reset();
 
       await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year })).not.toHaveTextContent('2026');
+    });
+
+    it('keeps focus in the field across a form reset without reporting a leave', async () => {
+      const onBlur = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <DatePicker presentation="popover" name={FIELD_NAME} onBlur={onBlur} />
+        </form>,
+      );
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.year }));
+      await userEvent.keyboard('20');
+
+      formElementOf(screen.getByRole('form', { name: FORM_LABEL })).reset();
+
+      await expect.element(screen.getByRole('spinbutton', { name: ko.labels.year })).toHaveFocus();
+      await settleEffects();
+      expect(onBlur).not.toHaveBeenCalled();
+    });
+
+    it('reports an emptied required value as valid on form reset', async () => {
+      const onValueChange = vi.fn();
+      const screen = await renderPicker(
+        <form aria-label={FORM_LABEL}>
+          <DatePicker presentation="popover" name={FIELD_NAME} required onValueChange={onValueChange} />
+        </form>,
+      );
+      await screen.getByRole('button', { name: ko.labels.chooseDate }).click();
+      await screen.getByRole('button', { name: dayLabel('2026-10-20') }).click();
+      await expect.poll(() => onValueChange.mock.calls.length).toBe(1);
+
+      formElementOf(screen.getByRole('form', { name: FORM_LABEL })).reset();
+
+      await expect.poll(() => onValueChange.mock.calls.at(-1)).toEqual([null, VALID_DETAILS]);
+    });
+
+    it('stays silent on form reset when the value and the default both fall out of the given calendars', async () => {
+      const onValueChange = vi.fn();
+      const pickerIn = (hasLunar: boolean) => (
+        <KoreanProvider hasLunar={hasLunar}>
+          <form aria-label={FORM_LABEL}>
+            <DatePicker
+              presentation="popover"
+              name={FIELD_NAME}
+              defaultValue="2026-10-20[u-ca=dangi]"
+              onValueChange={onValueChange}
+            />
+          </form>
+        </KoreanProvider>
+      );
+      const screen = await render(pickerIn(true));
+      await screen.rerender(pickerIn(false));
+
+      formElementOf(screen.getByRole('form', { name: FORM_LABEL })).reset();
+      await settleEffects();
+
+      expect(onValueChange).not.toHaveBeenCalled();
     });
 
     it('ignores form reset while controlled', async () => {

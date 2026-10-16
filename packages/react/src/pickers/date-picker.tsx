@@ -1,14 +1,7 @@
 import { type CalendarSystem, type DateString, parseDate, type ValidationReason } from '@lunisolar-picker/calendar';
-import {
-  type DateConstraints,
-  invalidBecause,
-  type LocaleLabels,
-  VALID,
-  type Validity,
-  validateDate,
-} from '@lunisolar-picker/core';
+import { type DateConstraints, type LocaleLabels, VALID, type Validity, validateDate } from '@lunisolar-picker/core';
 import { type ReactElement, type ReactNode, type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { partAttributes } from '../contract/data-attributes';
+import { PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
 import {
   Calendar,
   type CellRenderInfo,
@@ -29,8 +22,7 @@ import { PickerCloseFooter, PickerFooter } from './picker-footer';
 import { PickerSurface } from './picker-surface';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
 
-// Constraint: 값 없이 required인 상태는 M3 입력 부품과 같은 사유로 알림 (계약 §3.3)
-const MISSING_REQUIRED: Validity = invalidBecause(['incomplete']);
+const FIELD_SELECTOR = `[${PART_ATTRIBUTE}="date-field"]`;
 
 export interface DatePickerProps extends UseCalendarProps, PickerOpenProps {
   readonly 'aria-describedby'?: string | undefined;
@@ -69,7 +61,6 @@ type SingleConfirmFooterProps = {
 type ValidityInput = {
   readonly calendars: readonly CalendarSystem[];
   readonly constraints: DateConstraints;
-  readonly isRequired: boolean;
   readonly value: DateString | null;
 };
 
@@ -111,12 +102,19 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
   } = props;
   const settings = usePickerSettings(props);
   const resolvedPresentation = usePresentation(presentation);
-  const [currentValue, setCurrentValue] = useControllableState<string | null>(value, defaultValue ?? null, undefined);
+  // Constraint: 기본값은 M3 입력 부품처럼 조용히 해석함. 해석할 수 없는 기본값은 빈 값으로 시작하고 onInvalidValue는 제어 값에만 불림
+  const [currentValue, setCurrentValue] = useControllableState<string | null>(
+    value,
+    parseOptionalValue(defaultValue ?? null, settings.calendars),
+    undefined,
+  );
   const [isOpen, setOpen] = useControllableState<boolean>(open, defaultOpen ?? false, onOpenChange);
   const [mountedDefault] = useState(() => defaultValue ?? null);
   // Goal: reset 뒤 값이 그대로여도 입력 칸에 남은 미완성 입력을 지우려고 입력 칸을 새로 마운트함
   const [fieldResetCount, setFieldResetCount] = useState(0);
   const fieldRef = useRef<{ focus(): void } | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const shouldRefocusFieldRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const isPressingTriggerRef = useRef(false);
   const isConfirmMode = commitMode === 'confirm';
@@ -142,25 +140,39 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
     if (!isConfirmMode) setOpen(false);
   };
 
+  // Goal: 입력 칸을 새로 마운트해도 입력 중이던 사용자의 포커스를 잃지 않게 함
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 새로 마운트한 입력 칸에 포커스해야 하므로 reset 횟수가 바뀐 커밋 뒤에 돌아야 함
+  useEffect(() => {
+    if (!shouldRefocusFieldRef.current) return;
+    // 의도적 변경: 다시 포커스할 요청은 한 번만 씀
+    shouldRefocusFieldRef.current = false;
+    fieldRef.current?.focus();
+  }, [fieldResetCount]);
+
   // Goal: M3 입력 부품과 같은 reset 규칙. 비제어만 마운트 때 기본값(그 역법이 빠졌으면 빈 값)으로 돌아가며 알리고, 제어 값은 부모가 정함 (계약 §3.3 #1)
+  // Constraint: 비교는 해석한 값끼리 함. 역법이 빠져 해석되지 않는 현재 값과 빈 기본값은 같은 빈 값이라 알리지 않음
   const resetToDefault = (): void => {
     if (value !== undefined) return;
     const restored = parseOptionalValue(mountedDefault, settings.calendars);
+    const field = rootRef.current?.querySelector(FIELD_SELECTOR);
+    // 의도적 변경: 다시 마운트한 뒤 포커스를 돌려줄지 렌더와 무관하게 기억함
+    shouldRefocusFieldRef.current = field?.contains(document.activeElement) === true;
     setFieldResetCount((count) => count + 1);
-    if (restored === currentValue) return;
+    if (restored === parsedValue) return;
     setCurrentValue(restored);
     onValueChange?.(restored, {
-      validity: validityOf({
-        calendars: settings.calendars,
-        constraints: props,
-        isRequired: required === true,
-        value: restored,
-      }),
+      validity: validityOf({ calendars: settings.calendars, constraints: props, value: restored }),
     });
   };
 
   // Constraint: 팝오버 안으로 옮겨 가는 포커스는 picker를 떠난 것이 아니므로 닫혀 있을 때만 알림
   // Constraint: Safari는 누른 버튼에 포커스를 주지 않아 트리거를 누르는 순간 트리거가 blur됨. 여는 동작이라 떠남으로 보지 않음
+  // Constraint: 누름 때문의 blur는 pointerdown 중에 일어나므로 누름이 끝나면 표시를 지워 이후의 진짜 떠남을 삼키지 않음
+  const releaseTriggerPress = (): void => {
+    // 의도적 변경: 렌더와 무관한 누름 표시
+    isPressingTriggerRef.current = false;
+  };
+
   const leaveTrigger = (): void => {
     const isPressing = isPressingTriggerRef.current;
     // 의도적 변경: 누름 표시는 한 번의 blur에만 씀
@@ -186,10 +198,12 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
             isPressingTriggerRef.current = false;
             triggerProps.onClick?.(event);
           },
+          onPointerCancel: releaseTriggerPress,
           onPointerDown: () => {
             // 의도적 변경: 렌더와 무관한 누름 표시
             isPressingTriggerRef.current = true;
           },
+          onPointerUp: releaseTriggerPress,
         },
       })
     ) : (
@@ -200,7 +214,11 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
     sharedProps.invalid === true ||
     (parsedValue !== null && !validateDate(parsedValue, props, { calendars: settings.calendars }).isValid);
   return (
-    <div className={className} {...partAttributes('date-picker', { open: isOpen, invalid: isVisiblyInvalid })}>
+    <div
+      ref={rootRef}
+      className={className}
+      {...partAttributes('date-picker', { open: isOpen, invalid: isVisiblyInvalid })}
+    >
       {isTriggerMode ? null : (
         <DateField.Root
           key={fieldResetCount}
@@ -298,8 +316,9 @@ const parseOptionalValue = (value: string | null, calendars: readonly CalendarSy
   return parsed.isOk ? parsed.value.value : null;
 };
 
-const validityOf = ({ calendars, constraints, isRequired, value }: ValidityInput): Validity => {
-  if (value === null) return isRequired ? MISSING_REQUIRED : VALID;
+// Constraint: 완전히 빈 값은 required여도 VALID로 알림. required는 aria-required와 네이티브 required 검증만 맡음 (M3 입력 부품과 같음)
+const validityOf = ({ calendars, constraints, value }: ValidityInput): Validity => {
+  if (value === null) return VALID;
   const { isValid, reasons } = validateDate(value, constraints, { calendars });
   return { isValid, reasons };
 };
