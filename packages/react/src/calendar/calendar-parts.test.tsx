@@ -451,6 +451,8 @@ describe('Calendar', () => {
       );
 
       await screen.getByRole('button', { name: dayLabel('2026-10-22') }).click({ force: true });
+      await settleEffects();
+      expect(onPick).not.toHaveBeenCalled();
       // Goal: 클릭은 칸에서 먼저 막히므로 키보드 선택으로 훅의 제약 검사까지 거치게 함
       await clickToFocus(screen.getByRole('button', { name: dayLabel('2026-10-21') }));
       onPick.mockClear();

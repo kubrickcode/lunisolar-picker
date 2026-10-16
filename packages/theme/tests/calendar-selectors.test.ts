@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-const CALENDAR_PART_PATTERN = /\[data-lsp-part="calendar[a-z-]*"\]/;
 const APP_OVERRIDABLE_PROPERTIES = new Set(['background', 'background-color', 'border', 'border-color', 'color']);
+const CALENDAR_PART_PATTERN = /\[data-lsp-part="calendar[a-z-]*"\]/;
 const DIMMING_DECLARATION_PATTERN = /(^|[;\s])(opacity|filter)\s*:/;
 const DISABLED_CALENDAR_SCOPE = '[data-lsp-part="calendar"][data-disabled] ';
 const FORCED_COLORS_QUERY = '@media (forced-colors: active)';
@@ -15,9 +15,9 @@ const INVALID_SELECTED_MONTH_PARTS = [
   '[data-lsp-part="calendar-month-grid"] [data-selected]',
 ];
 const LEAF_RULE_PATTERN = /([^{}]+)\{([^{}]*)\}/g;
+const MONO_FILE = '../src/mono.css';
 const OUT_OF_RANGE_MONTH_SELECTOR =
   '[data-lsp-part="calendar-month-grid"]:not([data-disabled]) [data-disabled] > button';
-const MONO_FILE = '../src/mono.css';
 const PART_PATTERN = /\[data-lsp-part="[a-z-]+"\]/;
 const REDUCED_MOTION_QUERY = '@media (prefers-reduced-motion: reduce)';
 const SELECTED_ITEM_SELECTORS = [
