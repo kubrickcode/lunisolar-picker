@@ -85,7 +85,7 @@ module.exports = {
     {
       name: 'replays-public-api-only',
       comment:
-        '소비 앱 재현·SSR·시각 회귀 테스트는 앱처럼 공개 진입점(., /pickers, /contract)만 쓴다. 오늘 고정·브라우저 조작용 testing 헬퍼만 예외',
+        '소비 앱 재현·SSR·시각 회귀 테스트는 앱처럼 공개 진입점(., /pickers, /contract)만 쓴다. 오늘 고정·브라우저 조작용 testing 헬퍼만 예외. testing 헬퍼는 라이브러리 내부를 다시 내보내면 안 됨(이 규칙을 우회하는 통로가 됨): 내부 상수는 헬퍼 안에서만 쓰고 부품·훅은 공개 진입점에서 가져온다',
       severity: 'error',
       from: {
         path: '^packages/react/src/(pickers/(consumer-parity|hydration)\\.test|visual/pickers\\.visual\\.test)\\.tsx$',

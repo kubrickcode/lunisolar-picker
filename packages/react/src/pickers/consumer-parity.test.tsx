@@ -13,6 +13,7 @@ import { formElementOf } from '../testing/form-element';
 import { dayLabel, epochDayAt, FIXED_TODAY, KoreanProvider } from '../testing/korean-fixture';
 import { endsWith, openSheet, pressWithKeyboard } from '../testing/picker-fixture';
 import { dispatchPointer } from '../testing/pointer';
+import { settleEffects } from '../testing/settle-effects';
 import { DateRangePicker, MonthPicker, TimePicker, usePickerSelection, WheelDatePicker } from './index';
 
 // Goal: 소비 앱 세 곳(back-office, web-console, saju-pictures)이 지금 쓰는 기능을 공개 진입점(`.`, `/pickers`, core·calendar)만으로 다시 만들 수 있는지 고정함 (스펙 1.1 교체 가능성)
@@ -27,6 +28,7 @@ const HOLIDAY_DOT_ID = 'holiday-dot';
 const LUNAR_TOGGLE_LABEL = '음력으로 입력';
 const NOVEMBER_HEADING = ko.formatHeading({ year: 2026, monthCode: 'M11' }, 'gregory');
 const OCTOBER_HEADING = ko.formatHeading({ year: 2026, monthCode: 'M10' }, 'gregory');
+const OUTSIDE_BUTTON_LABEL = '바깥';
 const RECENT_DAY_COUNTS = [1, 3, 7] as const;
 const RESERVATION_FORM_LABEL = '예약 조회';
 const STATS_MAX_DAYS = 3;
@@ -34,8 +36,14 @@ const SUBMIT_LABEL = '조회';
 const VALID_DETAILS = { validity: { isValid: true, reasons: [] } };
 
 type BirthDateFormProps = {
+  readonly defaultValue?: string | undefined;
   readonly onSubmitBirthDate: (birthDate: FormDataEntryValue | null) => void;
   readonly onValueChange: (value: string | null) => void;
+};
+
+type ControllerReservationFormProps = {
+  readonly onBlur: () => void;
+  readonly onSearch: (period: DateRangeInput) => void;
 };
 
 type LunarToggleWheelProps = {
@@ -76,7 +84,7 @@ const BackOfficeStats = (): ReactElement => {
 };
 
 // Goal: saju-pictures 모바일 입력. 음력 생년월일을 시트 휠로 고르고 일반 form으로 제출함 (Astro island)
-const BirthDateForm = ({ onSubmitBirthDate, onValueChange }: BirthDateFormProps): ReactElement => (
+const BirthDateForm = ({ defaultValue, onSubmitBirthDate, onValueChange }: BirthDateFormProps): ReactElement => (
   <form
     aria-label={BIRTH_FORM_LABEL}
     onSubmit={(event) => {
@@ -88,12 +96,41 @@ const BirthDateForm = ({ onSubmitBirthDate, onValueChange }: BirthDateFormProps)
       presentation="sheet"
       aria-label={BIRTH_DATE_LABEL}
       name={BIRTH_DATE_NAME}
-      defaultValue="1990-06-22[u-ca=dangi]"
+      required
+      entryCalendar="dangi"
+      defaultValue={defaultValue}
       onValueChange={onValueChange}
     />
     <button type="submit">{SUBMIT_LABEL}</button>
   </form>
 );
+
+// Goal: back-office의 react-hook-form Controller 연동. field.value·onChange·onBlur·ref를 그대로 넘기고, 제출은 폼 상태의 값을 씀
+const ControllerReservationForm = ({ onBlur, onSearch }: ControllerReservationFormProps): ReactElement => {
+  const [period, setPeriod] = useState<DateRangeInput | null>(null);
+  const periodRef = useRef<{ focus(): void }>(null);
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    if (period?.end == null) {
+      periodRef.current?.focus();
+      return;
+    }
+    onSearch(period);
+  };
+  return (
+    <form aria-label={RESERVATION_FORM_LABEL} noValidate onSubmit={submit}>
+      <DateRangePicker
+        presentation="popover"
+        ref={periodRef}
+        value={period}
+        onValueChange={setPeriod}
+        onBlur={onBlur}
+      />
+      <button type="button">{OUTSIDE_BUTTON_LABEL}</button>
+      <button type="submit">{SUBMIT_LABEL}</button>
+    </form>
+  );
+};
 
 // Goal: saju-pictures의 양력·음력 전환은 앱이 그린 버튼이 entryCalendar를 바꿔 휠 역법을 바꿈
 const LunarToggleWheel = ({ onValueChange }: LunarToggleWheelProps): ReactElement => {
@@ -231,6 +268,30 @@ describe('consumer parity', () => {
       expect(onSearch.mock.calls).toEqual([[{ from: '2026-10-13', to: '2026-10-17', at: '18:30' }]]);
     });
 
+    it('controller form: reports leaving the picker once and submits the controlled range', async () => {
+      const onBlur = vi.fn();
+      const onSearch = vi.fn();
+      const screen = await renderInApp(<ControllerReservationForm onBlur={onBlur} onSearch={onSearch} />);
+      const startYear = screen.getByRole('spinbutton', { name: ko.labels.year }).first();
+
+      await clickToFocus(startYear);
+      await clickToFocus(screen.getByRole('spinbutton', { name: ko.labels.month }).first());
+      await settleEffects();
+      expect(onBlur).not.toHaveBeenCalled();
+      await focusDirectly(screen.getByRole('button', { name: OUTSIDE_BUTTON_LABEL }));
+      await expect.poll(() => onBlur.mock.calls.length).toBe(1);
+
+      await screen.getByRole('button', { name: SUBMIT_LABEL }).click();
+      await expect.element(startYear).toHaveFocus();
+      await screen.getByRole('button', { name: ko.labels.chooseDateRange }).click();
+      await screen.getByRole('button', { name: dayLabel('2026-10-13') }).click();
+      await screen.getByRole('button', { name: dayLabel('2026-10-17') }).click();
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+      await screen.getByRole('button', { name: SUBMIT_LABEL }).click();
+
+      expect(onSearch.mock.calls).toEqual([[{ start: '2026-10-13', end: '2026-10-17' }]]);
+    });
+
     it('range picker: jumps back to the current month after browsing ahead', async () => {
       const screen = await renderInApp(<DateRangePicker presentation="popover" defaultOpen />);
 
@@ -262,8 +323,14 @@ describe('consumer parity', () => {
       await screen.getByRole('button', { name: dayLabel('2026-10-10') }).click();
 
       await expect.element(screen.getByRole('alert')).toHaveTextContent(ko.labels.validation['range-too-long']);
-      await expect.element(screen.getByRole('button', { name: ko.labels.confirm })).toBeDisabled();
+      const confirmButton = screen.getByRole('button', { name: ko.labels.confirm });
+      await expect.element(confirmButton).toBeDisabled();
+      // Constraint: 비활성 버튼은 포커스를 받지 않아 키로 누를 수 없으므로 실행 가능성 검사를 건너뛰고 눌러 봄
+      await confirmButton.click({ force: true });
+      await settleEffects();
+
       expect(onValueChange).not.toHaveBeenCalled();
+      await expect.element(screen.getByRole('dialog')).toBeVisible();
     });
 
     it('schedule: shows two months side by side with app holiday marks and names', async () => {
@@ -360,7 +427,11 @@ describe('consumer parity', () => {
       const onSubmitBirthDate = vi.fn();
       const onValueChange = vi.fn();
       const screen = await renderInLunarApp(
-        <BirthDateForm onSubmitBirthDate={onSubmitBirthDate} onValueChange={onValueChange} />,
+        <BirthDateForm
+          defaultValue="1990-06-22[u-ca=dangi]"
+          onSubmitBirthDate={onSubmitBirthDate}
+          onValueChange={onValueChange}
+        />,
       );
 
       await openSheet({
@@ -384,7 +455,28 @@ describe('consumer parity', () => {
 
       expect(onValueChange.mock.calls).toEqual([['1990-07-21[u-ca=dangi]', VALID_DETAILS]]);
       expect(onSubmitBirthDate.mock.calls).toEqual([['1990-07-21[u-ca=dangi]']]);
-      expect(formElementOf(screen.getByRole('form', { name: BIRTH_FORM_LABEL })).checkValidity()).toBe(true);
+    });
+
+    it('blocks the required birth date until the lunar date shown on the sheet is confirmed', async () => {
+      const onSubmitBirthDate = vi.fn();
+      const onValueChange = vi.fn();
+      const screen = await renderInLunarApp(
+        <BirthDateForm onSubmitBirthDate={onSubmitBirthDate} onValueChange={onValueChange} />,
+      );
+      const form = formElementOf(screen.getByRole('form', { name: BIRTH_FORM_LABEL }));
+      expect(form.checkValidity()).toBe(false);
+
+      await openSheet({
+        trigger: screen.getByRole('button', { name: endsWith(BIRTH_DATE_LABEL) }),
+        initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }),
+      });
+      await pressWithKeyboard(screen.getByRole('button', { name: ko.labels.confirm }));
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+
+      expect(onValueChange.mock.calls).toEqual([[`${FIXED_TODAY}[u-ca=dangi]`, VALID_DETAILS]]);
+      expect(form.checkValidity()).toBe(true);
+      await screen.getByRole('button', { name: SUBMIT_LABEL }).click();
+      expect(onSubmitBirthDate.mock.calls).toEqual([[`${FIXED_TODAY}[u-ca=dangi]`]]);
     });
 
     it('switches the inline wheel to lunar from an app toggle and keeps the same birth date', async () => {

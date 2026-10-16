@@ -7,26 +7,11 @@ import { Calendar, RangeCalendar } from '../index';
 import { DatePicker, DateRangePicker, MonthPicker, TimePicker, WheelDatePicker } from '../pickers/index';
 import { KoreanProvider } from '../testing/korean-fixture';
 
-// Goal: 두 달을 나란히 두는 web-console 데스크톱 폭. 기본 폭(480)에서는 두 달이 세로로 쌓여 화면 밖으로 나감
-const SIDE_BY_SIDE_VIEWPORT: Viewport = { height: 640, width: 800 };
-const STAGE_ID = 'stage';
-const THEMES = ['light', 'dark'] as const;
 // Constraint: vitest.visual.config.ts의 viewport를 다시 적지 않도록 처음 크기를 읽어 둠
 const CONFIGURED_VIEWPORT: Viewport = { height: window.innerHeight, width: window.innerWidth };
-
-type Subject = {
-  readonly element: ReactElement;
-  // Goal: 처음부터 열린 팝오버가 포털로 그려질 때까지 기다린 뒤 찍음
-  readonly hasPopover: boolean;
-  readonly name: string;
-  readonly viewport?: Viewport | undefined;
-};
-
-type Viewport = {
-  readonly height: number;
-  readonly width: number;
-};
-
+// Goal: 두 달을 나란히 두는 web-console 데스크톱 폭. 기본 폭(480)에서는 두 달이 세로로 쌓여 화면 밖으로 나감. Linux 글꼴 폭 차이를 견디도록 여유를 둠
+const SIDE_BY_SIDE_VIEWPORT: Viewport = { height: 768, width: 1024 };
+const STAGE_ID = 'stage';
 const SUBJECTS: readonly Subject[] = [
   { name: 'calendar', hasPopover: false, element: <Calendar.Root defaultValue="2026-10-20" /> },
   {
@@ -64,6 +49,20 @@ const SUBJECTS: readonly Subject[] = [
   },
   { name: 'wheel-date-picker', hasPopover: false, element: <WheelDatePicker defaultValue="1990-03-15" /> },
 ];
+const THEMES = ['light', 'dark'] as const;
+
+type Subject = {
+  readonly element: ReactElement;
+  // Goal: 처음부터 열린 팝오버가 포털로 그려질 때까지 기다린 뒤 찍음
+  readonly hasPopover: boolean;
+  readonly name: string;
+  readonly viewport?: Viewport | undefined;
+};
+
+type Viewport = {
+  readonly height: number;
+  readonly width: number;
+};
 
 // Goal: 요소 스크린샷은 그 상자만큼 페이지를 잘라 찍으므로, body로 포털된 팝오버가 무대 밖으로 나가 잘리면 기준 이미지가 팝오버를 놓침. 찍기 전에 막음
 const expectSurfacesInsideStage = (): void => {
