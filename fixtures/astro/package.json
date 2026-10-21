@@ -1,0 +1,26 @@
+{
+  "name": "@lunisolar-picker-fixtures/astro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "check:markup": "tsx ../../scripts/assert-markup.ts dist/index.html '<astro-island' 'data-lsp-part=\"date-field\"' 'value=\"1990-06-23[u-ca=dangi]\"'",
+    "check:hydration": "tsx ../../scripts/check-hydration.ts dist /",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@astrojs/react": "7.0.1",
+    "@lunisolar-picker/calendar": "workspace:*",
+    "@lunisolar-picker/core": "workspace:*",
+    "@lunisolar-picker/react": "workspace:*",
+    "@lunisolar-picker/theme": "workspace:*",
+    "astro": "7.3.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "oxc-transform-react": "0.145.0"
+  }
+}
