@@ -1,4 +1,4 @@
-import { autoUpdate, flip, offset, type Placement, shift, useFloating } from '@floating-ui/react-dom';
+import { autoUpdate, flip, offset, type Placement, shift, size, useFloating } from '@floating-ui/react-dom';
 import {
   type ButtonHTMLAttributes,
   type CSSProperties,
@@ -17,6 +17,7 @@ import { useControllableState } from '../utilities/use-controllable-state';
 import { useLatestRef } from '../utilities/use-latest-ref';
 import { useMergedRefs } from '../utilities/use-merged-refs';
 
+const MIN_POPOVER_SIZE_PIXELS = 160;
 const POPOVER_OFFSET_PIXELS = 8;
 const VIEWPORT_PADDING_PIXELS = 8;
 
@@ -61,6 +62,17 @@ export const usePopover = ({
       offset(POPOVER_OFFSET_PIXELS),
       flip({ padding: VIEWPORT_PADDING_PIXELS }),
       shift({ padding: VIEWPORT_PADDING_PIXELS }),
+      // Goal: 두 달 달력처럼 넓은 콘텐츠도 화면 밖으로 나가지 않게, 남은 폭·높이를 테마가 max-size로 쓰도록 넘김
+      size({
+        padding: VIEWPORT_PADDING_PIXELS,
+        apply: ({ availableWidth, availableHeight, elements }) => {
+          // Constraint: 기준 요소가 화면 끝에 걸리면 남은 크기가 0 이하로 오므로 쓸 수 있는 최소 크기를 둠
+          const width = Math.max(availableWidth, MIN_POPOVER_SIZE_PIXELS);
+          const height = Math.max(availableHeight, MIN_POPOVER_SIZE_PIXELS);
+          elements.floating.style.setProperty('--lsp-popover-available-width', `${width}px`);
+          elements.floating.style.setProperty('--lsp-popover-available-height', `${height}px`);
+        },
+      }),
     ],
     whileElementsMounted: autoUpdate,
   });

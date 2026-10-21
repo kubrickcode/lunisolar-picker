@@ -63,6 +63,6 @@ function LastWeek({ range }: { range: DateRangeValue }) {
 
 **A filter chip trigger.** Pass your chip to `Popover.Trigger`'s `render` prop. The chip receives the trigger's ARIA attributes, event handlers and ref. On a finished picker, use `renderTrigger` and spread `triggerProps` on your button.
 
-**Two months.** Set `numberOfMonths={2}` on the root. `Calendar.Layout` renders both; in your own layout render `<Calendar.Grid monthIndex={1}>` next to the first grid.
+**Two months.** Set `numberOfMonths={2}` on the root. `Calendar.Layout` renders both; in your own layout put `<Calendar.Heading monthIndex={1} />` and `<Calendar.Grid monthIndex={1}>` in a second `data-lsp-part="calendar-month"` element while the day grid is showing, as described in [Calendar parts](/parts/calendar/).
 
 **A warning for long ranges.** With `limitMode="flag"`, read `validity.reasons` from `onValueChange`, or from `useRangeCalendarContext().validity` inside the popover, and render your own message.

@@ -15,18 +15,24 @@ import { HolidayCalendarDemo } from '../../../components/demos/HolidayCalendarDe
 import { Calendar } from '@lunisolar-picker/react';
 
 <Calendar.Root aria-label="Due date" value={value} onValueChange={(next) => setValue(next)}>
-  <Calendar.Header>
-    <Calendar.PrevButton />
-    <Calendar.ViewButton />
-    <Calendar.NextButton />
-    <Calendar.CalendarToggle />
-    <Calendar.TodayButton />
-  </Calendar.Header>
-  <Calendar.Grid monthIndex={0}>{(cell) => <Calendar.Cell key={cell.epochDay} cell={cell} />}</Calendar.Grid>
-  <Calendar.MonthGrid />
-  <Calendar.YearGrid />
+  <Calendar.CalendarToggle />
+  <div data-lsp-part="calendar-months">
+    <div data-lsp-part="calendar-month">
+      <Calendar.Header>
+        <Calendar.ViewButton />
+        <Calendar.TodayButton />
+        <Calendar.PrevButton />
+        <Calendar.NextButton />
+      </Calendar.Header>
+      <Calendar.Grid monthIndex={0}>{(cell) => <Calendar.Cell key={cell.epochDay} cell={cell} />}</Calendar.Grid>
+      <Calendar.MonthGrid />
+      <Calendar.YearGrid />
+    </div>
+  </div>
 </Calendar.Root>;
 ```
+
+The two wrapper elements are what the Mono theme lays out: the header takes the width of the day grid, so the arrows stay put while the month name changes, and each later month's heading sits on the same line as the header. With `numberOfMonths={2}`, `Calendar.Layout` adds a second `calendar-month` element holding `<Calendar.Heading monthIndex={1} />` and `<Calendar.Grid monthIndex={1}>`, and only while the day grid is showing. The month and year grids take the size of the day grid, so switching views does not resize the popover.
 
 `RangeCalendar.Root` takes range props (`minDays`, `maxDays`, `limitMode`, `isOpenEndAllowed`, `startName`, `endName`) and accepts the same children. Passing children replaces the default layout, so add `<Calendar.Layout />` yourself when you only want to put something around it.
 
