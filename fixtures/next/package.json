@@ -1,0 +1,23 @@
+{
+  "name": "@lunisolar-picker-fixtures/next",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "check:markup": "tsx ../../scripts/assert-markup.ts out/index.html 'data-lsp-part=\"date-field\"' 'name=\"installedAt\"' 'value=\"2026-10-14\"' 'name=\"periodStart\"' 'name=\"periodEnd\"'",
+    "check:hydration": "tsx ../../scripts/check-hydration.ts out /"
+  },
+  "dependencies": {
+    "@lunisolar-picker/calendar": "workspace:*",
+    "@lunisolar-picker/core": "workspace:*",
+    "@lunisolar-picker/react": "workspace:*",
+    "@lunisolar-picker/theme": "workspace:*",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
+  }
+}
