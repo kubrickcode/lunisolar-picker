@@ -24,7 +24,17 @@ export default defineConfig({
           label: 'Parts',
           items: ['parts/calendar', 'parts/date-field', 'parts/wheel', 'parts/time-field', 'parts/popover-and-sheet'],
         },
-        { label: 'Guides', items: ['guides/customizing-pickers'] },
+        {
+          label: 'Guides',
+          items: [
+            'guides/customizing-pickers',
+            'guides/lunar-calendar',
+            'guides/forms',
+            'guides/nextjs',
+            'guides/accessibility',
+            'guides/migrating-from-react-day-picker',
+          ],
+        },
       ],
     }),
     react(),

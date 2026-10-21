@@ -51,6 +51,8 @@ docs-build: build
     pnpm exec tsx scripts/assert-markup.ts apps/docs/dist/pickers/date-range-picker/index.html '<astro-island' 'client="only"'
     pnpm exec tsx scripts/assert-markup.ts apps/docs/dist/parts/calendar/index.html '<astro-island' 'Rendering a day'
     pnpm exec tsx scripts/assert-markup.ts apps/docs/dist/guides/customizing-pickers/index.html '<astro-island' 'useRangeCalendarContext'
+    pnpm exec tsx scripts/assert-markup.ts apps/docs/dist/guides/lunar-calendar/index.html '<astro-island' 'M05L'
+    pnpm exec tsx scripts/assert-markup.ts apps/docs/dist/guides/migrating-from-react-day-picker/index.html 'limitMode'
 
 compare-intl:
     pnpm --filter @lunisolar-picker/calendar run compare:intl
