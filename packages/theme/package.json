@@ -2,6 +2,7 @@
   "name": "@lunisolar-picker/theme",
   "version": "0.0.0",
   "description": "Mono theme for lunisolar-picker parts",
+  "license": "MIT",
   "type": "module",
   "sideEffects": [
     "*.css"
