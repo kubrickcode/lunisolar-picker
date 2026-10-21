@@ -44,10 +44,8 @@ jobs:
         run: just test
       - name: Package format
         run: just package-check
-      # Constraint: 크기 예산(DatePicker 15KB 등)을 넘는 현재 측정값을 받아들일지 사용자 결정 대기 중이라 결과만 남기고 CI를 막지 않음. 예산이 정해지면 continue-on-error를 지움
       - name: Bundle size budget
         run: just size
-        continue-on-error: true
       - name: Packed tarballs
         run: just pack-check
       - name: Consumer fixtures
