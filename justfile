@@ -35,6 +35,9 @@ package-check: build
 size: build
     pnpm exec tsx scripts/check-bundle-size.ts
 
+pack-check: build
+    pnpm exec tsx scripts/check-packed-packages.ts
+
 # Constraint: fixtures는 배포 산출물(dist)을 소비하므로 build 뒤에만 타입 검사·테스트가 가능함. 그래서 check·test에서 빼고 여기서 돌림
 fixtures: build
     pnpm -r --filter "./fixtures/**" run typecheck
