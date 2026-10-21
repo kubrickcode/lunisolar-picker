@@ -1,0 +1,68 @@
+---
+title: Calendar parts
+description: Build your own calendar from Calendar and RangeCalendar parts.
+---
+
+import { HolidayCalendarDemo } from '../../../components/demos/HolidayCalendarDemo';
+
+<HolidayCalendarDemo client:only="react" />
+
+## Anatomy
+
+`Calendar.Root` without children renders `Calendar.Layout`, the same layout the finished pickers use. This is what it contains, built from public parts:
+
+```tsx
+import { Calendar } from '@lunisolar-picker/react';
+
+<Calendar.Root aria-label="Due date" value={value} onValueChange={(next) => setValue(next)}>
+  <Calendar.Header>
+    <Calendar.PrevButton />
+    <Calendar.ViewButton />
+    <Calendar.NextButton />
+    <Calendar.CalendarToggle />
+    <Calendar.TodayButton />
+  </Calendar.Header>
+  <Calendar.Grid monthIndex={0}>{(cell) => <Calendar.Cell key={cell.epochDay} cell={cell} />}</Calendar.Grid>
+  <Calendar.MonthGrid />
+  <Calendar.YearGrid />
+</Calendar.Root>;
+```
+
+`RangeCalendar.Root` takes range props (`minDays`, `maxDays`, `limitMode`, `isOpenEndAllowed`, `startName`, `endName`) and accepts the same children. Passing children replaces the default layout, so add `<Calendar.Layout />` yourself when you only want to put something around it.
+
+| Part | Renders | Notes |
+|---|---|---|
+| `Root` | `div` | Owns state. Accepts every prop of `useCalendar` (`RangeCalendar.Root`: `useRangeCalendar`). With `name` it adds a hidden input. |
+| `Layout` | parts below | The default layout. `renderCell` draws the inside of each day. |
+| `Header` | `div` | Layout only. |
+| `Heading` | `span[aria-live]` | Month and year in the displayed calendar. `monthIndex` picks a month when `numberOfMonths > 1`. |
+| `PrevButton`, `NextButton` | `button` | Move one month (one year in the month view, one page in the year view). `aria-disabled` at `min` and `max`. |
+| `ViewButton` | `button` | Shows the heading and steps the view from days to months to years. |
+| `TodayButton` | `button` | Shows and focuses today. `aria-disabled` while today is visible. |
+| `CalendarToggle` | `div[role=group]` of `button[aria-pressed]` | Switches between solar and lunar grids. Renders nothing unless a second calendar such as `dangi` is enabled. |
+| `Grid` | `table[role=grid]` | Days view only. `monthIndex` picks which of `numberOfMonths` months to show. Its child function receives each cell. |
+| `HeadCell` | `th` | Weekday name. |
+| `Cell` | `td[role=gridcell] > button` | One day. Children can be a function of `CellRenderInfo`. |
+| `MonthGrid`, `YearGrid` | `table[role=grid]` | Shown when the view is `months` or `years`. |
+
+Hooks for your own parts: `useCalendarView()` inside either root, `useSingleCalendar()` inside `Calendar.Root`, `useRangeCalendarContext()` inside `RangeCalendar.Root` (with `setRange`, `commit` and `cancel`).
+
+## Rendering a day
+
+`Calendar.Cell` children may be a function. It receives the day and its state:
+
+```ts
+interface CellRenderInfo {
+  epochDay: EpochDay;
+  date: DateString;          // solar 'YYYY-MM-DD'
+  day: number;               // day number in the displayed calendar
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  isOutsideMonth: boolean;
+  isOutsideSupportedRange: boolean;
+  secondary: { calendarId; monthCode; day; isLeapMonth; isFirstDayOfMonth } | null; // lunar label in the solar grid
+  isSelected: boolean; isToday: boolean; isDisabled: boolean; isFocused: boolean;
+  isInRange: boolean; isRangeStart: boolean; isRangeEnd: boolean; isPreview: boolean;
+}
+```
+
+Use it for holiday names, dots or counts. Add the same information to `getCellLabel` so screen reader users hear it: its result is read after the full date. The finished pickers take the same function as `renderCell`.

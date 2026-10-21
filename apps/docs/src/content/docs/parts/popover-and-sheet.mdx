@@ -1,0 +1,34 @@
+---
+title: Popover and Sheet
+description: Containers that open a picker next to its trigger or from the bottom of the screen.
+---
+
+```tsx
+import { Calendar, Popover } from '@lunisolar-picker/react';
+
+<Popover.Root>
+  <Popover.Trigger render={<FilterChip />}>Due date</Popover.Trigger>
+  <Popover.Content aria-label="Choose due date">
+    <Calendar.Root value={value} onValueChange={(next) => setValue(next)} />
+    <Popover.Close>Done</Popover.Close>
+  </Popover.Content>
+</Popover.Root>;
+```
+
+`Popover.Trigger` and `Popover.Close` take a `render` prop to use your own button. `Popover.Close` runs your `onClick` first, then closes unless you call `event.preventDefault()`. `Popover.Root` takes `open`, `defaultOpen`, `onOpenChange` and `placement` (default `'bottom-start'`).
+
+| | Popover | Sheet |
+|---|---|---|
+| Role | `dialog` | `dialog`, `aria-modal="true"` |
+| Name | Give `Content` an `aria-label` | Same |
+| Opening | `Popover.Trigger` | Your own button sets `open` (there is no `Sheet.Trigger`) |
+| Position | Next to the trigger, flips and shifts to stay on screen | Bottom of the viewport |
+| Focus | Moves to the selected day or today, stays inside, returns to the trigger on close | Same |
+| Closing | Escape, outside click, `Close` | Escape, backdrop tap, `Close` |
+| Background | Interactive | `inert`, scroll locked |
+
+Content is rendered in a portal at the end of `body` and unmounted when closed, so a calendar inside it starts fresh each time it opens. Put `.dark` or `data-theme` and your font on `html` or `body` so portal content inherits them.
+
+The finished pickers pick a sheet automatically on narrow touch screens (`presentation="auto"`, which matches `(pointer: coarse) and (max-width: 640px)`). In your own compositions, `usePresentation('auto')` gives the same answer.
+
+Swipe-to-close is not supported, because it competes with wheel scrolling inside the sheet.

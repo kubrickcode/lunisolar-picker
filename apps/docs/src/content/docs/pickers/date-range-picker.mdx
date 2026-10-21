@@ -1,0 +1,103 @@
+---
+title: DateRangePicker
+description: Select a start and end date with drag, presets, length limits and an optional confirm step.
+---
+
+import { DateRangePickerDemo } from '../../../components/demos/DateRangePickerDemo';
+
+<DateRangePickerDemo client:only="react" />
+
+The demo limits ranges to 14 days in `'flag'` mode with a confirm step: pick a longer range and the footer shows a warning while Apply stays disabled.
+
+```tsx
+import { DateRangePicker } from '@lunisolar-picker/react/pickers';
+
+<DateRangePicker
+  aria-label="Report period"
+  value={range}
+  onValueChange={(next) => setRange(next)}
+  max={today}
+  maxDays={60}
+  limitMode="flag"
+  commitMode="confirm"
+  numberOfMonths={2}
+  presets={<MyPresets />}
+/>;
+```
+
+## Selecting
+
+- Click a start day, then an end day. Clicking again after a complete range starts a new one.
+- With a mouse or pen, drag across days. Grab either end of an existing range to move it. Hold the pointer at the calendar edge for half a second to turn the month.
+- On touch screens, tap the start and the end. Dragging is off so the page can scroll.
+- With the keyboard, press <kbd>Enter</kbd> on the start and again on the end.
+
+## Length limits
+
+`minDays` and `maxDays` count both ends: 13 to 17 October is 5 days.
+
+| `limitMode` | Behaviour |
+|---|---|
+| `'block'` (default) | Days that would make the range too long or too short cannot be chosen. |
+| `'flag'` | Any range can be chosen. `validity.reasons` contains `'range-too-long'` or `'range-too-short'` and the range gets `data-invalid`, so you can show your own warning. In `'immediate'` mode the invalid range is committed and `onValueChange` reports the reasons. |
+
+In `'confirm'` mode the Confirm button stays disabled while the draft range is invalid or incomplete.
+
+## Presets
+
+Put your own buttons in the `presets` slot. Inside it, `usePickerSelection()` returns the working range as `draftRange` and sets it with `setRange`. Use `validateRange` to disable presets that break your limits and `isSameRange` to highlight the active one:
+
+```tsx
+import { type DateRangeValue, isSameRange } from '@lunisolar-picker/calendar';
+import { validateRange } from '@lunisolar-picker/core';
+import { usePickerSelection } from '@lunisolar-picker/react/pickers';
+
+function MyPresets({ presets }: { presets: readonly { label: string; range: DateRangeValue }[] }) {
+  const { draftRange, setRange } = usePickerSelection();
+  return presets.map((preset) => (
+    <button
+      key={preset.label}
+      type="button"
+      disabled={!validateRange(preset.range, { maxDays: 60 }).isValid}
+      aria-pressed={isSameRange(draftRange, preset.range)}
+      onClick={() => setRange(preset.range)}
+    >
+      {preset.label}
+    </button>
+  ));
+}
+```
+
+| `usePickerSelection()` | |
+|---|---|
+| `draftRange` | The range shown in the calendar, including an unconfirmed draft. |
+| `validity` | Validity of that range. |
+| `setRange(range)` | Show a range. In `'immediate'` mode a complete range is committed and the picker closes. |
+| `commit()`, `cancel()` | Confirm or discard the draft and close. |
+
+`usePickerSelection` works only inside `presets` and `footer`. The demo's warning is a footer:
+
+```tsx
+function LengthWarning() {
+  const { validity } = usePickerSelection();
+  if (!validity.reasons.includes('range-too-long')) return null;
+  return <p role="status">Ranges are limited to 14 days.</p>;
+}
+
+<DateRangePicker maxDays={14} limitMode="flag" commitMode="confirm" footer={<LengthWarning />} />;
+```
+
+## Props
+
+All [DatePicker props](/pickers/date-picker/#props) except that values are ranges and `name` is replaced by `startName` and `endName`, plus:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value`, `defaultValue` | `{ start: string; end: string \| null } \| null` | `null` | Canonical range. |
+| `onValueChange` | `(value: DateRangeValue \| null, details: { validity }) => void` | | Called when a range is complete, or on Confirm in `'confirm'` mode. |
+| `onPick` | `(value: DateRangeValue) => void` | | Called whenever the user completes a range in the calendar. |
+| `minDays`, `maxDays` | `number` | | Length limits, both ends included. |
+| `limitMode` | `'block' \| 'flag'` | `'block'` | See above. |
+| `isOpenEndAllowed` | `boolean` | `false` | Allow `end: null` as a committed value, for "no end date". |
+| `presets` | `ReactNode` | | Slot for preset buttons. |
+| `startName`, `endName` | `string` | | Hidden inputs for native form submission. |

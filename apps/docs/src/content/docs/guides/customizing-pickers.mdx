@@ -1,0 +1,68 @@
+---
+title: Customizing pickers
+description: Compose your own picker from public parts and change any piece of it.
+---
+
+import { Code } from '@astrojs/starlight/components';
+import { CustomRangePickerDemo } from '../../../components/demos/CustomRangePickerDemo';
+import recipeSource from '../../../components/recipes/MyDateRangePicker.tsx?raw';
+
+Props cover the common changes: `renderCell`, `renderTrigger`, `presets`, `footer`, tokens and `data-*` attributes. When they are not enough, compose your own picker from the public parts. The parts and their `data-*` attributes are stable; the finished pickers' internal markup may change in minor releases, which is why composing is safer than styling their internals.
+
+## A range picker from parts
+
+<CustomRangePickerDemo client:only="react" />
+
+This is the complete source of the demo above. It uses only `@lunisolar-picker/react`:
+
+<Code code={recipeSource} lang="tsx" title="MyDateRangePicker.tsx" />
+
+How the pieces fit:
+
+- The field and the calendar are siblings that share one controlled value. Do not wrap the field in `RangeCalendar.Root`.
+- `RangeCalendar.Root` lives inside `Popover.Content`, which unmounts on close, so an unconfirmed draft disappears when the popover closes.
+- Form names (`startName`, `endName`) go on the field only, which is always mounted. Putting them on both parts would submit every value twice.
+- Children of `RangeCalendar.Root` replace its default layout, so the recipe renders `<Calendar.Layout />` itself.
+- `Popover.Content` has no default name. Give it an `aria-label`.
+
+The finished `DateRangePicker` adds a clear button, a bottom sheet on phones, form reset and the `presets` slot on top of this.
+
+## Common edits
+
+**Close on pick instead of confirming.** Drop `commitMode="confirm"` and the buttons, control the popover, and close it in `onPick`, which runs after `onValueChange` whenever the user completes a range:
+
+```tsx
+<RangeCalendar.Root value={value} onValueChange={onValueChange} onPick={() => setIsOpen(false)}>
+  <Calendar.Layout />
+</RangeCalendar.Root>
+```
+
+**Presets.** Inside `RangeCalendar.Root`, `useRangeCalendarContext().setRange(range)` shows a range, and `validity` tells you whether the draft is acceptable. (`usePickerSelection` belongs to the finished `DateRangePicker`.)
+
+```tsx
+function LastWeek({ range }: { range: DateRangeValue }) {
+  const calendar = useRangeCalendarContext();
+  return <button type="button" onClick={() => calendar.setRange(range)}>Last 7 days</button>;
+}
+```
+
+**Holiday names in cells.** Pass `renderCell` to `Calendar.Layout`, and `getCellLabel` to the root so screen readers hear the holiday:
+
+```tsx
+<RangeCalendar.Root value={value} onValueChange={onValueChange} getCellLabel={(cell) => holidays[cell.date]}>
+  <Calendar.Layout
+    renderCell={(info) => (
+      <>
+        {info.day}
+        {holidays[info.date] && <small>{holidays[info.date]}</small>}
+      </>
+    )}
+  />
+</RangeCalendar.Root>
+```
+
+**A filter chip trigger.** Pass your chip to `Popover.Trigger`'s `render` prop. The chip receives the trigger's ARIA attributes, event handlers and ref. On a finished picker, use `renderTrigger` and spread `triggerProps` on your button.
+
+**Two months.** Set `numberOfMonths={2}` on the root. `Calendar.Layout` renders both; in your own layout render `<Calendar.Grid monthIndex={1}>` next to the first grid.
+
+**A warning for long ranges.** With `limitMode="flag"`, read `validity.reasons` from `onValueChange`, or from `useRangeCalendarContext().validity` inside the popover, and render your own message.

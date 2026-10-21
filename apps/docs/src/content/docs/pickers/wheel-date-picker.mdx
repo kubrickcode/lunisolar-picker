@@ -1,0 +1,31 @@
+---
+title: WheelDatePicker
+description: Year, month and day drums with momentum scrolling, mouse wheel and keyboard support.
+---
+
+import { WheelDatePickerDemo } from '../../../components/demos/WheelDatePickerDemo';
+
+<WheelDatePickerDemo client:only="react" />
+
+```tsx
+import { WheelDatePicker } from '@lunisolar-picker/react/pickers';
+
+<WheelDatePicker aria-label="Birth date" presentation="sheet" value={birthDate} onValueChange={(next) => setBirthDate(next)} />;
+```
+
+Flick a column on a phone and it keeps spinning, then settles on an item. On a desktop use the mouse wheel, drag, click an item, or focus a column and use the arrow keys, <kbd>PageUp</kbd> and <kbd>PageDown</kbd> (five items), <kbd>Home</kbd> and <kbd>End</kbd>. In the year column you can type a year.
+
+When lunar dates are on, the month column lists leap months only in years that have them. If the year changes and the leap month disappears, the picker moves to the regular month. If a lunar month has 29 days, day 30 moves to 29.
+
+With `presentation="sheet"` the trigger shows the value and opens the drums in a bottom sheet. Scrolling there changes a draft; Confirm keeps it and Cancel or closing discards it.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `presentation` | `'inline' \| 'sheet'` | `'inline'` | Render in place, or in a bottom sheet with a trigger. |
+| `value`, `defaultValue`, `onValueChange`, `min`, `max` | | | As on [DatePicker](/pickers/date-picker/#props). Disabling single days is not supported on wheels. |
+| `entryCalendar`, `defaultEntryCalendar`, `onEntryCalendarChange` | `'gregory' \| 'dangi'` | value's calendar | Which calendar the drums use when lunar dates are enabled. |
+| `open`, `defaultOpen`, `onOpenChange` | `boolean` | | Control the sheet. |
+| `isClearable`, `renderTrigger`, `placeholder`, `ref`, `onBlur`, `onInvalidValue` | | | As on DatePicker. |
+| `name`, `form`, `required`, `disabled`, `readOnly`, `invalid` | | | Same as native inputs. |
+
+An inline wheel always shows a date. While the value is empty it shows today.
