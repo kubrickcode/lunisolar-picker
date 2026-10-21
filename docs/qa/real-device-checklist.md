@@ -27,7 +27,8 @@
 | DateRangePicker(두 달, 확인 후 반영) | `/pickers/date-range-picker/` | en |
 | WheelDatePicker(인라인) | `/pickers/wheel-date-picker/` | en |
 | TimePicker(5분 단위, 24:00 허용) | `/pickers/time-picker/` | en |
-| 음력 DatePicker | `/guides/lunar-calendar/` | ko, dangi |
+| 음력 DatePicker | `/guides/lunar-calendar/` 첫 데모 | ko, dangi |
+| 음력 WheelDatePicker(2023년 윤2월 15일) | `/guides/lunar-calendar/` 둘째 데모 | ko, dangi |
 
 ## 항목
 
@@ -49,7 +50,7 @@
 - [ ] 멈춘 뒤 가운데 줄에 정확히 맞춰진다(반 칸 걸림 없음).
 - [ ] 휠을 굴리는 동안 페이지나 시트가 같이 스크롤되지 않는다.
 - [ ] 60fps에 가깝게 보인다(끊김을 느끼면 ❌). 중저가 Android 한 대 이상 포함.
-- [ ] (음력 휠 데모 필요) 음력 모드에서 연도를 바꿔 윤달이 사라지면 월이 평달로 옮겨진다. 문서에는 음력 휠 데모가 없으므로 확인 전에 데모를 더하거나 사용하는 앱에서 확인한다.
+- [ ] 음력 휠 데모에서 연도를 2024로 굴리면 윤2월이 평달 2월로 옮겨진다.
 
 ### 3. 시트와 스크롤 잠금
 
@@ -81,7 +82,7 @@ picker는 OS 설정을 스스로 따르지 않고 조상의 `data-theme`·`.dark
 ### 6. 스크린 리더
 
 - [ ] VoiceOver(iOS)로 달력 날짜를 넘기면 전체 날짜가 읽히고, 음력 데모에서는 음력 날짜가 읽힌다.
-- [ ] TalkBack으로 휠 열을 조작하면 숫자 위치가 아니라 열의 텍스트 값(예: "March", "1990")이 읽힌다. 음력 휠의 "윤4월"은 음력 휠 데모가 생기면 확인한다.
+- [ ] TalkBack으로 휠 열을 조작하면 숫자 위치가 아니라 열의 텍스트 값(예: "March", "1990")이 읽힌다. 음력 휠 데모의 월 열에서는 "윤2월"이 읽힌다.
 - [ ] 월을 넘기면 달력 제목(예: "April 2026")이 한 번 읽힌다. 이전·다음 버튼 안에서 같은 문구가 두 번 읽히지 않는다. (VoiceOver, NVDA)
 - [ ] 읽기 전용 달력·칸이 "읽기 전용" 또는 "흐리게 표시됨"으로 읽히고, 날짜를 고를 수 있다고 안내되지 않는다. (VoiceOver, NVDA)
 - [ ] 빈 날짜 칸은 값 문구로 placeholder("MM", "DD", "YYYY")를 내보낸다. 실제로 어떻게 읽히는지 적고, 값이 있는 것처럼 오해되면 ❌. (VoiceOver, NVDA)

@@ -4,6 +4,7 @@ description: Accept and display Korean lunar dates, including leap months and 30
 ---
 
 import { LunarDatePickerDemo } from '../../../components/demos/LunarDatePickerDemo';
+import { LunarWheelDatePickerDemo } from '../../../components/demos/LunarWheelDatePickerDemo';
 
 <LunarDatePickerDemo client:only="react" />
 
@@ -51,6 +52,10 @@ const parsed = parseDate('1990-06-23[u-ca=dangi]', { calendars: [dangi] });
 - While scrolling a wheel or clicking a calendar, a date that stops existing is moved to the nearest one: a vanished leap month becomes the regular month, and day 30 becomes day 29.
 - While typing, or when reading a string, the date is never changed. The field shows `data-invalid` and reports `'invalid-date'`.
 - In a date field, press <kbd>L</kbd> (or <kbd>ㅣ</kbd> with a Korean keyboard layout) to toggle the leap month.
+
+The wheel below opens on leap 2nd month, day 15 of 2023. Scroll the year to 2024, which has no leap 2nd month, and the month moves to the regular 2nd month.
+
+<LunarWheelDatePickerDemo client:only="react" />
 
 ## Supported range
 
