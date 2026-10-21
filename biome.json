@@ -6,7 +6,18 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/.cache", "!**/*.generated.ts", "!**/data/*.json"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/dist-ssr",
+      "!**/.cache",
+      "!**/.next",
+      "!**/out",
+      "!**/.astro",
+      "!**/*.generated.ts",
+      "!**/data/*.json",
+      "!**/next-env.d.ts"
+    ]
   },
   "formatter": {
     "indentStyle": "space",

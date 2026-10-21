@@ -9,7 +9,7 @@ check: typecheck lint deps
 
 typecheck:
     pnpm exec tsc --noEmit -p tsconfig.scripts.json
-    pnpm -r run typecheck
+    pnpm -r --filter "./packages/**" run typecheck
 
 lint:
     pnpm exec biome check .
@@ -24,16 +24,24 @@ install-browsers:
     pnpm exec playwright install chromium firefox webkit
 
 test:
-    pnpm -r run test
+    pnpm -r --filter "./packages/**" run test
 
 build:
-    pnpm -r run build
+    pnpm -r --filter "./packages/**" run build
 
 package-check: build
     pnpm -r run package-check
 
 size: build
     pnpm exec tsx scripts/check-bundle-size.ts
+
+# Constraint: fixtures는 배포 산출물(dist)을 소비하므로 build 뒤에만 타입 검사·테스트가 가능함. 그래서 check·test에서 빼고 여기서 돌림
+fixtures: build
+    pnpm -r --filter "./fixtures/**" run typecheck
+    pnpm -r --filter "./fixtures/**" run test
+    pnpm -r --filter "./fixtures/**" run build
+    pnpm -r --filter "./fixtures/**" run check:markup
+    pnpm -r --filter "./fixtures/**" --if-present run check:hydration
 
 compare-intl:
     pnpm --filter @lunisolar-picker/calendar run compare:intl
