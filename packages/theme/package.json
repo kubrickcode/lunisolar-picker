@@ -3,6 +3,15 @@
   "version": "0.0.0",
   "description": "Mono theme for lunisolar-picker parts",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kubrickcode/lunisolar-picker.git",
+    "directory": "packages/theme"
+  },
+  "homepage": "https://github.com/kubrickcode/lunisolar-picker#readme",
+  "bugs": {
+    "url": "https://github.com/kubrickcode/lunisolar-picker/issues"
+  },
   "type": "module",
   "sideEffects": [
     "*.css"
