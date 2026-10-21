@@ -1,0 +1,31 @@
+---
+title: lunisolar-picker
+description: Modern, accessible date pickers for React with optional Korean lunisolar calendar support.
+template: splash
+hero:
+  tagline: A calm, monochrome date picker kit for React. Solar-first, with Korean lunar dates one option away.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: Theming
+      link: /theming/
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Five pickers" icon="seti:react">
+    Date, date range, month, wheel and time pickers that work with mouse, keyboard and touch.
+  </Card>
+  <Card title="Headless core" icon="setting">
+    State lives in a framework-agnostic core. React parts render it; you can rebuild any picker from the same parts.
+  </Card>
+  <Card title="Strings in, strings out" icon="document">
+    Values are canonical strings such as `2026-10-14`. They compare with `===`, travel through URLs and forms, and parse with Temporal.
+  </Card>
+  <Card title="Korean lunar dates" icon="star">
+    Add `dangi` and users can enter lunar dates, leap months and 30th days. Data comes from the Korea Astronomy and Space Science Institute (KASI).
+  </Card>
+</CardGrid>
