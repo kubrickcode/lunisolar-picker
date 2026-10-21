@@ -188,6 +188,27 @@ describe('MonthPicker', () => {
       await expect.element(screen.getByRole('dialog', { name: '정산월 고르기' })).toBeVisible();
     });
 
+    it('shows its label while empty and names the trigger after it only once', async () => {
+      const screen = await renderPicker(<MonthPicker presentation="popover" aria-label="정산월 고르기" />);
+      const trigger = screen.getByRole('button', { name: '정산월 고르기' });
+
+      await expect.element(trigger).toHaveTextContent('정산월 고르기');
+      await expect.element(trigger).toHaveAccessibleName('정산월 고르기');
+    });
+
+    it('adds no default text when pointed at a visible label', async () => {
+      const screen = await renderPicker(
+        <>
+          <span id="settled-label">{CHIP_PLACEHOLDER}</span>
+          <MonthPicker presentation="popover" aria-labelledby="settled-label" />
+        </>,
+      );
+      const trigger = screen.getByRole('button', { name: CHIP_PLACEHOLDER });
+
+      await expect.element(trigger).toHaveTextContent('');
+      await expect.element(trigger).toHaveAccessibleName(CHIP_PLACEHOLDER);
+    });
+
     it('names the trigger after a visible label it is pointed at', async () => {
       const screen = await renderPicker(
         <>

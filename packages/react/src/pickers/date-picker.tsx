@@ -20,7 +20,7 @@ import { CalendarIcon, DefaultTrigger } from './default-trigger';
 import { formatDisplayDate } from './format-display-value';
 import { PickerClearButton } from './picker-clear-button';
 import { PickerCloseFooter, PickerFooter } from './picker-footer';
-import { PickerSurface } from './picker-surface';
+import { monthCountForSurface, PickerSurface } from './picker-surface';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
 import { useAppTriggerProps } from './use-app-trigger-props';
 import { useFieldRemount } from './use-field-remount';
@@ -233,7 +233,7 @@ export const DatePicker = (props: DatePickerProps): ReactElement => {
           defaultDisplayCalendar={defaultDisplayCalendar}
           displayCalendar={displayCalendar}
           getCellLabel={getCellLabel}
-          numberOfMonths={numberOfMonths}
+          numberOfMonths={monthCountForSurface(resolvedPresentation, numberOfMonths)}
           onDisplayCalendarChange={onDisplayCalendarChange}
           value={currentValue}
           onValueChange={changeValue}

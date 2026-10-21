@@ -114,3 +114,9 @@ const blockedTriggerProps = ({
 };
 
 const ignoreClick = (): void => {};
+
+// Constraint: 시트는 화면 폭이 좁아 여러 달을 세로로 쌓으면 한참 스크롤해야 하므로 한 달만 보임
+export const monthCountForSurface = (
+  presentation: ResolvedPresentation,
+  numberOfMonths: number | undefined,
+): number | undefined => (presentation === 'sheet' ? 1 : numberOfMonths);

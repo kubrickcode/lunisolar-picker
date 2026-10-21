@@ -104,7 +104,7 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
     onOpenChange,
     onValueChange,
     open,
-    placeholder = '',
+    placeholder,
     presentation = 'inline',
     ref,
     renderTrigger,
@@ -199,13 +199,14 @@ export const WheelDatePicker = (props: WheelDatePickerProps): ReactElement => {
     const appTriggerProps = toAppTriggerProps(triggerProps);
     const displayValue = formatDisplayDate(currentValue, settings, separator);
     return renderTrigger ? (
-      renderTrigger({ displayValue, isOpen, placeholder, triggerProps: appTriggerProps })
+      renderTrigger({ displayValue, isOpen, placeholder: placeholder ?? '', triggerProps: appTriggerProps })
     ) : (
       <ValueTrigger
         triggerProps={appTriggerProps}
         label={ariaLabel ?? labels.chooseDate}
         icon={<CalendarIcon />}
-        text={displayValue || placeholder}
+        placeholder={placeholder}
+        text={displayValue}
       />
     );
   };

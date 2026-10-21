@@ -75,7 +75,7 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
     onPick,
     onValueChange,
     open,
-    placeholder = '',
+    placeholder,
     presentation = 'auto',
     ref,
     renderTrigger,
@@ -155,13 +155,14 @@ export const MonthPicker = (props: MonthPickerProps): ReactElement => {
   const renderPickerTrigger = (triggerProps: PickerTriggerProps): ReactElement => {
     const appTriggerProps = toTriggerProps(triggerProps);
     return renderTrigger ? (
-      renderTrigger({ displayValue, isOpen, placeholder, triggerProps: appTriggerProps })
+      renderTrigger({ displayValue, isOpen, placeholder: placeholder ?? '', triggerProps: appTriggerProps })
     ) : (
       <ValueTrigger
         triggerProps={appTriggerProps}
         label={ariaLabel ?? labels.chooseMonth}
         icon={<CalendarIcon />}
-        text={displayValue || placeholder}
+        placeholder={placeholder}
+        text={displayValue}
       />
     );
   };

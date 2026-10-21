@@ -17,7 +17,7 @@ Flick a column on a phone and it keeps spinning, then settles on an item. On a d
 
 When lunar dates are on, the month column lists leap months only in years that have them. If the year changes and the leap month disappears, the picker moves to the regular month. If a lunar month has 29 days, day 30 moves to 29.
 
-With `presentation="sheet"` the trigger shows the value and opens the drums in a bottom sheet. Scrolling there changes a draft; Confirm keeps it and Cancel or closing discards it.
+With `presentation="sheet"` the trigger shows the value (or `placeholder`; without one it shows its label, the `aria-label` or "Choose date", unless `aria-labelledby` points at a visible label) and opens the drums in a bottom sheet. Scrolling there changes a draft; Confirm keeps it and Cancel or closing discards it.
 
 | Prop | Type | Default | Description |
 |---|---|---|---|

@@ -8,7 +8,8 @@ type DefaultTriggerProps = {
 };
 
 type ValueTriggerProps = DefaultTriggerProps & {
-  // Goal: 고른 값(없으면 placeholder). 비어 있으면 아이콘만 보임
+  readonly placeholder: string | undefined;
+  // Goal: 고른 값. 비어 있으면 placeholder를 보임
   readonly text: string;
 };
 
@@ -52,16 +53,20 @@ export const ClockIcon = (): ReactElement => (
 // Goal: 입력 칸이 없는 picker(월, 시트 휠)는 트리거가 값을 보여 줌
 // Constraint: 이름은 "보이는 값 + 동작 라벨"이라 음성 제어로 보이는 값을 말해도 눌림 (WCAG 2.5.3). 자기 id를 가리키는 자리에서는 aria-label(동작 라벨 또는 앱 라벨)이 쓰임 (accname 2B)
 // Constraint: 앱이 aria-labelledby를 주면 보이는 값 뒤에 앱이 가리킨 라벨을 이어 붙임. 보이는 값이 없으면 라벨만 씀
-export const ValueTrigger = ({ triggerProps, label, icon, text }: ValueTriggerProps): ReactElement => {
+export const ValueTrigger = ({ triggerProps, label, icon, placeholder, text }: ValueTriggerProps): ReactElement => {
   const ownId = useId();
   const textId = useId();
   const triggerId = triggerProps.id ?? ownId;
   const appLabelledBy = triggerProps['aria-labelledby'];
-  const labelledBy = text === '' ? appLabelledBy : `${textId} ${appLabelledBy ?? triggerId}`;
+  // Goal: 빈 트리거가 아이콘만 남아 무엇을 고르는 칸인지 모르는 일을 막음. 이름을 정하는 라벨을 그대로 보여 이름과 보이는 글이 같음
+  // Constraint: 앱이 aria-labelledby로 보이는 라벨을 이미 가리키면 그 라벨이 이름이므로 기본 글을 덧붙이지 않음
+  const visibleText = text || (placeholder ?? (appLabelledBy === undefined ? label : ''));
+  const isNamedByLabelAlone = visibleText === '' || (appLabelledBy === undefined && visibleText === label);
+  const labelledBy = isNamedByLabelAlone ? appLabelledBy : `${textId} ${appLabelledBy ?? triggerId}`;
   return (
     <button {...triggerProps} id={triggerId} type="button" aria-label={label} aria-labelledby={labelledBy}>
       {icon}
-      {text === '' ? null : <span id={textId}>{text}</span>}
+      {visibleText === '' ? null : <span id={textId}>{visibleText}</span>}
     </button>
   );
 };

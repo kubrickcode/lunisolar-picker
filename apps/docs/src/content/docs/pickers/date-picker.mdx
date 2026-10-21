@@ -26,7 +26,7 @@ Type the date digit by digit (`10142026` in `en`), paste it (`2026-10-14`, `2026
 | `min`, `max` | `string` | | Earliest and latest selectable dates. |
 | `isDateDisabled` | `(date: DateString) => boolean` | | Disable any other day. |
 | `commitMode` | `'immediate' \| 'confirm'` | `'immediate'` | With `'confirm'` the popover shows Confirm and Cancel, and closing without confirming discards the choice. |
-| `numberOfMonths` | `number` | `1` | Months shown side by side. |
+| `numberOfMonths` | `number` | `1` | Months shown side by side. The bottom sheet always shows one. |
 | `presentation` | `'auto' \| 'popover' \| 'sheet'` | `'auto'` | `'auto'` opens a bottom sheet on narrow touch screens, with a Close button. |
 | `open`, `defaultOpen`, `onOpenChange` | `boolean` | | Control the popover or sheet. |
 | `isClearable` | `boolean` | `true` | Show the clear button while there is a value. |

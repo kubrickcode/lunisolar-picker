@@ -429,6 +429,14 @@ describe('DateRangePicker', () => {
       await expect.element(trigger).toHaveFocus();
     });
 
+    it('shows one month in the sheet even when two are asked for', async () => {
+      const screen = await renderPicker(<DateRangePicker presentation="sheet" numberOfMonths={2} />);
+
+      await openPicker(screen);
+
+      await expect.poll(() => screen.getByRole('grid').elements().length).toBe(1);
+    });
+
     it('leaves the close button to the confirm footer in confirm mode', async () => {
       const screen = await renderPicker(<DateRangePicker presentation="sheet" commitMode="confirm" />);
 
