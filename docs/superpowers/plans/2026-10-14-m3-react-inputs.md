@@ -96,7 +96,7 @@ packages/theme/
   - `isDevelopment(): boolean`, `compactObject<Shape extends object>(shape: Shape): Shape`, `escapeHtml(text: string): string`
   - 테스트 헬퍼 `expectNoAxeViolations(container: Element): Promise<void>`
 
-- [ ] **Step 1: 루트 개발 의존성과 공통 설정 수정**
+- [x] **Step 1: 루트 개발 의존성과 공통 설정 수정**
 
 루트 `package.json`의 `devDependencies`에 아래를 추가한다(알파벳 순서 유지, 정확한 버전):
 ```json
@@ -150,14 +150,14 @@ install-browsers:
 },
 ```
 
-- [ ] **Step 2: source 조건 확인**
+- [x] **Step 2: source 조건 확인**
 
 > 정합성 조정(2026-10-14): `@lunisolar-picker/source` 조건은 M1 Task 1(`tsconfig.base.json`의 `customConditions`, calendar `exports`)과 M2 Task 2(core `exports`)가 이미 설정했다. 이 단계에서는 확인만 한다.
 
 Run: `grep -c '"@lunisolar-picker/source"' packages/calendar/package.json packages/core/package.json && grep -c customConditions tsconfig.base.json`
 Expected: calendar 2, core 4, tsconfig 1. 하나라도 0이면 앞 마일스톤 계획의 해당 단계를 먼저 반영한다.
 
-- [ ] **Step 3: react 패키지 설정 파일 작성**
+- [x] **Step 3: react 패키지 설정 파일 작성**
 
 `packages/react/package.json`:
 ```json
@@ -306,12 +306,12 @@ try {
 }
 ```
 
-- [ ] **Step 4: 설치와 브라우저 내려받기**
+- [x] **Step 4: 설치와 브라우저 내려받기**
 
 Run: `pnpm install && just install-browsers`
 Expected: 오류 없음. Playwright가 chromium·firefox·webkit을 내려받는다.
 
-- [ ] **Step 5: 실패하는 테스트 작성**
+- [x] **Step 5: 실패하는 테스트 작성**
 
 `packages/react/src/contract/data-attributes.test.ts`:
 ```ts
@@ -445,12 +445,12 @@ describe('renderElement', () => {
 });
 ```
 
-- [ ] **Step 6: 실패 확인**
+- [x] **Step 6: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/contract src/utilities`
 Expected: FAIL — `Failed to resolve import "./data-attributes"` 등
 
-- [ ] **Step 7: 구현**
+- [x] **Step 7: 구현**
 
 `packages/react/src/contract/data-attributes.ts`:
 ```ts
@@ -735,22 +735,22 @@ export { DATA_ATTRIBUTES, PART_NAMES } from './contract/data-attributes';
 export type { RenderProp } from './utilities/render-element';
 ```
 
-- [ ] **Step 8: 통과 확인**
+- [x] **Step 8: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/contract src/utilities`
 Expected: chromium·firefox·webkit 세 곳 모두 PASS
 
-- [ ] **Step 9: 빌드와 "use client" 확인**
+- [x] **Step 9: 빌드와 "use client" 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react run build && head -c 14 packages/react/dist/index.js && pnpm --filter @lunisolar-picker/react exec tsx scripts/check-use-client.ts`
 Expected: `'use client';`로 시작, `"use client" is the first statement in all <N> files`
 
-- [ ] **Step 10: 품질 게이트**
+- [x] **Step 10: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 11: 커밋**
+- [x] **Step 11: 커밋**
 
 ```bash
 git add package.json pnpm-lock.yaml biome.json justfile .dependency-cruiser.cjs packages/react
@@ -783,7 +783,7 @@ ALLOW_COMMIT=1 git commit -m "chore: React 부품이 스타일 계약과 클라�
   - `useToday(timeZone: string | undefined, today: string | undefined): EpochDay`
   - 테스트 헬퍼 `renderWithHydration(element: ReactElement): Promise<HydrationResult>` (`{ container, recoverableErrors, unmount }`)
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/today/epoch-day-in-time-zone.test.ts`:
 ```ts
@@ -924,12 +924,12 @@ describe('withGregorian', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/today src/settings`
 Expected: FAIL — `Failed to resolve import "./epoch-day-in-time-zone"` 등
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/settings/shared-picker-props.ts`:
 ```ts
@@ -1126,17 +1126,17 @@ export type { SharedPickerProps, ValueChangeDetails } from './settings/shared-pi
 export { useToday } from './today/use-today';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/today src/settings`
 Expected: PASS (세 브라우저)
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -1172,7 +1172,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 서버와 브라우저 시간대가 달라�
   - `formatOrNull(epochDay: EpochDay | null, calendar: CalendarSystem): DateString | null`
   - `interface HiddenInputProps { readonly name?: string | undefined; readonly form?: string | undefined; readonly value: string; readonly required?: boolean | undefined; readonly disabled?: boolean | undefined; readonly onFocusRequest: () => void }`, `HiddenInput(props: HiddenInputProps): ReactElement | null`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/store/use-store-instance.test.tsx`:
 ```tsx
@@ -1421,12 +1421,12 @@ describe('HiddenInput', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/store src/value`
 Expected: FAIL — `Failed to resolve import "./use-store-instance"` 등
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/store/use-store-instance.ts`:
 ```ts
@@ -1676,17 +1676,17 @@ export function HiddenInput({ name, form, value, required, disabled, onFocusRequ
 }
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/store src/value`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -1713,7 +1713,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 부모가 준 값과 사용자가 바꾼 값
   - `usePopover(props: UsePopoverProps): PopoverApi`
   - `Popover.Root`, `Popover.Trigger`, `Popover.Content`, `Popover.Close`, `usePopoverContext(): PopoverApi`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/popover/popover.test.tsx`:
 ```tsx
@@ -1826,12 +1826,12 @@ describe('Popover', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/popover`
 Expected: FAIL — `Failed to resolve import "./parts"`
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/focus/focusable-elements.ts`:
 ```ts
@@ -2073,17 +2073,17 @@ export type { PopoverApi, UsePopoverProps } from './popover/use-popover';
 export { usePopover } from './popover/use-popover';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/popover`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -2111,7 +2111,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 화면 가장자리에서도 잘리지 않�
   - `Sheet.Root`, `Sheet.Content`, `Sheet.Close`, `useSheetContext(): SheetApi`
   - `type Presentation = 'auto' | 'popover' | 'sheet'`, `type ResolvedPresentation = 'popover' | 'sheet'`, `COARSE_NARROW_SCREEN_QUERY`, `resolvePresentation(presentation: Presentation, isCoarseNarrowScreen: boolean): ResolvedPresentation`, `usePresentation(presentation: Presentation): ResolvedPresentation`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/sheet/scroll-lock.test.ts`:
 ```ts
@@ -2272,12 +2272,12 @@ describe('resolvePresentation', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/sheet src/presentation`
 Expected: FAIL — `Failed to resolve import "./scroll-lock"` 등
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/sheet/scroll-lock.ts`:
 ```ts
@@ -2557,17 +2557,17 @@ export type { SheetApi, UseSheetProps } from './sheet/use-sheet';
 export { useSheet } from './sheet/use-sheet';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/sheet src/presentation`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -2603,7 +2603,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 모바일에서 뒤 화면이 스크롤되�
   - `interface UseDateFieldProps`, `interface DateFieldApi`, `useDateField(props: UseDateFieldProps): DateFieldApi`
   - `DateField.Root`, `DateField.Segment`, `DateField.Separator`, `DateField.HiddenInput`, `DateField.LeapMonthToggle`, `useDateFieldContext(): DateFieldCore`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/segments/segment-commands.test.ts`:
 ```ts
@@ -2835,12 +2835,12 @@ describe('DateField', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/segments src/date-field`
 Expected: FAIL — `Failed to resolve import "./segment-commands"` 등
 
-- [ ] **Step 3: 세그먼트 공통 구현**
+- [x] **Step 3: 세그먼트 공통 구현**
 
 `packages/react/src/segments/segment-commands.ts`:
 ```ts
@@ -3076,7 +3076,7 @@ function restoreText(element: HTMLElement, expectedText: string): void {
 }
 ```
 
-- [ ] **Step 4: DateField 구현**
+- [x] **Step 4: DateField 구현**
 
 `packages/react/src/date-field/use-date-field-core.ts`:
 ```ts
@@ -3471,17 +3471,17 @@ export type { DateFieldApi, UseDateFieldProps } from './date-field/use-date-fiel
 export { useDateField } from './date-field/use-date-field';
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/segments src/date-field`
 Expected: PASS. 윤달 테스트가 실패하면 M2의 윤달 토글 의미(계약 §2.7)와 키 `L` 처리 순서를 먼저 확인한다.
 
-- [ ] **Step 6: 품질 게이트**
+- [x] **Step 6: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add packages/react/src
@@ -3509,7 +3509,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 숫자만 쳐서 양력·음력 날짜를 �
   - `useDateRangeField(props): DateRangeFieldApi`
   - `DateRangeField.Root`, `DateRangeField.Start`, `DateRangeField.End`, `DateRangeField.Separator`, `useDateRangeFieldContext()`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/date-range-field/date-range-field.test.tsx`:
 ```tsx
@@ -3584,12 +3584,12 @@ describe('DateRangeField', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/date-range-field`
 Expected: FAIL — `Failed to resolve import "./parts"`
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/date-range-field/use-date-range-field.ts`:
 ```ts
@@ -3886,17 +3886,17 @@ export type { DateRangeFieldApi, UseDateRangeFieldProps } from './date-range-fie
 export { useDateRangeField } from './date-range-field/use-date-range-field';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/date-range-field`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -3926,7 +3926,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 시작일과 종료일을 이어서 타이�
   - `useTimeField(props): TimeFieldApi`
   - `TimeField.Root`, `TimeField.Segment`, `TimeField.Separator`, `TimeField.HiddenInput`, `useTimeFieldContext()`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/time-field/time-field.test.tsx`:
 ```tsx
@@ -4001,12 +4001,12 @@ describe('TimeField', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/time-field`
 Expected: FAIL — `Failed to resolve import "./parts"`
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/time-field/use-time-field.ts`:
 ```ts
@@ -4240,17 +4240,17 @@ export type { TimeFieldApi, UseTimeFieldProps } from './time-field/use-time-fiel
 export { useTimeField } from './time-field/use-time-field';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/time-field`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -4279,7 +4279,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 기기 로케일과 상관없이 24시간제
   - `interface UseWheelDateProps extends SharedPickerProps, DateConstraints { value?; defaultValue?; onValueChange?: (value: DateString | null, details) => void; entryCalendar?; defaultEntryCalendar?; onEntryCalendarChange? }`
   - `interface WheelDateApi { readonly fields: DateFields; readonly columns: WheelDateColumns; readonly value: DateString | null; readonly entryCalendarId: CalendarId; readonly labels: { readonly year: string; readonly month: string; readonly day: string }; selectYear(year: number): void; selectMonth(monthCode: MonthCode): void; selectDay(day: number): void; setEntryCalendar(calendarId: CalendarId): void }`, `useWheelDate(props): WheelDateApi`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/wheel/wheel-geometry.test.ts`:
 ```ts
@@ -4478,12 +4478,12 @@ describe('useWheelDate', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/wheel`
 Expected: FAIL — `Failed to resolve import "./wheel-geometry"` 등
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/wheel/wheel-geometry.ts`:
 ```ts
@@ -5029,17 +5029,17 @@ export type { UseWheelDateProps, WheelDateApi } from './wheel/use-wheel-date';
 export { useWheelDate } from './wheel/use-wheel-date';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/wheel`
 Expected: PASS. `dragAndDrop` 테스트가 특정 브라우저에서만 실패하면 실패한 브라우저 이름과 마지막 `onValueChange` 값을 기록하고, 드래그 판정(`DRAG_THRESHOLD_PIXELS`)이나 포인터 캡처 처리부터 확인한다. 테스트를 건너뛰게 바꾸지 않는다.
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -5067,7 +5067,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 관성 스크롤과 키보드로 고르는 �
   - `@lunisolar-picker/theme/bridge/shadcn.css`
   - `just visual`, `just visual-update`
 
-- [ ] **Step 1: theme 패키지 설정**
+- [x] **Step 1: theme 패키지 설정**
 
 `packages/theme/package.json`:
 ```json
@@ -5123,7 +5123,7 @@ export default defineConfig({
 
 루트 `package.json`의 `devDependencies`에 `"@lunisolar-picker/theme": "workspace:*"`를 추가하고 `pnpm install`을 실행한다(react의 시각 회귀 테스트가 CSS를 import함).
 
-- [ ] **Step 2: 실패하는 선택자 계약 테스트 작성**
+- [x] **Step 2: 실패하는 선택자 계약 테스트 작성**
 
 `packages/theme/tests/selector-contract.test.ts`:
 ```ts
@@ -5174,12 +5174,12 @@ describe('theme selector contract', () => {
 });
 ```
 
-- [ ] **Step 3: 실패 확인**
+- [x] **Step 3: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/theme run test`
 Expected: FAIL — `ENOENT ... src/mono.css`
 
-- [ ] **Step 4: CSS 작성**
+- [x] **Step 4: CSS 작성**
 
 `packages/theme/src/mono.css`:
 ```css
@@ -5529,12 +5529,12 @@ Expected: FAIL — `ENOENT ... src/mono.css`
 }
 ```
 
-- [ ] **Step 5: 선택자 계약 테스트 통과 확인**
+- [x] **Step 5: 선택자 계약 테스트 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/theme run test`
 Expected: PASS
 
-- [ ] **Step 6: 시각 회귀 설정과 테스트 작성**
+- [x] **Step 6: 시각 회귀 설정과 테스트 작성**
 
 `packages/react/vitest.visual.config.ts`:
 ```ts
@@ -5645,7 +5645,7 @@ visual-update:
     bash scripts/run-visual-tests.sh --update
 ```
 
-- [ ] **Step 7: 기준 이미지 생성**
+- [x] **Step 7: 기준 이미지 생성**
 
 Run: `chmod +x scripts/run-visual-tests.sh && just visual-update`
 Expected: `packages/react/src/visual/__screenshots__/`에 라이트·다크 기준 이미지 4장 생성. Docker가 없거나 이미지를 받을 수 없으면 여기서 멈추고 사용자에게 알린다. 생성된 이미지를 열어 스펙 8.3의 Mono 시안(무채색, 8px 라운드, 음력 칸은 회색 작은 글자만)과 맞는지 확인한다.
@@ -5653,12 +5653,12 @@ Expected: `packages/react/src/visual/__screenshots__/`에 라이트·다크 기�
 Run: `just visual`
 Expected: PASS (방금 만든 기준과 일치)
 
-- [ ] **Step 8: 품질 게이트**
+- [x] **Step 8: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과. 시각 회귀 테스트는 기본 `just test`에 포함되지 않는다.
 
-- [ ] **Step 9: 커밋**
+- [x] **Step 9: 커밋**
 
 ```bash
 git add package.json pnpm-lock.yaml justfile scripts/run-visual-tests.sh packages/theme packages/react/vitest.visual.config.ts packages/react/src/visual

@@ -63,6 +63,8 @@ LICENSE (게이트 후)
 
 ### Task 1: Vite + react-hook-form fixture
 
+> 실행 메모(2026-10-21, Task 1): ① `required`를 넘기면 숨은 입력의 네이티브 검증이 submit 이벤트를 막아 react-hook-form 메시지가 안 나온다 → fixture 폼에 `noValidate`(consumer-parity 테스트와 같음). Task 6 react-hook-form 가이드에 이 규칙을 적는다. ② fixture는 dist를 소비하므로 `just typecheck`·`test`·`build`는 `./packages/**`로 한정하고, fixture의 typecheck·test·build·check:*는 `just fixtures`(build 뒤)가 돈다. `check:hydration`은 `--if-present`. ③ fixture tsconfig는 `customConditions: []`로 dist 타입을 검사한다. ④ vitest 브라우저 모드는 `optimizeDeps.include`·`dedupe` 없이는 react 두 벌로 "Invalid hook call"이 난다(fixture마다 필요).
+
 > 🟡 잠정: M3·M4 구현 결과에 따라 `DatePicker`의 `ref` 동작, 지우기 버튼 이름(`ko.labels.clear`), 연도 세그먼트 접근성 이름(`ko.labels.year`), `data-lsp-part` 값이 바뀔 수 있음
 
 > 정합성 조정(2026-10-14): `onBlur`는 계약 `SharedPickerProps`에 들어갔다(M3 Task 2). 포커스가 입력 칸 전체를 벗어날 때 한 번 불린다. `DatePicker`는 이를 입력 칸에만 넘긴다(M4 Task 8).
@@ -77,7 +79,7 @@ LICENSE (게이트 후)
 - Consumes (계약 §3): `LunisolarProvider`, `DatePicker`(`@lunisolar-picker/react/pickers`), `ko`(`@lunisolar-picker/core/locales/ko`), `@lunisolar-picker/theme/mono.css`, `DatePicker` prop `value`, `onValueChange`, `name`, `required`, `invalid`, `ref`, `onBlur`(`SharedPickerProps.onBlur`)
 - Produces: `scripts/assert-markup.ts <html-file> <fragment>...` (모든 조각이 있으면 0, 하나라도 없으면 1로 종료), `just fixtures`의 첫 구성원
 
-- [ ] **Step 1: 워크스페이스·공통 설정 갱신**
+- [x] **Step 1: 워크스페이스·공통 설정 갱신**
 
 `pnpm-workspace.yaml`:
 ```yaml
@@ -106,7 +108,7 @@ test-results/
 next-env.d.ts
 ```
 
-- [ ] **Step 2: 마크업 검사 스크립트 작성**
+- [x] **Step 2: 마크업 검사 스크립트 작성**
 
 `scripts/assert-markup.ts`:
 ```ts
@@ -134,7 +136,7 @@ try {
 }
 ```
 
-- [ ] **Step 3: fixture 설정 파일 작성**
+- [x] **Step 3: fixture 설정 파일 작성**
 
 `fixtures/vite/package.json`:
 ```json
@@ -235,7 +237,7 @@ export default defineConfig({
 @import '@lunisolar-picker/theme/mono.css';
 ```
 
-- [ ] **Step 4: 실패하는 브라우저 테스트 작성**
+- [x] **Step 4: 실패하는 브라우저 테스트 작성**
 
 `fixtures/vite/src/BirthDateForm.browser.test.tsx`:
 ```tsx
@@ -280,12 +282,12 @@ describe('BirthDateForm with react-hook-form', () => {
 });
 ```
 
-- [ ] **Step 5: 실패 확인**
+- [x] **Step 5: 실패 확인**
 
 Run: `pnpm install && pnpm exec playwright install chromium && pnpm --filter @lunisolar-picker-fixtures/vite exec vitest run`
 Expected: FAIL — `Failed to resolve import "./BirthDateForm"`
 
-- [ ] **Step 6: 구현**
+- [x] **Step 6: 구현**
 
 `fixtures/vite/src/BirthDateForm.tsx`:
 ```tsx
@@ -375,12 +377,12 @@ try {
 }
 ```
 
-- [ ] **Step 7: 통과 확인**
+- [x] **Step 7: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker-fixtures/vite exec vitest run`
 Expected: PASS (3개). 접근성 이름이 달라 실패하면 M3·M4가 실제로 쓴 `ko.labels` 키를 확인하고 계약 문서를 먼저 고친 뒤 테스트를 맞춘다.
 
-- [ ] **Step 8: 빌드와 마크업 검사**
+- [x] **Step 8: 빌드와 마크업 검사**
 
 `justfile`에 추가:
 ```make
@@ -393,12 +395,12 @@ fixtures: build
 Run: `just fixtures`
 Expected: `dist/ssr.html: all 3 fragments present`. (hydration 검사 스크립트가 있는 fixture가 아직 없어 세 번째 줄은 아무것도 실행하지 않는다)
 
-- [ ] **Step 9: 품질 게이트**
+- [x] **Step 9: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 10: 커밋**
+- [x] **Step 10: 커밋**
 
 ```bash
 git add pnpm-workspace.yaml package.json pnpm-lock.yaml biome.json .gitignore justfile scripts/assert-markup.ts fixtures/vite
@@ -410,6 +412,8 @@ ALLOW_COMMIT=1 git commit -m "test: react-hook-form 폼에서 날짜를 지우�
 
 ### Task 2: Next 16 App Router fixture
 
+> 실행 메모(2026-10-21, Task 2): 운영 빌드 React는 hydration 불일치를 "Minified React error #418"처럼 번호로만 남기므로 `check-hydration.ts` 패턴에 418·419·423·425를 더했다(클라이언트에서만 다른 텍스트를 넣는 변이로 실패 확인). `next build`가 tsconfig에 `allowJs`·`.next/dev/types`를 더해 그대로 커밋한다. next fixture는 typecheck·test 스크립트가 없다(`next build`가 타입 검사).
+
 > 🟡 잠정: M3·M4 구현 결과에 따라 `DateRangePicker`의 `startName`·`endName`, `usePickerSelection` 반환 모양, `data-lsp-part` 값이 바뀔 수 있음
 
 **Files:**
@@ -420,7 +424,7 @@ ALLOW_COMMIT=1 git commit -m "test: react-hook-form 폼에서 날짜를 지우�
 - Consumes: `LunisolarProvider`, `DatePicker`, `DateRangePicker`, `usePickerSelection()`(`@lunisolar-picker/react/pickers`, 반환 `{ draftRange; validity; setRange; commit; cancel }`, M4 Task 9), `validateRange`, `isSameRange`, `parseDate`, `formatDate`, `epochDayOf`, `ko`
 - Produces: `scripts/check-hydration.ts <static-dir> <page-path>` (정적 서버를 띄워 Chromium으로 열고 콘솔·페이지 오류 중 hydration 관련이 있거나 `[data-lsp-part]`가 없으면 1로 종료)
 
-- [ ] **Step 1: hydration 검사 스크립트 작성**
+- [x] **Step 1: hydration 검사 스크립트 작성**
 
 `scripts/check-hydration.ts`:
 ```ts
@@ -501,7 +505,7 @@ try {
 }
 ```
 
-- [ ] **Step 2: fixture 설정 파일 작성**
+- [x] **Step 2: fixture 설정 파일 작성**
 
 `fixtures/next/package.json`:
 ```json
@@ -571,7 +575,7 @@ export default nextConfig;
 @import '@lunisolar-picker/theme/mono.css';
 ```
 
-- [ ] **Step 3: 앱 코드 작성**
+- [x] **Step 3: 앱 코드 작성**
 
 `fixtures/next/app/providers.tsx`:
 ```tsx
@@ -687,22 +691,22 @@ export default function FixturePage() {
 }
 ```
 
-- [ ] **Step 4: 빌드·검사 실행**
+- [x] **Step 4: 빌드·검사 실행**
 
 Run: `pnpm install && just build && NEXT_TELEMETRY_DISABLED=1 pnpm --filter @lunisolar-picker-fixtures/next run build && pnpm --filter @lunisolar-picker-fixtures/next run check:markup && pnpm --filter @lunisolar-picker-fixtures/next run check:hydration`
 Expected: `next build`가 오류 없이 `out/index.html` 생성, `all 5 fragments present`, `hydrated without errors`. `next build`가 "You're importing a component that needs useState…"로 실패하면 react 패키지 산출물에서 `"use client"`가 빠진 것이다. 이 fixture를 고치지 말고 M3의 빌드 검사를 고쳐야 한다.
 
-- [ ] **Step 5: just fixtures 전체 실행**
+- [x] **Step 5: just fixtures 전체 실행**
 
 Run: `NEXT_TELEMETRY_DISABLED=1 just fixtures`
 Expected: vite·next 모두 통과
 
-- [ ] **Step 6: 품질 게이트**
+- [x] **Step 6: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add scripts/check-hydration.ts fixtures/next pnpm-lock.yaml
@@ -714,6 +718,8 @@ ALLOW_COMMIT=1 git commit -m "test: Next 서버 컴포넌트에서 picker를 써
 
 ### Task 3: Astro 7 island fixture (음력)
 
+> 실행 메모(2026-10-21, Task 3): Biome은 `.astro`의 frontmatter만 보고 템플릿 사용을 몰라 import를 미사용으로 잡는다 → `biome.json`에 `**/*.astro` override(noUnusedImports·noUnusedVariables off). Task 4 문서 사이트도 이 override를 쓴다. `oxc-transform-react` 0.145.0은 `@astrojs/react` 7.0.1의 필수 peer(`^0.145.0`)라 유지한다. `@vitejs/plugin-react` 6.1.2의 선택 peer(`^0.152.0`)와 어긋난다는 `pnpm peers check` 경고는 남는다. astro typecheck는 `.astro/` 없이도 통과한다.
+
 > 🟡 잠정: M3·M4 구현 결과에 따라 `defaultDisplayCalendar` prop 이름과 음력 보조 표기 마크업이 바뀔 수 있음
 
 **Files:**
@@ -723,7 +729,7 @@ ALLOW_COMMIT=1 git commit -m "test: Next 서버 컴포넌트에서 picker를 써
 - Consumes: `LunisolarProvider`(`calendars`), `DatePicker`(`defaultDisplayCalendar`), `dangi`(`@lunisolar-picker/calendar/dangi`), `ko`, `scripts/assert-markup.ts`, `scripts/check-hydration.ts`
 - Produces: `just fixtures`의 세 번째 구성원
 
-- [ ] **Step 1: fixture 파일 작성**
+- [x] **Step 1: fixture 파일 작성**
 
 `fixtures/astro/package.json`:
 ```json
@@ -820,17 +826,17 @@ import '../styles/global.css';
 </html>
 ```
 
-- [ ] **Step 2: 빌드·검사 실행**
+- [x] **Step 2: 빌드·검사 실행**
 
 Run: `pnpm install && just build && pnpm --filter @lunisolar-picker-fixtures/astro run build && pnpm --filter @lunisolar-picker-fixtures/astro run check:markup && pnpm --filter @lunisolar-picker-fixtures/astro run check:hydration`
 Expected: `dist/index.html` 생성, `all 3 fragments present`, `hydrated without errors`
 
-- [ ] **Step 3: 품질 게이트**
+- [x] **Step 3: 품질 게이트**
 
 Run: `NEXT_TELEMETRY_DISABLED=1 just fixtures && just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add fixtures/astro pnpm-lock.yaml
@@ -843,6 +849,8 @@ ALLOW_COMMIT=1 git commit -m "test: Astro island에서 음력 날짜 값이 서�
 
 > 🟡 잠정: M3·M4 구현 결과에 따라 데모 prop, 토큰 이름·기준값, `data-lsp-part` 값이 바뀔 수 있음
 
+> 실행 메모(2026-10-21): 토큰 파일은 `packages/theme/src/mono.css`. 토큰 표에 `--lsp-focus`·`--lsp-placeholder`·`--lsp-backdrop`·휠 토큰을 더하고, 월 전환은 페이드(#D11)로 적음. 사이드바는 아직 없는 쪽을 넣으면 빌드가 실패하므로 Task 5·6이 쪽을 만들 때 항목을 더함. 데모 틀에 Starlight `not-content`를 붙여 본문 여백 규칙을 피함. `docs-build`가 문서 typecheck까지 돈다.
+
 **Files:**
 - Create: `apps/docs/package.json`, `apps/docs/tsconfig.json`, `apps/docs/astro.config.mjs`, `apps/docs/src/content.config.ts`, `apps/docs/src/styles/docs.css`
 - Create: `apps/docs/src/components/demos/DemoProvider.tsx`, `apps/docs/src/components/demos/DatePickerDemo.tsx`
@@ -853,7 +861,7 @@ ALLOW_COMMIT=1 git commit -m "test: Astro island에서 음력 날짜 값이 서�
 - Consumes: 계약 §3 완성형·Provider, §4 theme 파일 경로·토큰, 스펙 8장 Mono 기준값
 - Produces: `just docs-build`, 데모 공통 래퍼 `DemoProvider({ children, locale?, calendars? })`
 
-- [ ] **Step 1: 문서 앱 설정**
+- [x] **Step 1: 문서 앱 설정**
 
 `apps/docs/package.json`:
 ```json
@@ -973,7 +981,7 @@ export const collections = {
 }
 ```
 
-- [ ] **Step 2: 데모 공통 래퍼와 첫 데모 작성**
+- [x] **Step 2: 데모 공통 래퍼와 첫 데모 작성**
 
 `apps/docs/src/components/demos/DemoProvider.tsx`:
 ```tsx
@@ -1017,7 +1025,7 @@ export function DatePickerDemo() {
 }
 ```
 
-- [ ] **Step 3: 홈·시작하기·테마 문서 작성**
+- [x] **Step 3: 홈·시작하기·테마 문서 작성**
 
 `apps/docs/src/content/docs/index.mdx`:
 ````mdx
@@ -1222,7 +1230,7 @@ Month transitions slide for 180 ms and popovers fade for 140 ms. Both turn off w
 
 `--lsp-subtle`, `--lsp-ring`, `--lsp-danger`, `--lsp-shadow-popover`, `--lsp-duration` 칸의 "Light/Dark" 값은 M3 theme 구현 후 실제 값으로 채운다. 이 Step에서는 위 문구 그대로 쓰고, Task 4 Step 5에서 M3 `mono.css`의 실제 값으로 바꾼다.
 
-- [ ] **Step 4: docs-build 타깃 추가**
+- [x] **Step 4: docs-build 타깃 추가**
 
 `justfile`에 추가:
 ```make
@@ -1231,17 +1239,17 @@ docs-build: build
     pnpm exec tsx scripts/assert-markup.ts apps/docs/dist/getting-started/index.html '<astro-island' 'client="only"'
 ```
 
-- [ ] **Step 5: 토큰 표를 실제 값으로 맞추기**
+- [x] **Step 5: 토큰 표를 실제 값으로 맞추기**
 
 Run: `grep -E -- '--lsp-(subtle|ring|danger|shadow-popover|duration)' packages/theme/mono.css`
 Expected: 라이트·다크 값 출력. 각 값을 `theming.mdx` 표의 해당 칸에 그대로 옮긴다(설명 문구 자리를 실제 값으로 교체). 파일 경로가 다르면 `packages/theme/package.json`의 `exports["./mono.css"]` 경로를 따른다.
 
-- [ ] **Step 6: 빌드 확인**
+- [x] **Step 6: 빌드 확인**
 
 Run: `pnpm install && just docs-build && pnpm --filter @lunisolar-picker/docs run typecheck`
 Expected: 빌드 성공, `all 2 fragments present`, 타입 오류 0
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add apps/docs justfile pnpm-lock.yaml
@@ -1255,6 +1263,8 @@ ALLOW_COMMIT=1 git commit -m "docs: 설치부터 테마 적용까지 바로 따�
 
 > 🟡 잠정: M3·M4 구현 결과에 따라 부품 이름, prop 표, 완성형 소스(레시피 본문)가 바뀔 수 있음. 레시피는 M4의 실제 `DateRangePicker` 소스를 그대로 옮긴다
 
+> 실행 메모(2026-10-21): 실제 `DateRangePicker`는 내부 도우미(`PickerSurface`·`SelectionBridge` 등)에 기대므로 그대로 옮기지 않고, 공개 부품만으로 만든 `apps/docs/src/components/recipes/MyDateRangePicker.tsx`를 실제 컴파일·데모되는 파일로 두고 문서는 `?raw`로 그 소스를 보여 줌(계약 §4 M5 메모의 "인라인" 쪽 결정, 내부 도우미 공개 안 함). 범위 데모는 flag+confirm에서 무효 범위의 Apply가 막혀 `reasons`가 출력에 안 나오므로 footer 경고로 보여 줌. 부품 표는 실제 요소로 고침(Heading은 `span[aria-live]`, CalendarToggle은 `group`+`aria-pressed`, TodayButton은 숨김이 아니라 `aria-disabled`, Month/YearGrid는 `table`). TimePicker 기본 `minuteStep`은 30. Step 6 수동 확인은 Playwright 스크립트로 대신함(다섯 데모 렌더·오류 0, 프리셋 비활성, 14일 초과 경고).
+
 **Files:**
 - Create: `apps/docs/src/components/demos/DateRangePickerDemo.tsx`, `MonthPickerDemo.tsx`, `WheelDatePickerDemo.tsx`, `TimePickerDemo.tsx`, `HolidayCalendarDemo.tsx` (모두 `apps/docs/src/components/demos/`)
 - Create: `apps/docs/src/content/docs/pickers/date-picker.mdx`, `date-range-picker.mdx`, `month-picker.mdx`, `wheel-date-picker.mdx`, `time-picker.mdx` (모두 `apps/docs/src/content/docs/pickers/`)
@@ -1266,7 +1276,7 @@ ALLOW_COMMIT=1 git commit -m "docs: 설치부터 테마 적용까지 바로 따�
 - Consumes: 계약 §3.3~§3.5 (`Calendar.*`, `RangeCalendar.Root`, `DateField.*`, `Wheel.*`, `TimeField.*`, `Popover.*`, `Sheet.*`, 완성형 5종, `usePickerSelection`, `CellRenderInfo`), `validateRange`, `isSameRange`, `epochDayOf`, `formatDate`
 - Produces: 문서 페이지 11개, 데모 5개
 
-- [ ] **Step 1: 데모 작성**
+- [x] **Step 1: 데모 작성**
 
 `apps/docs/src/components/demos/DateRangePickerDemo.tsx`:
 ```tsx
@@ -1450,7 +1460,7 @@ export function HolidayCalendarDemo() {
 }
 ```
 
-- [ ] **Step 2: 완성형 문서 작성**
+- [x] **Step 2: 완성형 문서 작성**
 
 `apps/docs/src/content/docs/pickers/date-picker.mdx`:
 ````mdx
@@ -1658,7 +1668,7 @@ The field always shows 24-hour time, whatever the device locale. Type `930` for 
 | `name`, `form`, `required`, `disabled`, `readOnly`, `invalid` | | | Same as native inputs. |
 ````
 
-- [ ] **Step 3: 부품 문서 작성**
+- [x] **Step 3: 부품 문서 작성**
 
 `apps/docs/src/content/docs/parts/calendar.mdx`:
 ````mdx
@@ -1857,7 +1867,7 @@ In `commitMode="confirm"` closing without confirming discards the choice. The fi
 Swipe-to-close is not supported, because it competes with wheel scrolling inside the sheet.
 ````
 
-- [ ] **Step 4: 복사 레시피 작성**
+- [x] **Step 4: 복사 레시피 작성**
 
 M4의 실제 `packages/react/src/pickers/date-range-picker.tsx`를 읽고, 아래 문서의 "The source" 코드 블록에 그 파일의 JSX 본문을 그대로 붙인다. 아래 블록은 계약 §3 기준의 잠정 본문이다.
 
@@ -1948,7 +1958,7 @@ export function MyDateRangePicker(props: UseRangeCalendarProps & { presets?: Rea
 **A warning for long ranges.** With `limitMode="flag"`, read `validity.reasons` from `onValueChange` and render your message in the footer. Disable your Apply button while the range is invalid.
 ````
 
-- [ ] **Step 5: docs-build 검사 페이지 추가와 빌드**
+- [x] **Step 5: docs-build 검사 페이지 추가와 빌드**
 
 `justfile`의 `docs-build` 두 번째 줄 아래에 추가:
 ```make
@@ -1959,12 +1969,12 @@ export function MyDateRangePicker(props: UseRangeCalendarProps & { presets?: Rea
 Run: `just docs-build && pnpm --filter @lunisolar-picker/docs run typecheck`
 Expected: 빌드 성공, 세 페이지 모두 조각 존재, 타입 오류 0. 타입 오류가 나면 M3·M4의 실제 prop 이름을 확인하고 계약 문서를 먼저 고친 뒤 데모와 문서를 맞춘다.
 
-- [ ] **Step 6: 데모 수동 확인**
+- [x] **Step 6: 데모 수동 확인**
 
 Run: `pnpm --filter @lunisolar-picker/docs run dev`
 확인: 다섯 picker 데모가 열리고 값 출력이 바뀌는지, 범위 데모에서 14일을 넘기면 `reasons`에 `range-too-long`이 나오는지, Starlight 다크 모드 전환 시 picker도 어두워지는지(Starlight는 `<html data-theme="dark">`를 쓰므로 테마의 `[data-theme="dark"]` 선택자가 그대로 맞는다). 확인 후 dev 서버를 끈다.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add apps/docs justfile
@@ -1976,7 +1986,11 @@ ALLOW_COMMIT=1 git commit -m "docs: 다섯 picker와 부품을 데모와 함께 
 
 ### Task 6: 음력·폼·Next·접근성·react-day-picker 이전 가이드
 
+> 실행 메모(Task 1에서 옴): react-hook-form 절에 "picker에 `required`도 넘기면 폼에 `noValidate`를 둬야 브라우저 기본 검증 대신 react-hook-form 메시지가 보인다"를 적는다.
+
 > 🟡 잠정: M2~M4 구현 결과에 따라 로케일 문구, 지원 범위 마지막 날짜, prop 이름이 바뀔 수 있음
+
+> 실행 메모(2026-10-21): 지원 범위 끝은 음력 2050-11-30(양력 2051-01-12)으로 적음. dangi 청크는 gzip 약 2.5KB(플랜의 1KB가 아님). 접근성 안내 문구는 en 로케일 실제 값("Start date … selected. Choose an end date.")으로, 월 격자 키(화살표·Home/End, PageUp 없음)를 더함. Next 가이드의 `today`는 고정하면 갱신되지 않고, 없으면 1분마다 확인함을 적음. 폼 가이드에 reset·`noValidate`(#D12)·제어형 범위 되돌려 넣기를 더함. 수동 SR QA 문구는 실기기 체크리스트(Task 8) 기준 표현으로 둠.
 
 **Files:**
 - Create: `apps/docs/src/components/demos/LunarDatePickerDemo.tsx`
@@ -1987,7 +2001,7 @@ ALLOW_COMMIT=1 git commit -m "docs: 다섯 picker와 부품을 데모와 함께 
 - Consumes: `dangi.supportedRange`, `parseDate`, `isSameDay`, `formatDate`, `ko` 로케일, 스펙 4·5·10장, 계약 §3
 - Produces: 가이드 5개
 
-- [ ] **Step 1: 음력 데모와 가이드 작성**
+- [x] **Step 1: 음력 데모와 가이드 작성**
 
 `apps/docs/src/components/demos/LunarDatePickerDemo.tsx`:
 ```tsx
@@ -2087,7 +2101,7 @@ const asLunarEntry = formatDate(epochDayOf(solarValue), dangi); // '2026-10-14[u
 ```
 ````
 
-- [ ] **Step 2: 폼 가이드 작성**
+- [x] **Step 2: 폼 가이드 작성**
 
 `apps/docs/src/content/docs/guides/forms.mdx`:
 ````mdx
@@ -2149,7 +2163,7 @@ validateDate('2031-01-01', { max: '2030-12-31' }); // { isValid: false, reasons:
 ```
 ````
 
-- [ ] **Step 3: Next.js 가이드 작성**
+- [x] **Step 3: Next.js 가이드 작성**
 
 `apps/docs/src/content/docs/guides/nextjs.mdx`:
 ````mdx
@@ -2211,7 +2225,7 @@ Import the theme in `app/globals.css` with the layer order:
 ```
 ````
 
-- [ ] **Step 4: 접근성 문서 작성**
+- [x] **Step 4: 접근성 문서 작성**
 
 `apps/docs/src/content/docs/guides/accessibility.mdx`:
 ````mdx
@@ -2279,7 +2293,7 @@ Opening moves focus to the selected day, or today. Focus stays inside until the 
 Automated tests run axe and keyboard scenarios in Chromium, Firefox and WebKit. Releases are also checked by hand with VoiceOver on iOS and macOS, TalkBack and NVDA.
 ````
 
-- [ ] **Step 5: react-day-picker 이전 가이드 작성**
+- [x] **Step 5: react-day-picker 이전 가이드 작성**
 
 `apps/docs/src/content/docs/guides/migrating-from-react-day-picker.mdx`:
 ````mdx
@@ -2357,7 +2371,7 @@ const [value, setValue] = useState<string | null>(null);
 **Clickable segmented fields with dropdowns**: the date field accepts typing, paste and arrow keys. Pair it with the popover calendar (`DatePicker`) for pointer users.
 ````
 
-- [ ] **Step 6: 빌드 확인**
+- [x] **Step 6: 빌드 확인**
 
 `justfile`의 `docs-build`에 추가:
 ```make
@@ -2368,12 +2382,12 @@ const [value, setValue] = useState<string | null>(null);
 Run: `just docs-build && pnpm --filter @lunisolar-picker/docs run typecheck`
 Expected: 모두 통과
 
-- [ ] **Step 7: 지원 범위 문구 맞추기**
+- [x] **Step 7: 지원 범위 문구 맞추기**
 
 Run: `node --input-type=module -e "import { dangi } from '@lunisolar-picker/calendar/dangi'; import { formatDate } from '@lunisolar-picker/calendar'; console.log(formatDate(dangi.supportedRange.max))" ` (작업 디렉터리: `apps/docs`)
 Expected: `{ isOk: true, value: '2051-…' }` 같은 마지막 지원일. `lunar-calendar.mdx`의 "at the end of 2050" 문장을 "to <그 날짜> (the last day KASI publishes)"로 바꾼다.
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 git add apps/docs justfile
@@ -2387,6 +2401,8 @@ ALLOW_COMMIT=1 git commit -m "docs: 음력·폼·Next·접근성과 react-day-pi
 
 > 🟡 잠정: M2~M4 구현 결과에 따라 패키지별 공개 API 목록이 바뀔 수 있음
 
+> 실행 메모(2026-10-21): npm·pnpm pack은 `files`와 무관하게 README를 넣으므로(`npm pack --dry-run`으로 네 패키지 모두 확인) `package.json` `files`는 고치지 않음. GitHub 원격은 Task 11 사용자 게이트라 패키지 README는 저장소 링크 없이 씀. 토큰·훅 목록은 실제 export(`--lsp-focus`·`--lsp-placeholder`·휠 토큰, `MonthCalendar`·`TimeList`·`useWheelDate`)에 맞춤.
+
 **Files:**
 - Modify: `README.md`
 - Create: `packages/calendar/README.md`, `packages/core/README.md`, `packages/react/README.md`, `packages/theme/README.md`
@@ -2396,7 +2412,7 @@ ALLOW_COMMIT=1 git commit -m "docs: 음력·폼·Next·접근성과 react-day-pi
 - Consumes: 문서 사이트 경로
 - Produces: npm 페이지에 보일 README
 
-- [ ] **Step 1: 루트 README 작성**
+- [x] **Step 1: 루트 README 작성**
 
 `README.md` 전체:
 ````markdown
@@ -2444,7 +2460,7 @@ just docs-build
 한국어 안내: 이 저장소는 양력 picker를 기본으로 하고, 필요할 때 한국 음력(윤달·30일 포함) 입력을 켤 수 있는 React 날짜 picker 라이브러리다. 설계는 `docs/superpowers/specs/`에 있다.
 ````
 
-- [ ] **Step 2: 패키지 README 작성**
+- [x] **Step 2: 패키지 README 작성**
 
 `packages/calendar/README.md`:
 ````markdown
@@ -2523,12 +2539,12 @@ The Mono theme for [lunisolar-picker](../../README.md): monochrome, hairline bor
 
 각 패키지 `package.json`의 `files`에 `"README.md"`를 추가한다(theme은 기존 CSS 항목 유지). 예: `"files": ["dist", "README.md"]`.
 
-- [ ] **Step 3: 확인**
+- [x] **Step 3: 확인**
 
 Run: `just package-check`
 Expected: publint·attw 통과
 
-- [ ] **Step 4: 커밋**
+- [x] **Step 4: 커밋**
 
 ```bash
 git add README.md packages/*/README.md packages/*/package.json
@@ -2546,7 +2562,7 @@ ALLOW_COMMIT=1 git commit -m "docs: npm 페이지에서 패키지 역할과 첫 
 - Consumes: 스펙 10·11·15장
 - Produces: 릴리스 전 수동 확인 문서(Task 11 게이트 D에서 사용)
 
-- [ ] **Step 1: 체크리스트 작성**
+- [x] **Step 1: 체크리스트 작성**
 
 `docs/qa/real-device-checklist.md`:
 ````markdown
@@ -2620,7 +2636,7 @@ ALLOW_COMMIT=1 git commit -m "docs: npm 페이지에서 패키지 역할과 첫 
 |---|---|---|---|---|
 ````
 
-- [ ] **Step 2: 커밋**
+- [x] **Step 2: 커밋**
 
 ```bash
 git add docs/qa/real-device-checklist.md
@@ -2639,7 +2655,7 @@ ALLOW_COMMIT=1 git commit -m "docs: 자동 테스트로 못 잡는 카카오 인
 - Consumes: 네 공개 패키지 이름(버전 `0.0.0`)
 - Produces: `pnpm changeset`, `pnpm changeset status`, `pnpm changeset version`이 동작하는 설정. 첫 버전 `0.1.0`
 
-- [ ] **Step 1: 의존성과 스크립트 추가**
+- [x] **Step 1: 의존성과 스크립트 추가**
 
 루트 `package.json`:
 ```json
@@ -2651,7 +2667,7 @@ ALLOW_COMMIT=1 git commit -m "docs: 자동 테스트로 못 잡는 카카오 인
 
 Run: `pnpm install`
 
-- [ ] **Step 2: 설정 작성**
+- [x] **Step 2: 설정 작성**
 
 `.changeset/config.json`:
 ```json
@@ -2688,14 +2704,14 @@ Run: `pnpm install`
 First public release. Date, date range, month, wheel and time pickers for React 19 with a headless core, the Mono theme, and optional Korean lunisolar (dangi) dates from KASI data.
 ```
 
-- [ ] **Step 3: 동작 확인**
+- [x] **Step 3: 동작 확인**
 
 Run: `pnpm changeset status --verbose`
 Expected: 네 패키지가 `minor`로 `0.1.0`이 될 예정이라고 나온다. fixtures·docs는 목록에 없다. `changelog` 경로 오류가 나면 `@changesets/cli` 3.0.3의 기본값으로 `"changelog"` 항목을 지우고 다시 확인한다.
 
 실제 버전 올리기(`changeset version`)는 release 워크플로의 version 잡이 하므로 여기서 실행하지 않는다.
 
-- [ ] **Step 4: 품질 게이트와 커밋**
+- [x] **Step 4: 품질 게이트와 커밋**
 
 Run: `just fix && just check`
 
@@ -2718,7 +2734,7 @@ ALLOW_COMMIT=1 git commit -m "chore: 네 패키지를 같은 버전으로 함께
 - Consumes: `just install/check/test/package-check/size/fixtures/docs-build`
 - Produces: `just pack-check`, PR·main push마다 도는 CI
 
-- [ ] **Step 1: tarball 검사 스크립트 작성**
+- [x] **Step 1: tarball 검사 스크립트 작성**
 
 `scripts/check-packed-packages.ts`:
 ```ts
@@ -2801,12 +2817,12 @@ pack-check: build
     pnpm exec tsx scripts/check-packed-packages.ts
 ```
 
-- [ ] **Step 2: 검사 실행**
+- [x] **Step 2: 검사 실행**
 
 Run: `just pack-check`
 Expected: `4 packed packages look publishable`. theme의 CSS 경로가 `ALLOWED_FILE_PATTERN`과 다르면(예: `dist/mono.css`가 아니라 다른 폴더) M3 theme의 실제 `files` 구성을 보고 패턴을 그 경로로 좁혀 고친다. 패턴을 `.*`처럼 넓히지 않는다.
 
-- [ ] **Step 3: CI 워크플로 작성**
+- [x] **Step 3: CI 워크플로 작성**
 
 `.github/workflows/ci.yml`:
 ```yaml
@@ -2868,17 +2884,17 @@ jobs:
 
 `pnpm/action-setup`은 루트 `package.json`의 `packageManager`(`pnpm@11.28.2`)를 읽는다.
 
-- [ ] **Step 4: 워크플로 문법 확인**
+- [x] **Step 4: 워크플로 문법 확인**
 
 Run: `pnpm dlx @action-validator/cli@0.6.0 .github/workflows/ci.yml`
 Expected: 오류 없음. (`@action-validator/cli` 0.6.0은 2026-10-14 기준 최신이며, 이 검사에만 쓰고 의존성에 넣지 않는다)
 
-- [ ] **Step 5: 로컬에서 CI와 같은 순서로 실행**
+- [x] **Step 5: 로컬에서 CI와 같은 순서로 실행**
 
 Run: `NEXT_TELEMETRY_DISABLED=1 just install && just check && just test && just package-check && just size && just pack-check && just fixtures && just docs-build`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add scripts/check-packed-packages.ts .github/workflows/ci.yml justfile
@@ -2898,7 +2914,7 @@ ALLOW_COMMIT=1 git commit -m "ci: PR마다 타입·테스트·크기·소비 환
 - Consumes: Task 9 changesets 설정, Task 10 CI, Task 8 QA 체크리스트
 - Produces: main에 changeset이 있으면 Version Packages PR, 없으면 승인 후 publish
 
-- [ ] **Step 1: release 워크플로 작성**
+- [x] **Step 1: release 워크플로 작성**
 
 changesets v3 공식 권장(trusted publishing은 select-mode·version·pack·publish 하위 액션으로 나눠 `id-token: write`를 publish 잡에만 둠)을 pnpm에 맞춘 구성이다.
 
@@ -3014,12 +3030,12 @@ jobs:
 - `publish` 잡의 `environment: npm-publish`에 필수 검토자를 걸어 두면 사람이 승인해야 배포된다(게이트 D).
 - trusted publishing은 npm CLI 11.5.1 이상이 필요해 publish 잡에서 npm 12.2.0을 설치한다.
 
-- [ ] **Step 2: 워크플로 문법 확인**
+- [x] **Step 2: 워크플로 문법 확인**
 
 Run: `pnpm dlx @action-validator/cli@0.6.0 .github/workflows/release.yml`
 Expected: 오류 없음
 
-- [ ] **Step 3: 배포 절차 문서 작성**
+- [x] **Step 3: 배포 절차 문서 작성**
 
 `docs/releasing.md`:
 ````markdown
@@ -3046,7 +3062,7 @@ Expected: 오류 없음
 provenance는 공개 저장소에서만 붙는다. 비공개 저장소로 시작하면 provenance 없이 배포되거나 trusted publishing 설정이 거부될 수 있다.
 ````
 
-- [ ] **Step 4: 커밋 (게이트 전 단계까지)**
+- [x] **Step 4: 커밋 (게이트 전 단계까지)**
 
 ```bash
 git add .github/workflows/release.yml docs/releasing.md
@@ -3054,7 +3070,7 @@ ALLOW_COMMIT=1 git commit -m "ci: changeset 기반으로 버전 PR과 승인 후
 - 실기기 QA와 사람 승인 없이 배포되지 않도록 npm-publish 환경 승인을 마지막 관문으로 둠."
 ```
 
-- [ ] **Step 5: 🛑 게이트 A — 라이선스 결정 요청 (여기서 멈춤)**
+- [x] **Step 5: 🛑 게이트 A — 라이선스 결정 요청 (여기서 멈춤)**
 
 사용자에게 묻는다. 에이전트가 정하지 않는다.
 
@@ -3071,7 +3087,7 @@ ALLOW_COMMIT=1 git commit -m "ci: changeset 기반으로 버전 PR과 승인 후
 - Run: `just pack-check` → Expected: 통과(라이선스 선언과 LICENSE 파일이 함께 들어감)
 - 커밋: `ALLOW_COMMIT=1 git commit -m "chore: 사용처가 법무 검토 없이 쓸 수 있도록 <라이선스> 라이선스 명시"`
 
-- [ ] **Step 6: 🛑 게이트 B — GitHub 원격 저장소 (여기서 멈춤)**
+- [x] **Step 6: 🛑 게이트 B — GitHub 원격 저장소 (여기서 멈춤)**
 
 사용자에게 요청한다: 저장소 이름·소유자(개인/조직), 공개 여부, 원격 생성(`gh repo create` 실행 여부를 포함해 사용자가 결정), Actions 설정의 PR 생성 허용, `npm-publish` 환경과 필수 검토자 생성. push는 사용자 지시가 있을 때만 한다.
 
@@ -3084,7 +3100,7 @@ ALLOW_COMMIT=1 git commit -m "ci: changeset 기반으로 버전 PR과 승인 후
 - Run: `just package-check && just pack-check`
 - 커밋: `ALLOW_COMMIT=1 git commit -m "chore: npm 페이지에서 저장소와 이슈로 이어지도록 저장소 정보 추가"`
 
-- [ ] **Step 7: 🛑 게이트 C — npm org와 trusted publisher (여기서 멈춤)**
+- [x] **Step 7: 🛑 게이트 C — npm org와 trusted publisher (여기서 멈춤)**
 
 사용자에게 요청한다:
 1. npmjs.com에서 `lunisolar-picker` org 생성(이름이 이미 선점되었으면 대체 scope를 정해야 하며, 그 경우 네 패키지 이름·문서·fixtures의 import 경로를 모두 바꾸는 별도 작업이 필요하다고 알린다).
@@ -3093,7 +3109,7 @@ ALLOW_COMMIT=1 git commit -m "ci: changeset 기반으로 버전 PR과 승인 후
 
 에이전트는 npm 계정 작업을 하지 않는다.
 
-- [ ] **Step 8: 🛑 게이트 D — 첫 배포 승인 (여기서 멈춤)**
+- [x] **Step 8: 🛑 게이트 D — 첫 배포 승인 (여기서 멈춤)**
 
 준비 확인(에이전트가 실행하고 결과를 보고):
 - Run: `NEXT_TELEMETRY_DISABLED=1 just check && just test && just package-check && just size && just pack-check && just fixtures && just docs-build`
@@ -3102,7 +3118,7 @@ ALLOW_COMMIT=1 git commit -m "ci: changeset 기반으로 버전 PR과 승인 후
 
 사용자에게 보고하고, 사용자가 main에 push → "chore: release" PR 머지 → `npm-publish` 승인을 직접 진행한다.
 
-- [ ] **Step 9: 배포 후 확인 (사용자가 배포를 마친 뒤)**
+- [x] **Step 9: 배포 후 확인 (사용자가 배포를 마친 뒤)**
 
 Run: `npm view @lunisolar-picker/calendar@0.1.0 version && npm view @lunisolar-picker/core@0.1.0 version && npm view @lunisolar-picker/react@0.1.0 version && npm view @lunisolar-picker/theme@0.1.0 version`
 Expected: 네 줄 모두 `0.1.0`

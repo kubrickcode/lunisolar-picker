@@ -138,7 +138,7 @@ packages/theme/tests/calendar-selectors.test.ts
   - `interface CalendarViewApi`, `interface CellProps { gridCell; button }`, `interface SelectionBehavior`, `createCalendarViewApi(foundation, behavior, flags): CalendarViewApi`
   - `interface UseCalendarProps`, `interface CalendarApi extends CalendarViewApi`, `useCalendar(props): CalendarApi`
 
-- [ ] **Step 1: 테스트 픽스처 작성**
+- [x] **Step 1: 테스트 픽스처 작성**
 
 `packages/react/src/testing/korean-fixture.tsx`:
 ```tsx
@@ -179,7 +179,7 @@ export function epochDayAt(isoDate: string): ReturnType<typeof epochDayOf> {
 }
 ```
 
-- [ ] **Step 2: 실패하는 단위 테스트 작성**
+- [x] **Step 2: 실패하는 단위 테스트 작성**
 
 `packages/react/src/calendar/calendar-key-action.test.ts`:
 ```ts
@@ -358,12 +358,12 @@ function cellOf(api: ReturnType<typeof useCalendar>, isoDate: string) {
 }
 ```
 
-- [ ] **Step 3: 실패 확인**
+- [x] **Step 3: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/calendar`
 Expected: FAIL — `Failed to resolve import "./calendar-key-action"`, `"./cell-label"`, `"./use-calendar"`
 
-- [ ] **Step 4: 구현**
+- [x] **Step 4: 구현**
 
 `packages/react/src/calendar/calendar-key-action.ts`:
 ```ts
@@ -965,17 +965,17 @@ export function useCalendar(props: UseCalendarProps): CalendarApi {
 }
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/calendar`
 Expected: PASS. `ko.formatDateLabel`이 없어 타입 오류가 나면 계약 변경 제안 1을 M2 locale에 반영한 뒤 다시 실행한다.
 
-- [ ] **Step 6: 품질 게이트**
+- [x] **Step 6: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add packages/react/src/calendar packages/react/src/testing/korean-fixture.tsx
@@ -1004,7 +1004,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 단일·범위 달력이 함께 쓸 달력 �
   - `Calendar` 네임스페이스: `{ Root, Header, Heading, PrevButton, NextButton, TodayButton, Grid, HeadCell, Cell, Layout }` (Task 3에서 `CalendarToggle`, `ViewButton`, `MonthGrid`, `YearGrid` 추가)
   - `PART_NAMES`에 `'calendar-months'`, `'calendar-month'`, `'calendar-cell-secondary'`, `'live-region'` 추가, `DATA_ATTRIBUTES`에 `'data-slide'` 추가 (계약 변경 제안 2)
 
-- [ ] **Step 1: 계약 상수에 항목 추가**
+- [x] **Step 1: 계약 상수에 항목 추가**
 
 `packages/react/src/contract/data-attributes.ts`의 `DATA_ATTRIBUTES` 배열 끝에 `'data-slide',`를, `PART_NAMES` 배열 끝에 다음을 추가한다:
 ```ts
@@ -1014,7 +1014,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 단일·범위 달력이 함께 쓸 달력 �
   'live-region',
 ```
 
-- [ ] **Step 2: 실패하는 테스트 작성**
+- [x] **Step 2: 실패하는 테스트 작성**
 
 `packages/react/src/calendar/calendar-parts.test.tsx`:
 ```tsx
@@ -1145,12 +1145,12 @@ describe('Calendar', () => {
 });
 ```
 
-- [ ] **Step 3: 실패 확인**
+- [x] **Step 3: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/calendar/calendar-parts.test.tsx`
 Expected: FAIL — `Failed to resolve import "./index"`
 
-- [ ] **Step 4: 구현**
+- [x] **Step 4: 구현**
 
 `packages/react/src/calendar/calendar-context.ts`:
 ```ts
@@ -1525,17 +1525,17 @@ export { useCalendarView, useSingleCalendar } from './calendar-context';
 export * from './calendar/index';
 ```
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/calendar`
 Expected: PASS
 
-- [ ] **Step 6: 품질 게이트**
+- [x] **Step 6: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add packages/react/src
@@ -1561,7 +1561,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 키보드와 스크린리더로 조작할 �
   - `CalendarToggle`, `CalendarViewButton`, `CalendarMonthGrid`, `CalendarYearGrid`
   - `Calendar.CalendarToggle`, `Calendar.ViewButton`, `Calendar.MonthGrid`, `Calendar.YearGrid`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/calendar/calendar-view-parts.test.tsx`:
 ```tsx
@@ -1658,12 +1658,12 @@ describe('Calendar views', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/calendar/calendar-view-parts.test.tsx`
 Expected: FAIL — 토글·보기 버튼을 찾지 못함
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/calendar/month-button-grid.tsx`:
 ```tsx
@@ -1861,17 +1861,17 @@ import에 `import { CalendarMonthGrid, CalendarToggle, CalendarViewButton, Calen
 ```
 와 import `import { CalendarMonthGrid, CalendarToggle, CalendarViewButton, CalendarYearGrid } from './calendar-view-parts';`
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/calendar`
 Expected: PASS (Task 2 테스트 포함. Task 2의 "moves between months" 테스트는 이제 제목이 ViewButton 안에 있어도 격자 이름으로 확인하므로 그대로 통과해야 한다)
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src/calendar
@@ -1900,7 +1900,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 음력 보기 전환과 월·연 단위 이�
   - `RangeCalendarContext`, `useRangeCalendarContext(): RangeCalendarApi`
   - `RangeCalendar = { Root }`, `RANGE_CALENDAR_PROP_NAMES`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/range-calendar/range-announcement.test.ts`:
 ```ts
@@ -2084,12 +2084,12 @@ describe('RangeCalendar', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/range-calendar`
 Expected: FAIL — `Failed to resolve import "./range-announcement"`, `"./index"`
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/range-calendar/range-cell-flags.ts`:
 ```ts
@@ -2462,17 +2462,17 @@ export { useRangeCalendarContext } from './range-calendar-context';
 export * from './range-calendar/index';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/range-calendar src/calendar`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -2495,7 +2495,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 기간 제한과 확인 후 반영을 지원
 - Consumes: core `createEdgeDwell`, `EDGE_DWELL_DELAY_MS`, `EdgeDirection`, `displayedRange`
 - Produces: `useRangePointer(options): RangePointerHandlers` (Task 4와 같은 시그니처), 테스트 헬퍼 `dispatchPointer(target, type, init)`
 
-- [ ] **Step 1: 포인터 헬퍼 작성**
+- [x] **Step 1: 포인터 헬퍼 작성**
 
 `packages/react/src/testing/pointer.ts`:
 ```ts
@@ -2524,7 +2524,7 @@ export function dispatchPointer(target: EventTarget, type: string, init: Pointer
 }
 ```
 
-- [ ] **Step 2: 실패하는 테스트 작성**
+- [x] **Step 2: 실패하는 테스트 작성**
 
 `packages/react/src/range-calendar/range-pointer.test.tsx`:
 ```tsx
@@ -2610,12 +2610,12 @@ describe('RangeCalendar pointer', () => {
 });
 ```
 
-- [ ] **Step 3: 실패 확인**
+- [x] **Step 3: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/range-calendar/range-pointer.test.tsx`
 Expected: FAIL — 드래그·가장자리 테스트가 실패(최소 구현이라 포인터를 처리하지 않음). 터치 테스트는 이미 통과할 수 있다.
 
-- [ ] **Step 4: 구현**
+- [x] **Step 4: 구현**
 
 `packages/react/src/range-calendar/use-range-pointer.ts` 전체를 다음으로 바꾼다:
 ```ts
@@ -2729,17 +2729,17 @@ export function useRangePointer(options: RangePointerOptions): RangePointerHandl
 
 `onPointerEnter`는 React가 `pointerover`로 합성하므로 테스트의 `pointerover` 디스패치로 확인한다. 드래그가 끝난 뒤(`stopDragRef.current === null`) 들어오는 호버는 무시한다.
 
-- [ ] **Step 5: 통과 확인**
+- [x] **Step 5: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/range-calendar`
 Expected: PASS
 
-- [ ] **Step 6: 품질 게이트**
+- [x] **Step 6: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add packages/react/src/range-calendar packages/react/src/testing/pointer.ts
@@ -2763,7 +2763,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 마우스로 범위를 끌어 고르고 끝�
 - Consumes: Task 2·3의 `data-lsp-part` 이름, `DATA_ATTRIBUTES`(`data-slide` 포함), M3 토큰 `--lsp-*`
 - Produces: 달력 부품 스타일
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/theme/tests/calendar-selectors.test.ts`:
 ```ts
@@ -2798,12 +2798,12 @@ describe('mono.css calendar parts', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/theme exec vitest run tests/calendar-selectors.test.ts`
 Expected: FAIL — `styles every calendar part`가 꾸며지지 않은 달력 부품 목록을 보여 줌
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/theme/src/mono.css` 끝에 추가(기존 내용은 그대로 둔다):
 ```css
@@ -3090,17 +3090,17 @@ Expected: FAIL — `styles every calendar part`가 꾸며지지 않은 달력 �
 }
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/theme exec vitest run`
 Expected: PASS (M3의 선택자 계약 테스트 포함)
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/theme
@@ -3126,7 +3126,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 달력 부품에 Mono 기본 디자인 적�
   - `listTimes(minuteStep: number, isEndOfDayAllowed: boolean): readonly TimeString[]`
   - `TimeList = { Root }`, `interface TimeListRootProps { value?; defaultValue?; onValueChange?(value: TimeString, details); minuteStep?; isEndOfDayAllowed?; 'aria-label' }`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/month-calendar/month-calendar.test.tsx`:
 ```tsx
@@ -3200,12 +3200,12 @@ describe('TimeList', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/month-calendar src/time-list`
 Expected: FAIL — 모듈을 찾지 못함
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/contract/data-attributes.ts`의 `PART_NAMES` 끝에 추가:
 ```ts
@@ -3415,17 +3415,17 @@ export * from './month-calendar/index';
 export * from './time-list/index';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/month-calendar src/time-list`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -3454,7 +3454,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월 단위 선택과 분 간격 시간 목�
   - `interface PickerOpenProps { open?; defaultOpen?; onOpenChange? }`
   - `DatePicker(props: DatePickerProps)`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/pickers/date-picker.test.tsx`:
 ```tsx
@@ -3525,12 +3525,12 @@ describe('DatePicker', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/date-picker.test.tsx`
 Expected: FAIL — `Failed to resolve import "./index"`
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/contract/data-attributes.ts`의 `PART_NAMES` 끝에 추가:
 ```ts
@@ -3785,17 +3785,17 @@ export { DatePicker } from './date-picker';
 export type { DatePickerProps, PickerOpenProps } from './date-picker';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src
@@ -3821,7 +3821,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 입력 칸과 팝오버 달력을 묶은 Dat
   - `PickerSelectionContext`, `usePickerSelection(): PickerSelection`
   - `DateRangePicker(props: DateRangePickerProps)` (`presets?: ReactNode`)
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/pickers/date-range-picker.test.tsx`:
 ```tsx
@@ -3927,12 +3927,12 @@ describe('DateRangePicker', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/date-range-picker.test.tsx`
 Expected: FAIL — `DateRangePicker`, `usePickerSelection`이 export되지 않음
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/pickers/picker-selection.ts`:
 ```ts
@@ -4094,17 +4094,17 @@ export { usePickerSelection } from './picker-selection';
 export type { PickerSelection } from './picker-selection';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src/pickers
@@ -4129,7 +4129,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 프리셋 슬롯과 확인 후 반영을 갖
 - Consumes: Task 7 `MonthCalendar`, `TimeList`, Task 8 뼈대, M3 `Wheel`, `useWheelDate`, `TimeField`, `Sheet`
 - Produces: `MonthPicker`, `WheelDatePicker` (`presentation: 'inline' | 'sheet'`), `TimePicker`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `packages/react/src/pickers/other-pickers.test.tsx`:
 ```tsx
@@ -4191,12 +4191,12 @@ describe('WheelDatePicker', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/other-pickers.test.tsx`
 Expected: FAIL — export 없음
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `packages/react/src/pickers/month-picker.tsx`:
 ```tsx
@@ -4471,17 +4471,17 @@ export { WheelDatePicker } from './wheel-date-picker';
 export type { WheelDatePickerProps } from './wheel-date-picker';
 ```
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers`
 Expected: PASS
 
-- [ ] **Step 5: 품질 게이트**
+- [x] **Step 5: 품질 게이트**
 
 Run: `just fix && just check && just test`
 Expected: 모두 통과
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src/pickers
@@ -4505,7 +4505,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월·휠 날짜·시간 picker 완성형 제
 - Consumes: Task 8~10 `src/pickers/index.ts`
 - Produces: `@lunisolar-picker/react/pickers` 진입점, 크기 예산 `DatePicker ≤ 15360 B gzip`
 
-- [ ] **Step 1: 빌드 진입점 추가**
+- [x] **Step 1: 빌드 진입점 추가**
 
 `packages/react/tsdown.config.ts`의 `entry`에 `pickers: 'src/pickers/index.ts'`를 추가한다(`banner`는 그대로 둔다):
 ```ts
@@ -4520,7 +4520,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월·휠 날짜·시간 picker 완성형 제
 Run: `pnpm --filter @lunisolar-picker/react run build && pnpm --filter @lunisolar-picker/react exec tsx scripts/check-use-client.ts`
 Expected: `"use client" is the first statement in all <N> files` (`pickers.js` 포함)
 
-- [ ] **Step 2: 완성형 의존 경계 규칙 추가**
+- [x] **Step 2: 완성형 의존 경계 규칙 추가**
 
 `.dependency-cruiser.cjs`의 `forbidden` 배열에 추가:
 ```js
@@ -4536,7 +4536,7 @@ Expected: `"use client" is the first statement in all <N> files` (`pickers.js` �
 Run: `just deps`
 Expected: 위반 0
 
-- [ ] **Step 3: 크기 예산 추가**
+- [x] **Step 3: 크기 예산 추가**
 
 `packages/react/test/size/date-picker-entry.ts`:
 ```ts
@@ -4573,12 +4573,12 @@ interface SizeBudget {
   },
 ```
 
-- [ ] **Step 4: 전체 게이트**
+- [x] **Step 4: 전체 게이트**
 
 Run: `just fix && just check && just test && just package-check && just size`
 Expected: 모두 통과. `DatePicker` 크기가 15360 B를 넘으면 예산을 바꾸지 말고 측정값과 큰 모듈(esbuild `metafile`로 확인)을 사용자에게 보고한다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add packages/react/tsdown.config.ts packages/react/package.json packages/react/test/size .dependency-cruiser.cjs scripts
@@ -4599,11 +4599,11 @@ ALLOW_COMMIT=1 git commit -m "chore: 완성형 picker를 별도 진입점으로 
 - Consumes: 완성형 전부, `usePickerSelection`, core `validateRange`, calendar `isSameRange`, `formatDate`, `parseDate`
 - Produces: `renderWithHydration(element): Promise<{ container: HTMLElement; recoverableErrors: readonly unknown[] }>` (M3에 같은 헬퍼가 있으면 그것을 쓰고 이 파일은 만들지 않는다)
 
-- [ ] **Step 1: hydration 헬퍼 작성**
+- [x] **Step 1: hydration 헬퍼 작성**
 
 > 정합성 조정(2026-10-14): SSR hydration 헬퍼는 M3 `src/testing/expect-hydration.tsx`의 `renderWithHydration`을 쓴다. 이 Task에서 새로 만들지 않는다.
 
-- [ ] **Step 2: 소비 앱 기능 재현 테스트 작성**
+- [x] **Step 2: 소비 앱 기능 재현 테스트 작성**
 
 `packages/react/src/pickers/consumer-parity.test.tsx`:
 ```tsx
@@ -4823,7 +4823,7 @@ describe('visual regression', () => {
 });
 ```
 
-- [ ] **Step 3: 실행**
+- [x] **Step 3: 실행**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/consumer-parity.test.tsx src/pickers/hydration.test.tsx`
 Expected: PASS. 실패하면 해당 기능을 공개 API만으로 재현하지 못한다는 뜻이므로, 원인이 된 Task의 구현을 고친다(테스트 기대값을 바꾸지 않는다).
@@ -4834,12 +4834,12 @@ Expected: M3의 Docker 기준 환경(`scripts/run-visual-tests.sh`)에서 이 �
 Run: `just visual`
 Expected: PASS
 
-- [ ] **Step 4: 품질 게이트**
+- [x] **Step 4: 품질 게이트**
 
 Run: `just fix && just check && just test && just package-check && just size`
 Expected: 모두 통과
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add packages/react/src/pickers packages/react/src/visual
