@@ -338,6 +338,8 @@
     position: relative;
     z-index: 1;
     flex: 1;
+    /* 항목이 절대 위치라 열의 내용 폭이 0이므로, 내용 폭에 맞춰 줄어드는 자리에서도 휠이 사라지지 않게 최소 폭을 둠 */
+    min-inline-size: calc(var(--lsp-wheel-item-size) * 2);
     overflow: hidden;
     cursor: grab;
     outline: none;

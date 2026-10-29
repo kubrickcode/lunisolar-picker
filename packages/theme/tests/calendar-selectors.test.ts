@@ -31,6 +31,7 @@ const SELECTED_ITEM_SELECTORS = [
 ];
 const TIME_LIST_PART = '[data-lsp-part="time-list"]';
 const VIEW_BUTTON_PART = '[data-lsp-part="calendar-view-button"]';
+const WHEEL_COLUMN_PART = '[data-lsp-part="wheel-column"]';
 const YEARS_VIEW_EXCLUSION = ':not([data-view="years"])';
 
 type CssRule = {
@@ -173,6 +174,18 @@ describe('mono.css calendar', () => {
 
       expect(listDeclarations).toMatch(/max-block-size:\s*\d+px/);
       expect(listDeclarations).toMatch(/overflow-y:\s*auto/);
+    });
+  });
+
+  describe('wheel', () => {
+    // Constraint: 항목이 절대 위치라 열의 내용 폭이 0이므로, 내용 폭에 맞춰 줄어드는 자리(왼쪽 정렬 flex 등)에서 휠이 사라지지 않게 최소 폭이 있어야 함
+    it('keeps a minimum column width when the container shrinks to content', async () => {
+      const columnDeclarations = parseLeafRules(await readMonoCss())
+        .filter((rule) => rule.selectors.includes(WHEEL_COLUMN_PART))
+        .map((rule) => rule.declarations)
+        .join(';');
+
+      expect(columnDeclarations).toMatch(/min-inline-size:/);
     });
   });
 
