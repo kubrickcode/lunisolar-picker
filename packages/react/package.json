@@ -1,6 +1,6 @@
 {
   "name": "@lunisolar-picker/react",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Unstyled React hooks and parts for lunisolar-picker",
   "license": "MIT",
   "repository": {
