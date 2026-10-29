@@ -1,5 +1,12 @@
 # @lunisolar-picker/react
 
+## 0.1.1
+
+### Patch Changes
+
+- @lunisolar-picker/calendar@0.1.1
+  - @lunisolar-picker/core@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
