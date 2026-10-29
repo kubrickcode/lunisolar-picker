@@ -1,0 +1,38 @@
+{
+  "name": "@lunisolar-picker/theme",
+  "version": "0.0.0",
+  "description": "Mono theme for lunisolar-picker parts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kubrickcode/lunisolar-picker.git",
+    "directory": "packages/theme"
+  },
+  "homepage": "https://github.com/kubrickcode/lunisolar-picker#readme",
+  "bugs": {
+    "url": "https://github.com/kubrickcode/lunisolar-picker/issues"
+  },
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "exports": {
+    "./mono.css": "./src/mono.css",
+    "./bridge/shadcn.css": "./src/bridge/shadcn.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "package-check": "publint --strict"
+  },
+  "devDependencies": {
+    "@lunisolar-picker/react": "workspace:*"
+  }
+}

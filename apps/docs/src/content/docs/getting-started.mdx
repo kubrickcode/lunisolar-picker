@@ -1,0 +1,71 @@
+---
+title: Getting started
+description: Install lunisolar-picker, load the theme and render your first date picker.
+---
+
+import { DatePickerDemo } from '../../components/demos/DatePickerDemo';
+
+<DatePickerDemo client:only="react" />
+
+## Install
+
+The React package depends on the core and calendar packages, but you import locales and the lunar calendar from them directly, so install all four:
+
+```sh
+pnpm add @lunisolar-picker/react @lunisolar-picker/core @lunisolar-picker/calendar @lunisolar-picker/theme
+```
+
+Requirements: React 19, an ESM-capable bundler, and Node 22.12 or later for server rendering.
+
+## Load the theme
+
+Import the stylesheet once, for example in your global CSS. The theme lives in the `lunisolar-picker` cascade layer. Declare the layer order so your utilities can still override it:
+
+```css
+@layer theme, base, lunisolar-picker, components, utilities;
+@import '@lunisolar-picker/theme/mono.css';
+```
+
+Popovers and sheets render in a portal at the end of `body`, so set your font family on `html` or `body`, not on an inner wrapper.
+
+## Render a picker
+
+```tsx
+import type { DateString } from '@lunisolar-picker/calendar';
+import { en } from '@lunisolar-picker/core/locales/en';
+import { LunisolarProvider } from '@lunisolar-picker/react';
+import { DatePicker } from '@lunisolar-picker/react/pickers';
+import { useState } from 'react';
+
+export function App() {
+  const [value, setValue] = useState<DateString | null>(null);
+  return (
+    <LunisolarProvider locale={en} timeZone="America/New_York">
+      <DatePicker aria-label="Due date" value={value} onValueChange={(next) => setValue(next)} />
+    </LunisolarProvider>
+  );
+}
+```
+
+`onValueChange` receives a canonical date string such as `'2026-10-14'`, or `null` when the user clears the picker. The second argument carries `validity`: `isValid` and a list of `reasons` when the value breaks a constraint.
+
+Callbacks report user actions only. Mounting, or the parent passing a new `value`, never calls `onValueChange`.
+
+## Provider options
+
+| Prop | Purpose |
+|---|---|
+| `locale` | Month and weekday names, field order, labels and announcements. Import `en`, `ko` or `ja` from `@lunisolar-picker/core/locales/*`. |
+| `timeZone` | IANA time zone used only to decide which day is "today". Values themselves have no time zone. |
+| `today` | A fixed `YYYY-MM-DD` for "today". Set it when you render on the server so the server and the browser agree. |
+| `weekStartsOn` | `0` (Sunday) to `6` (Saturday). Defaults to the locale. |
+| `calendars` | Extra calendar systems. Pass `[dangi]` to enable Korean lunar dates. |
+
+Every picker also accepts these props directly, so the provider is optional.
+
+## Next steps
+
+- [Theming](/theming/) to match your brand and dark mode.
+- [DateRangePicker](/pickers/date-range-picker/) for filters with presets and a confirm step.
+- [Customizing pickers](/guides/customizing-pickers/) when props are not enough.
+- [Lunar calendar](/guides/lunar-calendar/) to accept Korean lunar birthdays.

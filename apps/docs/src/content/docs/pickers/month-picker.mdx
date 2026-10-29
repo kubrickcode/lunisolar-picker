@@ -1,0 +1,29 @@
+---
+title: MonthPicker
+description: Pick a year and month from a grid.
+---
+
+import { MonthPickerDemo } from '../../../components/demos/MonthPickerDemo';
+
+<MonthPickerDemo client:only="react" />
+
+```tsx
+import { MonthPicker } from '@lunisolar-picker/react/pickers';
+
+<MonthPicker aria-label="Billing month" value={month} onValueChange={(next) => setMonth(next)} min="2020-01" max="2030-12" />;
+```
+
+Values are `YYYY-MM` strings. The trigger shows the chosen month (or `placeholder`; without one it shows its label, the `aria-label` or "Choose month", unless `aria-labelledby` points at a visible label) and opens a 3-column month grid. Arrow keys move between months, <kbd>Home</kbd> and <kbd>End</kbd> jump to January and December, and the header buttons change the year.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value`, `defaultValue` | `string \| null` | `null` | Canonical month such as `'2026-10'`. |
+| `onValueChange` | `(value: MonthString \| null, details) => void` | | Called when the user changes the month. |
+| `onPick` | `(value: MonthString) => void` | | Called after every accepted pick, even of the same month. |
+| `min`, `max` | `string` | | Earliest and latest months, as `YYYY-MM`. |
+| `presentation` | `'auto' \| 'popover' \| 'sheet'` | `'auto'` | As on [DatePicker](/pickers/date-picker/#props). |
+| `open`, `defaultOpen`, `onOpenChange` | `boolean` | | Control the popover or sheet. |
+| `isClearable`, `renderTrigger`, `placeholder`, `ref`, `onBlur`, `onInvalidValue` | | | As on DatePicker. |
+| `name`, `form`, `required`, `disabled`, `readOnly`, `invalid` | | | Same as native inputs. |
+
+Month values carry no calendar annotation, so MonthPicker always uses solar months.

@@ -1,0 +1,42 @@
+---
+title: DateField parts
+description: Segmented date inputs that accept typing, paste and arrow keys.
+---
+
+```tsx
+import { DateField } from '@lunisolar-picker/react';
+
+<DateField.Root aria-label="Birth date" value={value} onValueChange={(next) => setValue(next)} name="birthDate">
+  <DateField.Segment index={0} />
+  <DateField.Separator />
+  <DateField.Segment index={1} />
+  <DateField.Separator />
+  <DateField.Segment index={2} />
+  <DateField.LeapMonthToggle />
+  <DateField.HiddenInput />
+</DateField.Root>;
+```
+
+Without children, `DateField.Root` renders the segments, separators, leap-month toggle and hidden input in the locale's order for you. `index` follows that order: in `en` index 0 is the month, 1 the day and 2 the year.
+
+```tsx
+<DateField.Root aria-label="Birth date" value={value} onValueChange={(next) => setValue(next)} name="birthDate" />;
+```
+
+Each segment is a `role="spinbutton"` element with the numeric keypad. Typing fills the segment and moves on when it is full or when you type `.`, `-` or `/`. Backspace clears a segment. Pasting `2026-10-14` or `2026.10.14` fills all segments.
+
+The field never changes what you typed. If the date does not exist, for example 30 February or a leap month the year does not have, the field shows `data-invalid` and `validity.reasons` contains `'invalid-date'`. An unfinished field reports `'incomplete'`.
+
+`DateField.LeapMonthToggle` appears only while the field uses a calendar with leap months. Pressing <kbd>L</kbd> on the field toggles it too.
+
+`DateRangeField.Root` contains `DateRangeField.Start`, `DateRangeField.Separator` and `DateRangeField.End`. Inside `Start` and `End` you use the same `DateField.Segment`, `DateField.Separator` and `DateField.LeapMonthToggle`. Ranges use `startName` and `endName` instead of `name`.
+
+| Part | Renders | Notes |
+|---|---|---|
+| `Root` | `div[role=group]` | Owns state. Accepts `value`, `defaultValue`, `onValueChange`, `min`, `max`, `isDateDisabled`, `entryCalendar`, `separator`, `ref` and the shared props. |
+| `Segment` | `span[role=spinbutton]` | `index` in locale order. |
+| `Separator` | `span[aria-hidden]` | Locale separator, or the `separator` prop. |
+| `LeapMonthToggle` | `button[aria-pressed]` | Calendars with leap months only. |
+| `HiddenInput` | visually hidden `input` | Submits the canonical value under `name`. |
+
+Every part takes a `render` prop to swap the element: pass an element to merge props into it, or a function `(props, state) => element` and spread `props` yourself.

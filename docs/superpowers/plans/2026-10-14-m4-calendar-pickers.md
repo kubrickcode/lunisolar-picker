@@ -4,6 +4,16 @@
 
 > 🟡 **잠정 계획**: M2(core)·M3(react 기반·theme·입력 부품)가 끝나기 전에 쓴 계획이다. M2·M3의 실제 이름·시그니처·파일 경로가 계약(`2026-10-14-v1-interface-contract.md`)과 다르면, 실행 전에 계약을 먼저 고치고 이 계획의 해당 import·호출부를 맞춘다. 동작·테스트 기대값은 그대로 둔다.
 
+> 🔁 **M3 결과 반영(2026-10-14)**: M3가 끝나면서 아래 가정이 바뀌었다. 실행 전 계약 §3.3 끝의 "계약 변경(M3 전체 리뷰)" 목록과 §4 메모를 먼저 읽고, 이 계획의 해당 코드는 그 목록에 맞춰 옮긴다(동작·테스트 기대값은 그대로).
+> - `RangeValueInput`(약 2184행)을 새로 만들지 말고 `@lunisolar-picker/react`의 `DateRangeInput`을 import한다.
+> - DatePicker가 `calendarProps`를 `DateField.Root`와 `Calendar.Root`에 함께 펼치면(약 3710행) `ref`가 달력에도 간다. `ref`는 입력 칸 Root에만 넘긴다(필드 Root의 `ref.focus()`가 첫 칸에 포커스).
+> - Popover는 부모의 `open=false`로 닫혀도 포커스를 트리거로 돌려준다. 선택 후 닫는 흐름에서 따로 포커스를 옮기지 않는다.
+> - WheelDatePicker(약 4290~4400행)는 `useWheelDate`의 `getWheelRootProps()`를 `<Wheel.Root>`에 펼치고 `<Wheel.HiddenInput {...wheel.getHiddenInputProps()} />`를 그린다. `disabled`·`readOnly`·`name`·`onBlur`는 이 경로로만 동작한다.
+> - theme: `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`를 스타일을 붙일 때마다 줄인다. 이 검사가 "모든 부품에 규칙"을 보장하므로 `calendar-selectors.test.ts`(약 2758행)는 달력 고유 검사만 남기거나 뺀다.
+> - `useStoreInstance`의 `send`는 `resetKey`가 바뀔 때 새로 만들어진다. M4-T1부터 달력 navigation·selection store도 `resetKey = calendarKey`를 쓰므로 역법 목록이 바뀌면 `send`가 바뀐다. `send`는 최신 ref로 읽거나 호출 시점에 쓴다. `getSnapshot()`으로 렌더 없이 최신 상태를 읽을 수 있다.
+> - 테스트: 클릭 후 입력은 `src/testing/click-to-focus.ts`의 `clickToFocus`를 쓰고, 부정 단언 전에는 `settleEffects`를 쓴다.
+> - M4-T1~T3 실제 코드 기준(실행 중 반영): `CalendarViewApi.headingId`·`foundation.idPrefix`는 없다(약 601·617·686·750·839·853·1225·1799·1852행은 옛 코드). 격자 이름은 `aria-label = formatHeading(...)`. `foundation.config`는 `settings`, `INVALID_SELECTION`·`ParsedSelection`은 없음, `useSelectionSync`는 `resetKey`를 받고 `{ isReported, markReported }`를 돌려줌, `useCalendarFoundation`·`createCalendarViewApi`는 객체 인자. 사용자 선택·`commit` 뒤에는 `reportCommitted`. T7 MonthCalendar의 1년 이동(약 3161·3278·3282행)은 `previousYear`/`nextYear` 라벨을 쓴다.
+
 **Goal:** 단일·범위 달력 부품(`Calendar.*`, `RangeCalendar.Root`)과 완성형 picker 5종(`DatePicker`, `DateRangePicker`, `MonthPicker`, `WheelDatePicker`, `TimePicker`)을 만들어, web-console·back-office·saju-pictures가 쓰던 기능을 공개 API만으로 재현할 수 있게 한다.
 
 **Architecture:** 두 달력 Root는 공통 `useCalendarFoundation`(역법·제약·navigation store·월 격자·포커스 요청) 위에 선택 store(single/range)만 바꿔 얹는다. 부품은 `CalendarViewApi` 컨텍스트 하나로 칸 상태·속성·키보드를 받는다. 범위 드래그는 `useRangePointer`가 포인터 이벤트를 날짜 이벤트로 바꿔 core store에 보내고, 가장자리 머묾 판정은 core `createEdgeDwell`이 맡는다. 완성형은 `src/pickers/`에서 공개 진입점(`src/index.ts`)과 M3 공용 모듈(`src/contract/`, `src/settings/`, `src/utilities/`)만 import한다.
@@ -31,7 +41,7 @@
 | `src/settings/use-picker-settings.ts` | `usePickerSettings(props: SharedPickerProps): PickerSettings`, `PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars }` (calendars[0]은 gregory) |
 | `src/settings/shared-picker-props.ts` | `SharedPickerProps`(`onBlur` 포함), `ValueChangeDetails` |
 | `src/utilities/render-element.ts` | `RenderProp<Props, State>`, `renderElement(tagName, render, props, state): ReactElement` |
-| `src/store/use-store-instance.ts` | `useStoreInstance(createInitialState, reducer, context): { state; send }` (send는 참조 고정) |
+| `src/store/use-store-instance.ts` | `useStoreInstance(createInitialState: (previous?) => State, reducer, context, options?: { resetKey? }): { state; send; getSnapshot }` (send는 resetKey가 바뀔 때만 바뀜) |
 | `src/utilities/use-controllable-state.ts` | `useControllableState(controlled, defaultValue, onChange): readonly [Value, (next) => void]` |
 | `src/contract/data-attributes.ts` | `DATA_ATTRIBUTES`, `DataAttribute`, `PART_NAMES`, `PartName`, `partAttributes(part, flags?)`, `stateAttributes(flags)` (플래그 키는 `data-` 없이: `{ selected: true }`) |
 | `src/presentation/use-presentation.ts` | `Presentation`, `usePresentation(presentation): 'popover' \| 'sheet'` (`src/index.ts`에서도 export) |
@@ -4485,7 +4495,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월·휠 날짜·시간 picker 완성형 제
 
 > 🟡 잠정: M3의 `packages/react/tsdown.config.ts`·`package.json` exports 형태에 따라 수정 위치가 바뀔 수 있음
 
-> 정합성 조정(2026-10-14): M3 `packages/react/scripts/check-use-client.ts`가 dist의 모든 `.js`를 검사하고, tsdown `banner`가 모든 청크에 `'use client';`를 붙이므로 새 검사 스크립트를 만들지 않는다. `exports`에는 다른 진입점처럼 `source` 조건을 둔다.
+> 정합성 조정(2026-10-14): M3 `packages/react/scripts/check-use-client.ts`가 dist의 모든 `.js`를 검사하고, tsdown `banner`가 모든 청크에 `'use client';`를 붙이므로 새 검사 스크립트를 만들지 않는다. `exports`에는 다른 진입점처럼 `@lunisolar-picker/source` 조건을 둔다.
 
 **Files:**
 - Modify: `packages/react/tsdown.config.ts`, `packages/react/package.json`, `.dependency-cruiser.cjs`, `scripts/check-bundle-size.ts`
@@ -4504,7 +4514,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 월·휠 날짜·시간 picker 완성형 제
 
 `packages/react/package.json`의 `exports`에 추가:
 ```json
-    "./pickers": { "source": "./src/pickers/index.ts", "types": "./dist/pickers.d.ts", "default": "./dist/pickers.js" },
+    "./pickers": { "@lunisolar-picker/source": "./src/pickers/index.ts", "types": "./dist/pickers.d.ts", "default": "./dist/pickers.js" },
 ```
 
 Run: `pnpm --filter @lunisolar-picker/react run build && pnpm --filter @lunisolar-picker/react exec tsx scripts/check-use-client.ts`

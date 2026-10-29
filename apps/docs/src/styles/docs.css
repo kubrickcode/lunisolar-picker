@@ -1,0 +1,29 @@
+/* Constraint: Starlight가 자기 스타일을 starlight 레이어에 두므로 picker 테마를 그 뒤에 두어 데모가 Starlight 기본 버튼 스타일에 덮이지 않게 함 */
+@layer starlight, lunisolar-picker;
+@import "@lunisolar-picker/theme/mono.css";
+
+.demo-frame {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+}
+
+.demo-frame output {
+  font-family: var(--sl-font-system-mono);
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+/* Constraint: 점을 흐름 밖에 띄워야 점이 있는 칸의 숫자도 다른 칸과 같은 높이에 있음 */
+.holiday-dot {
+  position: absolute;
+  inset-block-end: 5px;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: 999px;
+  background: #e5484d;
+}

@@ -165,8 +165,8 @@ interface CalendarSystem {
 
 ### 5.3 dangi 데이터
 
-- **출처**: 한국천문연구원(KASI) 음양력 정보 OpenAPI (data.go.kr 15012679). 지원 범위는 **1900~2050년**이다.
-- **수집**: `scripts/collect-kasi.ts`로 한 번 수집해 원본 JSON(`packages/calendar/data/kasi-dangi.json`)을 커밋한다. API 키는 환경변수로 받고 레포에 넣지 않는다.
+- **출처**: 한국천문연구원(KASI) 음양력 정보 OpenAPI (data.go.kr 15012679). KASI 제공 범위는 양력 1900-01~2050-12다. 그래서 실제 지원 범위는 음력 1900년 1월 1일(양력 1900-01-31)부터 음력 2050년 11월 30일(양력 2051-01-12)까지다. 음력 2050년 12월은 데이터가 없어 범위 밖이다.
+- **수집**: `packages/calendar/scripts/kasi/collect-kasi.ts`로 한 번 수집해 음력 달 시작일 JSON(`packages/calendar/data/kasi-dangi-months.json`)을 커밋한다. API 키는 환경변수로 받고 레포에 넣지 않는다.
 - **생성**: 원본 JSON에서 압축 표 TS 코드(`dangi-table.generated.ts`)를 생성한다. 해마다 월 대·소 13bit, 윤달 위치 4bit, 설날 epoch day를 담는다. 목표 크기는 gzip 1KB 이하다.
 - **브라우저 내장 Intl에 의존하지 않는 이유**: `Intl` `u-ca-dangi`는 엔진(ICU4C/ICU4X/AppleICU)마다 결과가 다르다. 서버(V8)와 iOS(AppleICU)가 서로 다르게 그리면 hydration mismatch가 난다. Temporal은 iOS Safari에서 아직 지원되지 않는다.
 - **교차 검증**: manseryeok, korean-lunar-calendar, Node·브라우저 `Intl` dangi와 비교한 차이 리포트를 생성한다. 정보용이며 빌드를 막지 않는다.
@@ -314,7 +314,7 @@ type ValidationReason =
 
 ### 8.1 토큰
 
-`--lsp-bg`, `--lsp-surface`, `--lsp-fg`, `--lsp-muted`, `--lsp-subtle`, `--lsp-border`, `--lsp-accent`, `--lsp-accent-fg`, `--lsp-range-bg`, `--lsp-ring`, `--lsp-danger`, `--lsp-radius`, `--lsp-cell-size`, `--lsp-shadow-popover`, `--lsp-duration`
+`--lsp-bg`, `--lsp-surface`, `--lsp-fg`, `--lsp-muted`, `--lsp-subtle`, `--lsp-border`, `--lsp-accent`, `--lsp-accent-fg`, `--lsp-range-bg`, `--lsp-ring`, `--lsp-focus`, `--lsp-placeholder`, `--lsp-danger`, `--lsp-radius`, `--lsp-cell-size`, `--lsp-shadow-popover`, `--lsp-duration`, `--lsp-wheel-item-size`, `--lsp-wheel-visible-count`, `--lsp-backdrop`, `--lsp-color-scheme`
 
 ### 8.2 모드
 
@@ -328,6 +328,8 @@ type ValidationReason =
 - 무채색, 가는 선, 모서리 8px, 선택은 잉크색 채움, 날짜 칸 36px(터치 기기 44px)
 - `tabular-nums`. 글꼴은 앱 글꼴을 상속하고 라이브러리가 싣지 않는다.
 - 음력 표시는 `--lsp-subtle` 회색의 작은 숫자뿐이다. 별도 강조색은 없다.
+- `--lsp-focus`는 포커스 테두리 전용으로 배경 대비 3:1 이상, `--lsp-placeholder`는 입력 안내 글자 전용으로 4.5:1 이상을 지킨다. `--lsp-subtle`은 대비가 낮아 음력 보조 숫자에만 쓴다 (M3-T10 리뷰).
+- Popover·Sheet는 `document.body`로 포털되므로 다크 모드(`.dark`·`data-theme`)는 `html`이나 `body`에 둔다. 감싼 요소에만 두면 포털 콘텐츠에 닿지 않는다 (M3 리뷰).
 - 모션: 월 전환 슬라이드 180ms, 팝오버 페이드·확대 140ms, 휠 관성. `prefers-reduced-motion`이면 모두 끈다.
 - 논리 속성만 쓴다(RTL 대비). `forced-colors`에서는 시스템 색을 쓴다.
 - 토·일 색은 기본 테마에 넣지 않는다. 앱이 `data-weekday`로 칠한다.

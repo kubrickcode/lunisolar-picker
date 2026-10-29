@@ -11,18 +11,21 @@
 
 ## 0. 워크스페이스 공통 규칙 🔒
 
-- **패키지 간 해석은 `source` export 조건으로 통일한다.** [M1-T1, M2-T2, M3-T1]
-  - 모든 패키지 `exports`의 진입점마다 맨 앞에 `"source": "./src/…ts"`를 둔다.
+- **패키지 간 해석은 `@lunisolar-picker/source` export 조건으로 통일한다.** [M1-T1, M2-T2, M3-T1]
+  - 모든 패키지 `exports`의 진입점마다 맨 앞에 `"@lunisolar-picker/source": "./src/…ts"`를 둔다.
   - `files`에는 `src`를 넣고 테스트·테스트 헬퍼(`src/testing`, `src/visual`, `*.test.*`)는 뺀다.
-  - `tsconfig.base.json`: `"customConditions": ["source"]`
-  - vitest: `resolve.conditions`와 `ssr.resolve.conditions` 맨 앞에 `'source'`. 그래서 루트 devDependency에 `vite` 8.3.4를 둔다 [M2-T2].
-  - dependency-cruiser: `enhancedResolveOptions.conditionNames: ['source', 'import', 'types', 'default']`. 패키지 경계 규칙은 공개 진입점 파일(`src/index.ts` 등)을 허용 목록에 둔다.
-  - 배포 소비자의 번들러는 `source`를 모르므로 `dist`를 쓴다. fixtures(M5)는 `dist`로 소비 환경을 검증한다.
+  - `tsconfig.base.json`: `"customConditions": ["@lunisolar-picker/source"]`
+  - vitest: `resolve.conditions`와 `ssr.resolve.conditions` 맨 앞에 `'@lunisolar-picker/source'`. 그래서 루트 devDependency에 `vite` 8.3.4를 둔다 [M2-T2].
+  - dependency-cruiser: `enhancedResolveOptions.conditionNames: ['@lunisolar-picker/source', 'import', 'types', 'default']`. 패키지 경계 규칙은 공개 진입점 파일(`src/index.ts` 등)을 허용 목록에 둔다.
+  - 배포 소비자의 번들러는 `@lunisolar-picker/source`를 모르므로 `dist`를 쓴다. fixtures(M5)는 `dist`로 소비 환경을 검증한다.
   - `tsconfig` `paths`나 vitest 별칭은 쓰지 않는다.
 - **`'use client'`는 소스에 쓰지 않는다.** react 패키지의 tsdown `banner`가 모든 산출 청크에 붙이고 `packages/react/scripts/check-use-client.ts`가 검사한다 [M3-T1].
 - **테스트 헬퍼 위치**: 각 패키지 `src/testing/`(진입점에서 export하지 않음, 배포 `files`에서 제외). 시각 회귀는 `packages/react/src/visual/*.visual.test.tsx`이고 `just visual`·`just visual-update`(Docker)로만 돈다 [M3-T10].
 
 ---
+
+
+> 계약 변경(2026-10-14, M1 전체 리뷰): ① 워크스페이스 조건 이름을 일반 이름 `source` 대신 `@lunisolar-picker/source`로 바꿨다. 소비자 모노레포가 흔히 쓰는 `customConditions: ["source"]`에 우리 `src/*.ts`가 잘못 해석되는 것을 막기 위해서다. ② `brandEpochDay(value: number): EpochDay`를 calendar 루트에서 공개한다. 정수가 아니면 `LunisolarPickerError`를 던진다. M2 이후 `as EpochDay` 캐스트 대신 이 함수를 쓴다. ③ `formatDate`와 각 역법의 `fromEpochDay`는 정수가 아닌 epoch day에 `LunisolarPickerError`를 던진다. ④ dangi 지원 범위의 실제 끝은 음력 2050년 11월 30일(양력 2051-01-12)이다.
 
 ## 1. `@lunisolar-picker/calendar` 🔒 [M1]
 
@@ -30,6 +33,7 @@
 type EpochDay = number & { readonly [epochDayBrand]: true };
 interface CivilDate { readonly year: number; readonly month: number; readonly day: number }
 epochDayFromCivil(year, month, day): EpochDay
+brandEpochDay(value: number): EpochDay           // 정수가 아니면 LunisolarPickerError (M1 전체 리뷰 후 공개)
 civilFromEpochDay(epochDay): CivilDate
 weekdayOf(epochDay): number                         // 0=일 … 6=토
 isGregorianLeapYear(year): boolean; daysInGregorianMonth(year, month): number
@@ -134,11 +138,13 @@ export function validateEpochDay(epochDay, constraints): Validity;
 export function validateEpochRange(range: EpochRange, constraints): Validity;
 export function isEpochDayInBlockedRange(anchor, candidate, constraints): boolean;
 export interface ValidationOptions { readonly calendars?: readonly CalendarSystem[] }
-export function validateDate(value: string, constraints?: DateConstraints, options?: ValidationOptions): Validity;           // 앱용
-export function validateRange(range: { start: string; end: string | null }, constraints?: RangeConstraints, options?: ValidationOptions): Validity;  // 앱용 (프리셋 비활성화)
+export function validateDate(value: string, constraints?: DateConstraints, options?: ValidationOptions): StringValidity;     // 앱용. StringValidity = Validity & { ignoredInputs } (M2-T4 리뷰: 잘못된 min/max를 조용히 버리지 않음)
+export function validateRange(range: { start: string; end: string | null }, constraints?: RangeConstraints, options?: ValidationOptions): StringValidity;  // 앱용 (프리셋 비활성화)
 ```
 
 - 바인딩은 `resolveConstraints(constraints, gregory, settings.calendars)`로 부른다. 세 번째 인자는 `min: '…[u-ca=dangi]'` 같은 표기를 해석하는 데 쓴다.
+
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `validateRange`는 시작과 끝이 서로 다른 역법이면 `'invalid-date'`를 낸다. ② `validateEpochRange`는 뒤집힌 범위를 정렬해서 검사한다. ③ `'range-includes-disabled'`는 다른 사유가 하나도 없을 때만 낸다(범위가 이미 무효라서 정보 손실은 허용). ④ `'block'` 모드의 `isEpochDayInBlockedRange`는 양 끝 포함 일수가 `minDays` 미만이거나 `maxDays` 초과인 날을 막는다. anchor 자신도 포함한다.
 
 ### 2.4 격자와 날짜 계산 [M2-T5]
 
@@ -165,6 +171,10 @@ yearPageStartOf(year, pageSize): number
 listYearPage(calendar, pageStart: number, pageSize: number): readonly number[]   // 두 번째 인자는 페이지 시작 연도
 ```
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): `shiftVisibleMonth`는 그 연도에 없는 `monthCode`를 받으면 `LunisolarPickerError`를 던진다. 호출자는 `constrainDateFields`·`visibleMonthOf`로 맞춘 월을 넘긴다.
+
+> 계약 변경(2026-10-14, M2 수정 재검토): 지원 범위 밖 칸(0001-01·9999-12 격자의 앞뒤 칸)은 경계 날짜로 고정한 `date`를 받고 `isOutsideSupportedRange`로 표시된다. 여러 칸이 같은 `date`를 가질 수 있으므로 바인딩은 칸을 `epochDay`로 key 하고, 표시는 `cell.day`를 쓴다.
+
 ### 2.5 navigation store [M2-T6]
 
 ```ts
@@ -179,6 +189,10 @@ export const YEAR_PAGE_SIZE = 12;
 createNavigationState(context, initial?: { focusedEpochDay?; displayCalendarId? }): NavigationState
 navigationReducer: Reducer<NavigationState, NavigationEvent, PickerContext>
 ```
+
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `year.pick`은 고른 연도 안으로 포커스를 옮긴다(`constrainDateFields`로 맞춘 뒤 `boundsFor`로 자름). 보이는 달도 새 포커스에서 다시 정하므로 이후 `month.shift`가 그 연도에서 이어진다. ② `numberOfMonths > 1`인 `month.shift`는 마지막 보이는 달이 지원하는 마지막 달을(시작 쪽은 첫 달을) 넘지 않게 자른다. 같은 달 창이 중복해서 보이는 일이 없다.
+
+> 계약 변경(2026-10-14, M2 수정 재검토): 보이는 첫 달 상한(마지막 지원 달을 넘지 않음)은 `month.shift`뿐 아니라 초기 상태, `today.go`, `calendar.set`, `month.pick`, `year.pick`에 모두 적용된다.
 
 ### 2.6 selection store [M2-T7]
 
@@ -214,6 +228,12 @@ rangeSelectionReducer; displayedRange(state): EpochRange | null; rangeValidity(s
 - `'block'`이면 anchor 기준 `maxDays`를 넘는 날의 입력을 무시하고, `'flag'`이면 받아 두고 `'range-too-long'`을 낸다.
 - immediate는 범위가 완성될 때, confirm은 `commit`에서만 committed를 갱신한다.
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `'block'`은 양 끝 포함 일수가 `minDays` 미만이거나 `maxDays` 초과인 날을 막는다(anchor 자신 포함). 그래서 `minDays > 1`이면 block 모드에서 하루짜리 범위는 만들 수 없다. ② `range.set`은 끝점이 입력 역법에서 표현되지 않으면 no-op이다. 그 밖의 min/max/비활성/일수 위반은 저장하고 `rangeValidity`가 표시한다. ③ `isOpenEndAllowed`일 때 `commit`은 idle 상태(제스처 중도, 잡은 핸들도 없음)에서만 `{ anchor, null }`을 확정한다. ④ `value.sync`와 초기값은 뒤집힌 범위를 정렬해서 받는다. ⑤ 표현할 수 없는 값은 `value.sync`/초기값 경로로만 들어오므로 바인딩은 `parseDate` 결과에서 만든다. 
+>
+> 바인딩 주의점: (a) 그리기는 `displayedRange`로 하고, "선택 중"은 `anchor !== null`로 판단한다(`draft.end === null`이 아님). (b) `rangeValidity`는 표시·미리보기 범위의 유효성이다. `aria-invalid`는 committed 값의 유효성을 쓴다. (c) `value.sync`는 값 문자열이 바뀔 때만 보낸다. 진행 중인 anchor와 confirm 모드의 임시 draft가 지워진다. (d) 핸들을 잡은 뒤 start/end가 뒤바뀌어도 `grabbedHandle`은 처음 이름을 유지한다. (e) confirm 모드에서 닫을 때는 `cancel`을 보낸다(변화 없는 `commit`은 anchor를 남긴다).
+
+> 계약 변경(2026-10-14, M2 수정 재검토): `commit`은 모드와 무관하게 `pointerPhase !== 'idle'`이거나 끝점을 잡고 있는 동안 아무 일도 하지 않는다. 바인딩은 `pointercancel`·`lostpointercapture`를 `pointer.up`으로 보내야 한다.
+
 ### 2.7 field store [M2-T8]
 
 ```ts
@@ -223,7 +243,8 @@ export interface SegmentGroup<Kind extends string> { segments: readonly Segment<
 export type SegmentEvent =
   | { type: 'segment.focus'; index } | { type: 'segment.blur' } | { type: 'digit.type'; digit } | { type: 'separator.type' }
   | { type: 'segment.erase' } | { type: 'segment.step'; amount } | { type: 'focus.shift'; amount };
-createSegment, typeDigit, eraseDigit, stepSegment, withSegmentValue, focusSegmentAt, replaceFocusedSegment, reduceSegmentEvent
+export interface TypedDigit<Kind extends string> { segment: Segment<Kind>; shouldAdvance: boolean }
+createSegment, typeDigit, eraseDigit, stepSegment, canTakeAnotherDigit(segment): boolean
 
 export interface DateFieldState extends SegmentGroup<DateSegmentKind> { isLeapMonth: boolean; entryCalendarId: CalendarId }
 export type DateFieldEvent =
@@ -237,12 +258,22 @@ export interface TimeFieldContext { readonly minuteStep: number; readonly isEndO
 export interface TimeFieldState extends SegmentGroup<TimeSegmentKind> {}
 export type TimeFieldEvent = SegmentEvent | { type: 'text.paste'; text } | { type: 'value.sync'; time: TimeString | null };
 export interface TimeFieldResult { readonly time: TimeString | null; readonly validity: Validity }
-createTimeFieldState(initial: TimeString | null, context: TimeFieldContext): TimeFieldState
+createTimeFieldState(initial: TimeString | null, context: TimeFieldContext): TimeFieldState   // 초기·동기화 값은 24:00을 허용해 파싱(형식 오류가 아닌 제약 위반으로 남김). 시 maxValue는 context를 따름 (M3-T8)
 timeFieldReducer: Reducer<TimeFieldState, TimeFieldEvent, TimeFieldContext>; timeFieldResult(state, context): TimeFieldResult
 ```
 
+> 계약 변경(2026-10-14, M2-T8): `withSegmentValue`·`focusSegmentAt`·`replaceFocusedSegment`·`reduceSegmentEvent`는 core 내부 함수로 두고 공개하지 않는다. M3~M5 계획 어디서도 쓰지 않아서다. 나중에 필요하면 공개를 더하는 것은 깨지지 않는 변경이다. 대신 `typeDigit`의 반환 타입 `TypedDigit`을 공개한다.
+
 - 붙여넣기(`text.paste`)는 세그먼트 공통 이벤트가 아니라 필드별 이벤트다. 바인딩의 명령 타입은 둘을 합친다 [M3-T6].
 - 타이핑 중에는 날짜를 고치지 않는다. 결과가 유효하지 않으면 `'invalid-date'` 또는 `'incomplete'`.
+
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① 붙여넣기 뒤 세그먼트 `value`가 `maxValue`를 넘을 수 있다. aria 값으로 쓰기 전에 자른다. ② `value.sync`의 `entryCalendarId`는 `selected`가 null일 때만 적용된다. ③ 세그먼트 순서는 생성 시점에 고정된다. 로케일이 바뀌면 새 상태를 만든다. ④ 입력 역법에서 표현할 수 없는 `selected`는 던지지 않고 빈 세그먼트가 된다. ⑤ `value.sync`는 값이 바뀔 때만 보낸다. ⑥ 시간 필드에 `"930"`을 붙여넣으면 09:30이다(3자리 한 덩어리 = 시 + 분, 4자리는 HHMM). ⑦ 연·월이 정해져 있으면 일 ↑/↓는 그 달의 일수 안에서, 연 ↑/↓는 지원 연도 범위 안에서 돈다. ⑧ 윤달 여부 판단은 역법 id 분기가 아니라 CalendarSystem에서 유도한다.
+
+> 계약 변경(2026-10-14, M2 수정 재검토): 윤달 표기 인식은 설정된 역법 중 윤달이 있는 역법의 표기만 쓴다(양력만 설정한 picker는 "Leap"를 읽지 않음). 증감은 먼저 그 달 범위로 값을 맞춘 뒤 돈다(2월에서 31 ↓ → 27). `hasLeapMonths`는 역법별 최초 1회 지원 연도를 훑어 캐시한다(양력 약 25ms, 저사양 기기는 더 걸릴 수 있음 — 후속 후보: CalendarSystem에 O(1) 플래그).
+
+> 계약 변경(2026-10-14, M3-T6): `hasLeapMonths(calendar: CalendarSystem): boolean`을 core에서 공개한다(추가만, 깨지지 않음). React `DateField.LeapMonthToggle`이 역법 id 분기 없이 표시 여부를 정하는 데 쓴다(⑧). 양력 입력 필드도 첫 렌더에서 이 캐시 계산을 한 번 치른다.
+
+> 계약 변경(2026-10-14, M3-T7): `canTakeAnotherDigit(segment)`를 core에서 공개한다(추가만, 깨지지 않음). `typeDigit`의 다음 칸 이동 판단과 React `DateRangeField`의 시작일→종료일 이동 판단이 같은 기준을 쓴다.
 
 ### 2.8 column store와 휠 모델 [M2-T9]
 
@@ -260,6 +291,8 @@ export interface WheelTimeColumns { hours: ColumnOption<number>[]; minutes: Colu
 buildTimeColumns(context: TimeFieldContext): WheelTimeColumns
 ```
 
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① `selectedIndex === -1`은 선택 없음(옵션이 비었거나 전부 비활성)이다. 그 밖에는 항상 활성 옵션을 가리킨다. ② `minuteStep`은 60을 나누는 정수여야 하고 아니면 `LunisolarPickerError`를 던진다. ③ 시간 휠에서 24:30이 선택될 수 있다. 바인딩이 24시일 때 분 옵션을 비활성으로 만든다. ④ 월 옵션은 범위 제약으로만 비활성이 된다. ⑤ `options.replace`에는 항상 제약을 거친 `preferredValue`를 넘긴다. 없으면 인덱스를 유지한다. ⑥ 옵션 배열은 메모이즈한다. 새 배열이면 새 상태로 취급한다.
+
 ### 2.9 gestures [M2-T10]
 
 ```ts
@@ -271,6 +304,8 @@ export type EdgeDirection = 'previous' | 'next';
 export interface EdgeDwell { enter(direction, nowMs); leave(); poll(nowMs): EdgeDirection | null }
 export const EDGE_DWELL_DELAY_MS = 500; createEdgeDwell(delayMs?): EdgeDwell
 ```
+
+> 계약 변경(2026-10-14, M2 전체 리뷰): ① 속도의 부호는 샘플 축을 따른다. ② 바인딩은 손을 뗄 때 마지막 샘플을 한 번 더 넣는다. ③ `itemSize <= 0`이면 `LunisolarPickerError`를 던진다. ④ `itemCount`가 0이면 `index`는 -1이다.
 
 ### 2.10 locales [M2-T3]
 
@@ -286,7 +321,7 @@ export interface LocaleData {
   formatDateLabel(fields: DateFields, calendarId): string;                      // 요일·역법 이름 없는 날짜 (칸 이름의 보조 역법 부분) [M4 제안 1]
   formatSecondaryLabel(label: SecondaryDateLabel): string;
   readonly calendarNames: Record<CalendarId, string>;
-  readonly labels: LocaleLabels;   // 계약 원안 그대로 (previousMonth … validation)
+  readonly labels: LocaleLabels;   // 계약 원안 그대로 (previousMonth … validation). [M4-T3] previousYear·nextYear 추가(월 보기의 1년 이동). previousYears·nextYears는 연 보기의 쪽 이동
 }
 defineLocale(locale): LocaleData
 formatDateForField(epochDay, calendar, locale, separator?): string
@@ -314,15 +349,17 @@ export interface SharedPickerProps {        // 선택 필드는 모두 `| undefi
   onBlur?: () => void;                      // 포커스가 부품 전체를 벗어날 때 한 번 [M5 제안 1]
 }
 export function useToday(timeZone, today): EpochDay;
+export function usePickerSettings(props: SharedPickerProps): PickerSettings;   // [M4 preflight 4.12] 완성형이 공개 API만 쓰도록 공개
+export function useControllableState<Value>(controlled, defaultValue, onChange): readonly [Value, (next: Value) => void];   // [M4 preflight 4.12]
 ```
 
 내부(공개 export 아님, 다른 부품이 씀):
 
 | 모듈 | 이름 |
 |---|---|
-| `settings/use-picker-settings.ts` | `usePickerSettings(props): PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars }`, `withGregorian(calendars)` |
+| `settings/use-picker-settings.ts` | `usePickerSettings(props): PickerSettings { locale; timeZone; todayEpochDay; weekStartsOn; calendars; calendarKey }`, `withGregorian(calendars)` |
 | `settings/use-picker-context.ts` | `usePickerContext(settings, { constraints, commitMode, numberOfMonths }): PickerContext` (양력 기준 제약) |
-| `store/use-store-instance.ts` | `useStoreInstance(createInitialState, reducer, context): { state; send }` |
+| `store/use-store-instance.ts` | `useStoreInstance(createInitialState: (previous: State \| undefined) => State, reducer, context, options?: { resetKey?: string }): { state; send }` — resetKey가 바뀌면 이전 상태를 넘겨 새 store를 만든다(확정 값 유지). 소비자는 객체가 아니라 `send`에 의존한다 (M3-T3 리뷰). `getSnapshot()`도 돌려준다: 렌더를 기다리지 않고 최신 상태를 읽는다(달력 `commit()`이 호출 시점에 값을 알릴 때 씀, M4-T1) |
 | `utilities/use-controllable-state.ts` | `useControllableState(controlled, defaultValue, onChange): [value, setValue]` |
 | `utilities/render-element.ts` | `renderElement(tagName, render, props, state)` |
 | `utilities/merge-props.ts` | `mergeProps(base, override)` (핸들러는 앱 먼저, `preventDefault`면 부품 동작 생략) |
@@ -364,50 +401,75 @@ export function partAttributes(part: PartName, flags?: StateFlags): DataAttribut
 
 | 공개 | 내용 |
 |---|---|
-| `DateField.{Root, Segment({ index }), Separator, HiddenInput, LeapMonthToggle}`, `useDateField`, `useDateFieldContext` | Root에 children이 없으면 로케일 순서로 세그먼트·구분자·윤달 토글·hidden input을 그림. `entryCalendar`·`defaultEntryCalendar`·`onEntryCalendarChange`, `separator` |
-| `DateRangeField.{Root, Start, End, Separator}`, `useDateRangeField` | 시작일을 다 채우면 종료일로 이동, `startName`·`endName`, `RangeConstraints` |
-| `TimeField.{Root, Segment({ index }), Separator, HiddenInput}`, `useTimeField` | `minuteStep`, `isEndOfDayAllowed` |
+| `DateField.{Root, Segment({ index }), Separator, HiddenInput, LeapMonthToggle}`, `useDateField`, `useDateFieldContext` | Root에 children이 없으면 로케일 순서로 세그먼트·구분자·윤달 토글·hidden input을 그림. `entryCalendar`·`defaultEntryCalendar`·`onEntryCalendarChange`, `separator`. 역법 규칙: 값이 있으면 값의 역법이 이긴다. `entryCalendar`·`defaultEntryCalendar`는 빈 필드에만 적용된다. 마운트와 부모의 값 동기화는 콜백을 보내지 않는다(사용자 조작만 보고). 단 값이 있는 상태에서 부모가 `entryCalendar` prop을 바꾸면 명시적 요청으로 보고, 값을 새 역법으로 다시 표기해 `onValueChange`를 보낸다. 부모가 다른 역법의 값을 넣으면 필드는 그 역법으로 바뀌지만 `onEntryCalendarChange`는 부르지 않으므로, 제어형 `entryCalendar`와 어긋날 수 있다. `L`(한글 모드의 `ㅣ` 포함, 물리 키 KeyL)로 윤달을 전환하고, Ctrl·Cmd·Alt 조합 키는 브라우저에 넘긴다 |
+| `DateRangeField.{Root, Start, End, Separator}`, `useDateRangeField` | 시작일을 다 채우면 종료일로 이동, `startName`·`endName`, `RangeConstraints`. 역법 규칙은 DateField와 같다(범위 값의 start 역법이 이김) |
+| `TimeField.{Root, Segment({ index }), Separator, HiddenInput}`, `useTimeField` | `minuteStep`, `isEndOfDayAllowed`. 기기 로케일과 무관하게 24시간제. 형식이 맞는 `24:00`은 허용되지 않아도 형식 오류가 아니라 제약 위반이다: 칸에 그대로 보이고 invalid로 표시되며, 공개 값은 `null`이고 `onInvalidValue`는 형식이 틀린 문자열에만 불린다. `isEndOfDayAllowed`를 바꿔도 입력은 유지되고 콜백은 없다. 직접 입력한 분은 `minuteStep`에 맞지 않아도 유효하다(간격은 화살표 키에만 적용) |
 | `Wheel.{Root, Column, Item, Highlight}`, `useWheel` | `Wheel.Column`은 `useWheel` props(`options`, `value`, `onValueChange`, `isEqual?`, `label`, `disabled?`)와 `renderItem?`을 받음 |
 | `useWheelDate(props): WheelDateApi` | `{ fields; columns: WheelDateColumns; value; entryCalendarId; labels: { year; month; day }; selectYear; selectMonth; selectDay; setEntryCalendar }` |
-| `Popover.{Root, Trigger, Content, Close}`, `usePopover`, `usePopoverContext` | Content는 닫히면 언마운트. `Close`에 `onClick`을 주면 앱 핸들러가 먼저 돈 뒤 닫힘 |
-| `Sheet.{Root, Content, Close}`, `useSheet`, `useSheetContext` | Trigger 없음(열림은 앱이 `open`으로 제어). Content는 닫히면 언마운트 |
+| `Popover.{Root, Trigger, Content, Close}`, `usePopover`, `usePopoverContext` | Content는 닫히면 언마운트되고, 마운트 후에만 포털을 그린다(SSR 안전). `Close`에 `onClick`을 주면 앱 핸들러가 먼저 돈 뒤 닫힘. Esc는 열린 동안 `document`에서 받되 `defaultPrevented`·`isComposing`이면 무시한다. 포커스 가두기는 레이아웃 기반이라 jsdom에서는 동작하지 않는다(M5 문서) |
+| `Sheet.{Root, Content, Close}`, `useSheet`, `useSheetContext` | Trigger 없음(열림은 앱이 `open`으로 제어). Content는 닫히면 언마운트. `SheetApi`에 `titleId`는 없다. 이름은 `Content`의 `aria-label`로 준다. 스크롤 잠금과 형제 inert는 참조 계수라 겹쳐 열어도 닫는 순서와 무관하다 |
 | `usePresentation(presentation)`, `resolvePresentation`, `type Presentation = 'auto' \| 'popover' \| 'sheet'` | |
+
+> **계약 변경(2026-10-14, M3 전체 리뷰)** — 위 표보다 이 목록이 우선한다.
+> 1. 공통 콜백 규칙: 모든 입력 부품의 `onValueChange`·`onEntryCalendarChange`는 사용자 조작에만 불린다. 마운트, 부모의 값 동기화와 되돌림(echo), locale·`calendars`·`isEndOfDayAllowed` 변경은 콜백을 보내지 않는다. 예외 두 가지: 값이 있을 때 부모가 `entryCalendar`를 바꾸면 명시적 요청으로 보고 다시 표기한 값을 알리며, 비제어 필드는 폼 `reset`에서 `defaultValue`로 돌아가며 알린다(React Aria와 같음). 폼 reset은 hidden input이 있어야 하므로 `name`(범위는 `startName`·`endName`)이 필요하다. 제어 필드는 reset을 무시한다.
+> 2. `useValueBridge(options)`에 선택 `toPublic`이 있다: 내부(store) 값과 공개 값이 다를 때(반쪽 범위, 허용되지 않는 24:00) 쓴다. 되돌림 판정은 "부모가 마지막으로 알고 있는 공개 값"(부모가 준 값 또는 보낸 값) 기준이다. `HiddenInputProps`에 `onFormReset`이 있다.
+> 6-1. [M4 전체 리뷰] 역법이 빠질 때 제어되는 DateField·DateRangeField·`useWheelDate`는 부모의 현재 값을 새 목록으로 다시 읽어 store를 만든다. 부모가 같은 렌더에서 값을 양력으로 옮기면 조용히 유지되고, 읽을 수 없는 부모 값은 지금처럼 비우고 `onInvalidValue`를 한 번 알리며 `onValueChange`는 없다.
+> 3. DateField store의 `resetKey`는 `locale.id|calendarKey`라서 locale이나 역법 목록이 바뀌면 `send` 참조가 바뀐다. 달력(M4-T1)의 navigation·selection store도 `resetKey = calendarKey`라 역법 목록이 바뀌면 `send`가 바뀐다(빠진 역법에서 양력으로 옮기려면 store를 다시 만들어야 함: navigationReducer가 이벤트 처리 전에 현재 표시 역법을 찾음). 소비자는 `send`를 최신 ref로 읽거나 호출 시점에 쓴다.
+> 4. 필드 Root(`DateField`, `DateRangeField`, `TimeField`)는 `ref?: Ref<{ focus(): void }>`를 받고, `focus()`는 첫 칸(범위는 시작일 첫 칸)에 포커스한다(스펙 §7.6, react-hook-form 연동).
+> 5. 훅 API 모양 통일: `DateFieldApi`·`DateRangeFieldApi`·`TimeFieldApi`·`WheelDateApi`가 모두 `validity`, `isInvalid`, `isDisabled`, `isReadOnly`를 갖는다. `DateRangeField` 렌더 상태는 `{ isInvalid, isDisabled }`이고 Root는 `data-focused`를 낸다. `TimeField.HiddenInput`도 prop 덮어쓰기를 받는다. `DateFieldCore.isLeapMonthAvailable()`은 제거했다.
+> 6. 윤달: `DateRangeField`의 기본 시작·종료 칸도 윤달 토글을 그린다(이름에 쪽 라벨이 붙음). 토글은 비활성일 때 `data-disabled`를 낸다. 쓰던 입력 역법이 `calendars`에서 빠지면 양력으로 넘어간다: 비제어는 값을 양력으로 다시 표기하고, 제어는 칸을 비우고 `onInvalidValue`로 알린다.
+> 7. Wheel: `Wheel.Root`가 `disabled`·`readOnly`·`invalid`·`ref`를 받아 모든 열에 전한다(fieldset처럼). `useWheel`·`Wheel.Column`에 `readOnly`(포커스는 되지만 바뀌지 않음, `aria-readonly`·`data-readonly`)가 있고, 무효면 열이 `aria-invalid`를 낸다. 새 부품 `Wheel.HiddenInput`. 연도 열은 숫자를 치면 그 해로 이동한다(입력이 멈춘 뒤 한 번 확정). 열 inline style에 `touch-action: none`.
+> 8. `useWheelDate`가 `SharedPickerProps`를 지킨다: `WheelDateApi`에 `validity`·`isInvalid`·`isDisabled`·`isReadOnly`·`focus()`·`getWheelRootProps()`(`<Wheel.Root>`에 펼칠 컴포넌트 props, DOM props 아님)·`getHiddenInputProps()`. 선택 전에는 현재 오늘을 따른다. M4 WheelDatePicker는 `<Wheel.Root {...wheel.getWheelRootProps()}>`를 그리고 폼 참여는 picker의 `HiddenInput`이 맡는다(§3.5 M4-T10). 부모 값이 min/max 밖이면 `fields`는 잘린 날짜를 보이고 `value`는 원래 값이므로, 확인 흐름은 `selectDay(fields.day)`로 확정한다.
+> 9. Popover: 어떤 경로로 닫히든(Esc, 바깥 클릭, `Close`, 부모의 `open=false`) 포커스가 콘텐츠 안에 있었거나 사라졌으면 트리거로 돌아간다. 사용자가 다른 곳으로 옮긴 포커스는 건드리지 않는다. `closeAndRestoreFocus`는 이제 `setOpen(false)`와 같다.
+> 10. 새 공개 export: `useSheetContext`, `DateRangeInput`(M4는 `RangeValueInput`을 따로 만들지 않고 이것을 import), `WheelDateRootProps`, `Wheel.HiddenInput`, `DateRangeFieldRenderState`.
 
 ### 3.4 달력 부품 [M4-T1~T7]
 
 | 공개 | 내용 |
 |---|---|
 | `Calendar.{Root, Header, Heading, PrevButton, NextButton, TodayButton, CalendarToggle, ViewButton, Grid, HeadCell, Cell, MonthGrid, YearGrid, Layout}` | `Grid({ monthIndex?, children?: (cell: MonthGridCell) => ReactNode })`, `Cell({ cell, children?: ReactNode \| ((info: CellRenderInfo) => ReactNode) })`, `Layout({ renderCell? })` |
-| `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`, `selectEpochDay`, `isTodayVisible` |
-| `RangeCalendar.Root`, `useRangeCalendar(props): RangeCalendarApi`, `useRangeCalendarContext()` | `RangeCalendarApi`: `selection`, `value`, `draftValue`, `validity`, `announcement`, `rootRef`, `setRange`, `commit`, `cancel`. 범위 props에 `startName`·`endName` |
-| `MonthCalendar.Root`, `TimeList.Root`, `listTimes(minuteStep, isEndOfDayAllowed)` | |
+| `useCalendar(props): CalendarApi`, `useCalendarView(): CalendarViewApi`, `useSingleCalendar(): CalendarApi` | `CalendarViewApi.getCellProps(cell)`는 `{ gridCell, button }`(포커스 가능한 칸 버튼은 `data-autofocus`를 가져 열릴 때 선택한 날, 없으면 오늘로 포커스), `selectEpochDay`, `isTodayVisible`, `isInvalid`(보이는 무효: `incomplete` 제외), 빈 확정 값은 required여도 VALID(Calendar·RangeCalendar·MonthCalendar 공통, required는 숨은 입력의 네이티브 검증만; 범위의 보이는 draft 유효성은 그대로) [M4 전체 리뷰]. `selectEpochDay`는 포커스가 루트 안에 있으면 고른 날로 DOM 포커스를 옮긴다(달을 넘기는 바깥 날 포함; 루트 안 앱 버튼에서 불러도 옮김 — M5에서 칸 클릭 경로로 좁힐지 결정). 공개 `useMonthCalendar(props): MonthCalendarApi`. `getRootProps()`(`onBlur`는 포커스가 달력 전체를 벗어날 때, `calendar` 부품 속성, `ref` 포함 — 직접 조립할 때 자기 ref로 덮어쓰지 말고 합칠 것) [M4-T1]. `CalendarApi.getHiddenInputProps()`는 M3 훅과 같은 모양(비제어는 폼 reset 때 마운트 시점 기본값, 그 역법이 빠졌으면 빈 값). disabled 달력은 탭 정지·키보드·월 이동이 모두 멈추고 readOnly는 월 이동만 된다. `Calendar.Cell`의 `tabIndex`·`aria-disabled`·`data-autofocus`·`disabled`와 `Calendar.ViewButton`의 `aria-labelledby`는 예약 속성이다 [M4-T2·T3]. 격자 이름은 보이는 제목과 같은 텍스트의 `aria-label`이라 `ViewButton`과 `Heading`을 함께 써도 id가 겹치지 않는다(`headingId`는 제거) [M4-T3]. `requestFocus()`: 월·연을 고르면 눌렀던 버튼이 사라지므로 다음 보기의 탭 정지로 포커스를 넘긴다. 직접 조립할 때는 `requestFocus` 뒤에 탭 정지를 그리는 보기가 와야 한다 [M4-T3]. 연 보기에서 보기 버튼은 비활성(맨 위 단계) |
+| `RangeCalendar.Root`, `useRangeCalendar(props): RangeCalendarApi`, `useRangeCalendarContext()` | `RangeCalendarApi`: `selection`, `value`, `draftValue`, `validity`, `announcement`, `rootRef`, `setRange`, `commit`, `cancel`, `getHiddenInputProps(side)`. 범위 props에 `startName`·`endName`(범위 훅은 `name`을 받지 않음: `Omit<SharedPickerProps, 'name'>`, M3 DateRangeField 포함). `validity`는 화면에 보이는 범위(선택 중이면 draft)의 유효성이고, `data-invalid`는 확정 값 기준이다(단일 `CalendarApi.validity`는 확정 값). `aria-selected`는 범위 안 모든 날(선택 중이면 anchor~미리보기 포함), 격자는 `aria-multiselectable`, `data-selected`는 양 끝만. 안내(`live-region`)는 기본으로 화면에서 숨겨져 있고 마운트 때는 말하지 않으며 선택이 바뀔 때만 알린다. 끝이 열린 채 확정된 범위는 안내하지 않는다(전용 로케일 키는 M5 후보) [M4-T4] |
+| `MonthCalendar.Root`, `TimeList.Root`, `listTimes(minuteStep, isEndOfDayAllowed)` | `onPick?(value)`(`Calendar.Root`·`MonthCalendar.Root`·`TimeList.Root` 공통): 뷰 API를 거친 모든 받아들여진 선택(칸 클릭, Enter/Space, `selectEpochDay`)마다 불린다. 같은 값 재선택과 확인 모드의 draft 선택 포함. disabled·readOnly·제약에 막힌 날·이동·`sendSelection`·부모 동기화에는 불리지 않는다. `onValueChange` 다음에 불리며, 완성형 picker는 `onPick`으로 닫는다(부모가 값을 거부해도 닫히고 부모 값을 보여 줌) [M4-T7]. 범위 달력 `onPick?(value: DateRangeValue)`: 사용자 조작이 범위를 완성할 때(`date.select`, 두 번째 마우스 누름 `pointer.down`, 끌기·끝점 끌기의 `pointer.up`) 불린다. 같은 범위 재선택과 확인 모드 draft 포함, `onValueChange` 다음. `setRange`·프리셋·`commit`·`cancel`·`clear`·부모 동기화·이동·disabled/readOnly·막힌 날에는 불리지 않는다 [M4-T9] |
 | `type CellRenderInfo = MonthGridCell & CellState` | `CellState { isSelected; isToday; isDisabled; isOutsideMonth; isInRange; isRangeStart; isRangeEnd; isPreview; isFocused }` |
 
 `UseCalendarProps`: `SharedPickerProps & DateConstraints & { value?; defaultValue?; onValueChange?; commitMode?; numberOfMonths?; displayCalendar?; defaultDisplayCalendar?; onDisplayCalendarChange?; getCellLabel? }`
 
+- 표시 역법: `displayCalendar`·`defaultDisplayCalendar`가 없으면 값의 역법으로 연다(입력 부품의 "값의 역법이 이긴다"와 같은 규칙), 값도 없으면 양력 [M4 preflight 3.11]. 사용자 선택(즉시 모드)과 확인 모드 `commit()`은 호출 시점에 `onValueChange`를 부른다(같은 클릭에서 닫혀 언마운트돼도 값이 전달됨). 공개 `sendSelection`으로 직접 보낸 이벤트는 이펙트가 알린다 [M4 preflight 1.4, M4-T1 리뷰]. 범위 달력(M4-T4)도 `date.select`·`pointer.*`·`range.set`·`clear`·`commit` 뒤에 같은 `reportCommitted`를 부른다. 콜백은 사용자 조작에만 불린다.
+
 ### 3.5 완성형 (`@lunisolar-picker/react/pickers`) [M4-T8~T10]
 
 ```ts
-interface TriggerRenderProps { readonly displayValue: string; readonly isOpen: boolean; readonly placeholder: string; readonly triggerProps: ButtonHTMLAttributes<HTMLButtonElement> }
+interface TriggerRenderProps { readonly displayValue: string; readonly isOpen: boolean; readonly placeholder: string; readonly triggerProps: PickerTriggerProps }   // PickerTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> & { ref }: 팝오버 기준 위치와 포커스 복귀에 필요하므로 앱 트리거가 ref를 버리면 안 됨 [M4-T8]
 interface PickerOpenProps { open?; defaultOpen?; onOpenChange? }
 
-DatePicker: UseCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; footer?; className? }
-DateRangePicker: UseRangeCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; presets?: ReactNode; footer?; className? }
+DatePicker: UseCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; footer?; className? }   // + aria-label·aria-labelledby·aria-describedby·id(입력 칸, 트리거 모드면 트리거로), onPick [M4-T8]
+DateRangePicker: UseRangeCalendarProps & PickerOpenProps & { presentation?; placeholder?; separator?; renderTrigger?; renderCell?; presets?: ReactNode; footer?; className? }   // + aria-label·aria-labelledby·aria-describedby·id, ref(시작일 첫 칸, 트리거 모드면 트리거), onPick. 대화상자 이름은 aria-label ?? labels.chooseDateRange [M4-T9]
 MonthPicker: { value?; defaultValue?; onValueChange?: (value: MonthString | null, details) => void; min?; max? } & SharedPickerProps & PickerOpenProps & { presentation?; renderTrigger? }
 WheelDatePicker: SharedPickerProps & DateConstraints(isDateDisabled 제외) & PickerOpenProps & { value?; defaultValue?; onValueChange?; presentation?: 'inline' | 'sheet'; renderTrigger? }
 TimePicker: SharedPickerProps & PickerOpenProps & { value?; defaultValue?; onValueChange?: (value: TimeString | null, details) => void; minuteStep?; isEndOfDayAllowed?; renderTrigger? }
 
 interface PickerSelection { readonly draftRange: DateRangeValue | null; readonly validity: Validity; setRange(range: { start: string; end: string | null } | null): void; commit(): void; cancel(): void }
 usePickerSelection(): PickerSelection     // DateRangePicker의 presets·footer 안에서만 [M4-T9, M5 제안 3]
+// [M4-T9] setRange(range: DateRangeInput | null). 즉시 모드에서 양 끝이 있는 프리셋은 확정 후 닫는다(같은 범위여도). 읽을 수 없는 프리셋은 picker의 onInvalidValue로 알리고 열어 둔다. disabled·readOnly면 무시. 알려진 한계: 저장소가 거부하는 프리셋(역법에 쓸 수 없는 끝)은 변화 없이 닫히고, isOpenEndAllowed가 아닐 때 시작만 있는 프리셋은 조용히 무시됨. commit·cancel은 닫는다. draftRange·validity는 보이는 draft 기준. presets·footer 밖에서 부르면 LunisolarPickerError.
+// 확인 버튼은 !validity.isValid일 때만 비활성(빈 draft는 incomplete라 비활성, isOpenEndAllowed면 시작만 있어도 활성).
 ```
 
-- 완성형은 `onBlur`를 입력 칸에만 넘긴다(react-hook-form 연결용) [M4-T8·T9].
+- [M4 전체 리뷰] 지우기: 다섯 완성형 모두 `isClearable?: boolean`(기본 true). 값이 있고 disabled·readOnly가 아닐 때만 입력 칸 옆(트리거·값 트리거 모드는 트리거 옆, 팝업 안에는 두지 않음)에 `labels.clear` 이름의 `picker-clear` 버튼을 보인다. 누르면 `onValueChange(null, { validity: VALID })`를 한 번 알리고(제어는 알리기만) 포커스를 입력 칸 첫 칸이나 트리거로 돌린다. 인라인 WheelDatePicker는 휠을 다시 만들어 오늘을 보이되 값은 비어 있다(M5 항목). 비제어 DatePicker·DateRangePicker·WheelDatePicker는 값의 역법이 `calendars`에서 빠지면 같은 날의 양력 표기로 조용히 옮긴다(Month·TimeString은 역법 주석이 없음). readOnly 값·앱 트리거는 `aria-disabled`+`data-readonly`로 포커스는 되되 눌러도 아무 일도 없고, 입력 칸 모드의 아이콘 버튼은 네이티브 disabled다. disabled·readOnly면 팝업은 여전히 열리지 않는다.
+- [M4-T10] 다섯 완성형 모두 공개 `HiddenInput` 하나(범위는 둘)로 폼에 참여한다. MonthPicker와 시트 WheelDatePicker는 입력 칸이 없어 트리거가 `ref`·`onBlur`·`onInvalidValue`를 늘 맡는다. 값을 보이는 트리거(MonthPicker, 시트 WheelDatePicker)의 이름은 `aria-labelledby`로 "보이는 값 + 동작 라벨"(앱이 aria-labelledby를 주면 "보이는 값 + 앱 라벨", 값이 비면 동작 라벨) — WCAG 2.5.3. TimePicker도 `onPick?(value: TimeString)`. disabled·readOnly인 동안 picker는 팝업을 절대 보이지 않으며(defaultOpen, 제어 open, 열린 채 막힘 모두), 열린 채 막힐 때마다 `onOpenChange(false)`를 한 번 부른다 — §3.3 #1의 entryCalendar처럼 "사용자 조작만 보고" 규칙의 예외. 그래서 프리셋도 막힌 동안 보이지 않고 `usePickerSelection().setRange`의 막힘 검사는 방어용이다. readOnly DatePicker·DateRangePicker는 제어 open으로도 달력을 보여 주지 않는다. WheelDatePicker는 `getWheelRootProps()`를 펼치고 폼은 picker의 HiddenInput이 맡는다(`Wheel.HiddenInput`은 직접 조립용). 시트의 draft 휠은 값을 min/max 안으로 보정한 날에서 시작하고(무효 표시 없음), 확인은 보이는 날을 확정하며(값과 같으면 조용히 닫음) min > max로 고를 날이 없을 때만 비활성이다. 취소·닫기는 draft를 버린다. 스펙 §7.5와 달리 v1 MonthPicker는 값 트리거 + 월 격자다(월 입력 칸 없음).
+- 완성형은 폼 참여를 직접 맡는다: 공개 `HiddenInput`(M4-T8부터 공개 export)을 한 개(DateRangePicker는 startName·endName 두 개, 폼 reset은 한 입력만 처리해 한 번만 보고, 끝은 required && !isOpenEndAllowed일 때만 필수, isOpenEndAllowed가 아니면 시작만 있는 범위는 제출·data-invalid·reset 보고에서 빈 값으로 봄, 끝 입력의 검증 포커스는 종료일 첫 칸) 그려 name·form·required와 폼 reset(비제어는 마운트 시점 기본값, 제어는 무시)을 처리하고, 안의 달력·입력 칸에는 name·form을 넘기지 않는다. `ref`·`onBlur`·`onInvalidValue`는 입력 칸이 맡고, `renderTrigger` 모드에서는 트리거가 맡는다(onBlur는 닫힌 상태에서 트리거를 떠날 때). 시트 표시 + 즉시 모드에는 `Sheet.Close`(labels.close)가 보인다. picker는 `onPick`으로 닫는다 [M4-T8].
 - 확인 모드의 확인·취소는 완성형 footer가 그린다. 직접 조립할 때는 `Popover.Close onClick={() => calendar.commit()}`처럼 쓴다 [M5-T5].
 - `src/pickers/**`는 `src/index.ts`, `src/contract/**`, `src/settings/**`, `src/utilities/**`, `src/pickers/**`만 import한다(dependency-cruiser) [M4-T11].
 
 ---
 
 ## 4. `@lunisolar-picker/theme` 🟡 [M3-T10, M4-T6]
+
+> **계약 변경(M4 전체 리뷰)**: `PART_NAMES`에 `picker-clear` 추가(고대비에서 `ButtonText` 테두리). readOnly 값·앱 트리거의 `popover-trigger`는 `data-readonly`(기본 커서). 고대비 모드의 끌기 미리보기는 점선 outline.
+> **계약 변경(M4-T10)**: `PARTS_WITHOUT_RULES`에는 `live-region`만 남는다. 포털 콘텐츠는 `body`의 글꼴을 물려받으므로 글꼴은 `html`/`body`에 둔다(M5 문서, 선택적으로 `:root` 토큰). `picker-presets`는 버튼 자식을 footer 보조 버튼처럼 꾸민다.
+> **M5 메모**: 완성형 레시피는 내부 `pickers/*` 도우미(`PickerSurface`, `PickerFooter`, `useAppTriggerProps`, `useFieldRemount`, `useInvalidValueReport`)에 기대므로, 문서에서 인라인하거나 `/pickers`에서 공개할지 정한다. 범위 파싱은 depcruise 경계 때문에 pickers 안에 복사본이 있다(공개 파싱 도우미를 내보내면 제거).
+
+> **계약 변경(2026-10-14, M3 전체 리뷰)**: `popover-trigger`(`[data-open]` 포함)도 스타일한다. `packages/theme/tests/selector-contract.test.ts`의 `PARTS_WITHOUT_RULES`는 아직 규칙이 없는 M4 부품 목록이다. M4는 `PART_NAMES`에 부품을 더하거나 스타일을 붙일 때마다 이 목록을 줄인다(모든 부품에 규칙이 있는지 검사함). 새 토큰 `--lsp-focus`·`--lsp-placeholder`(스펙 §8.1). 포털 콘텐츠 때문에 `.dark`·`data-theme`은 `html`이나 `body`에 둔다.
 
 ```
 @lunisolar-picker/theme/mono.css           @layer lunisolar-picker 단일 파일. 입력 부품(M3) + 달력·picker(M4, 같은 이름의 layer 블록을 끝에 덧붙임)

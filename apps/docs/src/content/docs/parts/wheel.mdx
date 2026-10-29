@@ -1,0 +1,31 @@
+---
+title: Wheel parts
+description: Drum columns with momentum that you can fill with any values.
+---
+
+```tsx
+import { Wheel } from '@lunisolar-picker/react';
+
+const sizes = [
+  { value: 'S', label: 'Small', isDisabled: false },
+  { value: 'M', label: 'Medium', isDisabled: false },
+  { value: 'L', label: 'Large', isDisabled: true },
+];
+
+<Wheel.Root aria-label="Size">
+  <Wheel.Highlight />
+  <Wheel.Column options={sizes} value={size} onValueChange={setSize} label="Size" />
+</Wheel.Root>;
+```
+
+Each column is a `role="spinbutton"` with `aria-valuetext`, so a screen reader hears the option label rather than an index. Momentum is computed in the core and the animation writes `transform` directly, so React does not re-render on every frame. The value is reported when the column settles.
+
+For dates, `useWheelDate` builds the year, month and day options (including lunar leap months) and keeps them consistent; `WheelDatePicker` is built on it.
+
+| Part | Renders | Notes |
+|---|---|---|
+| `Root` | `div[role=group]` | Groups the columns. `disabled`, `readOnly` and `invalid` apply to every column. Give it an `aria-label`. |
+| `Column` | `div[role=spinbutton]` | `options` are `{ value, label, isDisabled }`, plus `value`, `onValueChange` and a required `label`. Selection is kept by value when options change. `renderItem(option, isSelected)` draws an option yourself. |
+| `Item` | `div` | One option, rendered by `Column`. Use it directly only with `useWheel`. |
+| `Highlight` | `div[aria-hidden]` | The band behind the selected row. |
+| `HiddenInput` | visually hidden `input` | Form participation for wheels you assemble yourself, with `useWheelDate().getHiddenInputProps()`. |

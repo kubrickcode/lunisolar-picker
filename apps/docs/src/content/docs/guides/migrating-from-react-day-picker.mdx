@@ -1,0 +1,78 @@
+---
+title: Migrating from react-day-picker
+description: Map react-day-picker props and common custom wrappers to lunisolar-picker.
+---
+
+## Values
+
+react-day-picker passes `Date` objects. lunisolar-picker passes canonical strings with no time zone, so you no longer need to strip times or fix off-by-one days caused by UTC conversion.
+
+```ts
+// before
+const [selected, setSelected] = useState<Date | undefined>();
+// after
+const [value, setValue] = useState<DateString | null>(null);
+```
+
+Strings such as `'2026-10-14'` compare with `===` and sort as text. Convert at your API boundary only if the server expects something else.
+
+## Props
+
+| react-day-picker | lunisolar-picker |
+|---|---|
+| `mode="single"` | `DatePicker`, or `Calendar.Root` for an inline calendar |
+| `mode="range"` | `DateRangePicker`, or `RangeCalendar.Root` |
+| `mode="multiple"` | Not supported in v1 |
+| `selected` | `value` (`'2026-10-14'`, or `{ start, end }` for ranges) |
+| `onSelect(date)` | `onValueChange(value, { validity })` |
+| `defaultMonth` / `month`, `onMonthChange` | The calendar opens on the value's month, or today's. |
+| `disabled={{ before: date }}` | `min` |
+| `disabled={{ after: date }}` | `max` |
+| `disabled={{ dayOfWeek: [0, 6] }}` | `isDateDisabled={(date) => [0, 6].includes(weekdayOf(epochDayOf(date)))}` |
+| `disabled={(date) => …}` | `isDateDisabled={(date) => …}` (receives a date string) |
+| `min` / `max` (range length) | `minDays` / `maxDays`. Both ends always count: 13 to 17 October is 5 days. Check how your react-day-picker version counted before converting numbers. |
+| `excludeDisabled` | Ranges over disabled days report `'range-includes-disabled'` |
+| `numberOfMonths` | `numberOfMonths` |
+| `weekStartsOn` | `weekStartsOn` |
+| `locale` (date-fns locale) | `locale` from `@lunisolar-picker/core/locales/en`, `ko` or `ja` |
+| `timeZone` | `timeZone`. It only decides which day is today. |
+| `showOutsideDays` | Always rendered, marked `data-outside` |
+| `captionLayout="dropdown"` | Click the heading (`Calendar.ViewButton`) for month and year grids, or use `MonthPicker` |
+| `components.DayButton` | `renderCell`, or `Calendar.Cell` with a render function |
+| `components.Nav`, `components.MonthCaption` | `Calendar.Header`, `PrevButton`, `NextButton`, `ViewButton`, `Heading` |
+| `modifiers` + `modifiersClassNames` | `data-*` state attributes, or a `renderCell` function |
+| `classNames` | Style `[data-lsp-part]` and state attributes, or override `--lsp-*` tokens |
+| `footer` | `footer` |
+
+## Wrapper features from our apps
+
+**Maximum range length with a warning** (`maxRangeDays`):
+
+```tsx
+<DateRangePicker
+  maxDays={60}
+  limitMode="flag"
+  onValueChange={(next, { validity }) => {
+    setRange(next);
+    setIsTooLong(validity.reasons.includes('range-too-long'));
+  }}
+/>
+```
+
+With `commitMode="confirm"`, show the warning inside the popover instead: see the `footer` example on [DateRangePicker](/pickers/date-range-picker/#presets).
+
+**Recent-days presets** that disable themselves when they exceed the limit and highlight the active one: put buttons in `presets` and use `usePickerSelection`, `validateRange` and `isSameRange`. See [DateRangePicker presets](/pickers/date-range-picker/#presets).
+
+**Draft selection applied with a button** (the "조회" button, with Escape and outside click restoring the previous range): `commitMode="confirm"`. Your `onValueChange` runs only when the user presses Apply.
+
+**Go to today**: `Calendar.TodayButton`, included in every finished picker. Pass `timeZone` (for example the project's time zone) so "today" matches your data.
+
+**Holiday names and dots**: render them with `renderCell` and add them to `getCellLabel`. Fetching holidays stays in your app. See [Calendar parts](/parts/calendar/#rendering-a-day).
+
+**Saturday blue, Sunday red**: style `[data-weekday='6']` and `[data-weekday='0']`. See [Theming](/theming/#styling-with-state-attributes).
+
+**Open-ended schedules** ("no end date"): `isOpenEndAllowed` lets `end` stay `null`. Render your own "∞" badge with `renderTrigger`.
+
+**Clear button**: built in. Every finished picker shows one while it has a value; turn it off with `isClearable={false}`.
+
+**Clickable segmented fields with dropdowns**: the date field accepts typing, paste and arrow keys. Pair it with the popover calendar (`DatePicker`) for pointer users.

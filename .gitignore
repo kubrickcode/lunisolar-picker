@@ -2,3 +2,12 @@
 .env
 .env.*
 .worktrees/
+node_modules/
+dist/
+.cache/
+coverage/
+.next/
+out/
+.astro/
+test-results/
+next-env.d.ts

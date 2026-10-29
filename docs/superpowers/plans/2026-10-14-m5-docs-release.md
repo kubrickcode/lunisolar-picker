@@ -2145,7 +2145,7 @@ const { control, handleSubmit } = useForm<{ birthDate: string | null }>({ defaul
 ```ts
 import { validateDate } from '@lunisolar-picker/core';
 
-validateDate('2031-01-01', { max: '2030-12-31' }); // { isValid: false, reasons: ['after-max'] }
+validateDate('2031-01-01', { max: '2030-12-31' }); // { isValid: false, reasons: ['after-max'], ignoredInputs: [] }
 ```
 ````
 
@@ -2478,7 +2478,7 @@ import { validateRange } from '@lunisolar-picker/core';
 import { ko } from '@lunisolar-picker/core/locales/ko';
 
 validateRange({ start: '2026-10-01', end: '2026-12-31' }, { maxDays: 60 });
-// { isValid: false, reasons: ['range-too-long'] }
+// { isValid: false, reasons: ['range-too-long'], ignoredInputs: [] }
 ```
 
 Locales: `@lunisolar-picker/core/locales/en`, `/ko`, `/ja`. Add your own with `defineLocale`.

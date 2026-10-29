@@ -1,0 +1,80 @@
+---
+title: Korean lunar calendar
+description: Accept and display Korean lunar dates, including leap months and 30th days.
+---
+
+import { LunarDatePickerDemo } from '../../../components/demos/LunarDatePickerDemo';
+import { LunarWheelDatePickerDemo } from '../../../components/demos/LunarWheelDatePickerDemo';
+
+<LunarDatePickerDemo client:only="react" />
+
+## Turn it on
+
+Lunar support is off by default and costs nothing until you import it. Add `dangi` to `calendars`:
+
+```tsx
+import { dangi } from '@lunisolar-picker/calendar/dangi';
+
+<LunisolarProvider calendars={[dangi]}>…</LunisolarProvider>;
+```
+
+Pickers then show a solar/lunar toggle and a small lunar date under each solar day. The `dangi` table is a separate entry of about 2.5 KB gzipped.
+
+Keep the `calendars` array stable, for example in a module constant, rather than writing `[dangi]` inline in a component that re-renders often.
+
+## Values
+
+A date entered in lunar mode keeps the same solar day in ISO form and adds a calendar annotation, the format Temporal uses:
+
+| Entered as | Value |
+|---|---|
+| Solar 14 October 2026 | `'2026-10-14'` |
+| Lunar 4 September 2026 (the same day) | `'2026-10-14[u-ca=dangi]'` |
+
+The annotation records how the user entered the date, which matters for things like lunar birthdays. A picker opens a value in the calendar it was entered in. To compare days regardless of calendar, use `isSameDay`:
+
+```ts
+import { isSameDay, parseDate } from '@lunisolar-picker/calendar';
+import { dangi } from '@lunisolar-picker/calendar/dangi';
+
+isSameDay('2026-10-14', '2026-10-14[u-ca=dangi]'); // true
+
+const parsed = parseDate('1990-06-23[u-ca=dangi]', { calendars: [dangi] });
+// parsed.value → { year: 1990, monthCode: 'M05L', day: 1, calendar: 'dangi', epochDay: 7478, value: '1990-06-23[u-ca=dangi]' }
+```
+
+`monthCode` follows Temporal: `M05` is the fifth month and `M05L` is the leap fifth month. The year is the Gregorian year in which that lunar year began. You can read the same string with `Temporal.PlainDate.from` where Temporal is available.
+
+## Leap months and 30th days
+
+- A lunar year has 12 or 13 months. Leap months appear in the month lists only in the years that have them.
+- Lunar months have 29 or 30 days.
+- While scrolling a wheel or clicking a calendar, a date that stops existing is moved to the nearest one: a vanished leap month becomes the regular month, and day 30 becomes day 29.
+- While typing, or when reading a string, the date is never changed. The field shows `data-invalid` and reports `'invalid-date'`.
+- In a date field, press <kbd>L</kbd> (or <kbd>ㅣ</kbd> with a Korean keyboard layout) to toggle the leap month.
+
+The wheel below opens on leap 2nd month, day 15 of 2023. Scroll the year to 2024, which has no leap 2nd month, and the month moves to the regular 2nd month.
+
+<LunarWheelDatePickerDemo client:only="react" />
+
+## Supported range
+
+Lunar dates are available from lunar 1 January 1900 (solar 31 January 1900) to lunar 30 November 2050 (solar 12 January 2051), the last day in the published KASI data. Outside that range the lunar grid stops navigating and the reason is `'outside-calendar-range'`. Solar dates cover years 1 to 9999.
+
+## Where the data comes from
+
+The lunar table is generated from the Korea Astronomy and Space Science Institute (KASI) lunar calendar API and checked against every published month. The library does not use the `Intl` Korean calendar: engine data disagrees with KASI on some dates (Node's ICU data does from 2017), and a page rendered on a server and hydrated on a phone could otherwise show different lunar dates.
+
+## Server-side conversion
+
+The calendar package has no React or DOM dependency. Use it on a server to convert values:
+
+```ts
+import { epochDayOf, formatDate } from '@lunisolar-picker/calendar';
+import { dangi } from '@lunisolar-picker/calendar/dangi';
+
+dangi.fromEpochDay(epochDayOf('2026-10-14')); // { isOk: true, value: { year: 2026, monthCode: 'M09', day: 4 } }
+formatDate(epochDayOf('2026-10-14'), dangi);  // { isOk: true, value: '2026-10-14[u-ca=dangi]' }
+```
+
+Functions that can fail return a `Result` (`{ isOk: true, value }` or `{ isOk: false, error }`) instead of throwing.

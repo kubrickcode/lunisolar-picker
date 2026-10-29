@@ -1,0 +1,24 @@
+---
+title: TimeField parts
+description: Hour and minute segments in 24-hour time.
+---
+
+```tsx
+import { TimeField } from '@lunisolar-picker/react';
+
+<TimeField.Root aria-label="Starts at" value={time} onValueChange={(next) => setTime(next)} minuteStep={5} name="startsAt">
+  <TimeField.Segment index={0} />
+  <TimeField.Separator />
+  <TimeField.Segment index={1} />
+  <TimeField.HiddenInput />
+</TimeField.Root>;
+```
+
+Without children the root renders the same parts. For a list of times to click, `TimeList.Root` renders a `listbox` of options at `minuteStep` intervals; `TimePicker` puts it in a popover.
+
+| Part | Renders | Notes |
+|---|---|---|
+| `Root` | `div[role=group]` | Owns state. Accepts `minuteStep` (default `1` here) and `isEndOfDayAllowed`. |
+| `Segment` | `span[role=spinbutton]` | `index` 0 is the hour, 1 the minute. |
+| `Separator` | `span[aria-hidden]` | Colon. |
+| `HiddenInput` | visually hidden `input` | Submits `HH:mm`. |

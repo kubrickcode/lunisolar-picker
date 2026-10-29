@@ -1,0 +1,28 @@
+{
+  "name": "@lunisolar-picker-fixtures/vite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && tsx scripts/render-ssr.tsx",
+    "check:markup": "tsx ../../scripts/assert-markup.ts dist/ssr.html 'data-lsp-part=\"date-field\"' 'name=\"birthDate\"' 'value=\"1990-03-15\"'",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lunisolar-picker/calendar": "workspace:*",
+    "@lunisolar-picker/core": "workspace:*",
+    "@lunisolar-picker/react": "workspace:*",
+    "@lunisolar-picker/theme": "workspace:*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-hook-form": "7.90.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "@vitest/browser-playwright": "5.0.4",
+    "vite": "8.3.4",
+    "vitest-browser-react": "2.3.0"
+  }
+}

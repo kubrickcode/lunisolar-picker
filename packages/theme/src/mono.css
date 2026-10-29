@@ -1,0 +1,1243 @@
+/* Mono 테마: 무채색, 가는 선, 8px 라운드 (스펙 8.3). 우선순위를 0으로 두려고 모드 선택자는 :where()로 감쌈 */
+@layer lunisolar-picker {
+  :where(:root) {
+    --lsp-bg: #ffffff;
+    --lsp-surface: #ffffff;
+    --lsp-fg: #09090b;
+    --lsp-muted: #71717a;
+    --lsp-subtle: #b4b4bb;
+    --lsp-border: #e4e4e7;
+    --lsp-accent: #09090b;
+    --lsp-accent-fg: #ffffff;
+    --lsp-range-bg: #f4f4f5;
+    --lsp-ring: rgb(9 9 11 / 0.18);
+    --lsp-danger: #b91c1c;
+    --lsp-focus: #52525b;
+    --lsp-placeholder: #63636b;
+    --lsp-radius: 8px;
+    --lsp-cell-size: 36px;
+    --lsp-wheel-item-size: 36px;
+    --lsp-wheel-visible-count: 5;
+    --lsp-shadow-popover: 0 8px 24px -8px rgb(0 0 0 / 0.12);
+    --lsp-backdrop: rgb(9 9 11 / 0.4);
+    --lsp-duration: 140ms;
+    --lsp-color-scheme: light;
+  }
+
+  :where(.dark, [data-theme="dark"]) {
+    --lsp-bg: #09090b;
+    --lsp-surface: #111113;
+    --lsp-fg: #fafafa;
+    --lsp-muted: #a1a1aa;
+    --lsp-subtle: #52525b;
+    --lsp-border: #26262a;
+    --lsp-accent: #fafafa;
+    --lsp-accent-fg: #09090b;
+    --lsp-range-bg: #1d1d20;
+    --lsp-ring: rgb(250 250 250 / 0.25);
+    --lsp-danger: #f87171;
+    --lsp-focus: #e4e4e7;
+    --lsp-placeholder: #a1a1aa;
+    --lsp-shadow-popover: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+    --lsp-backdrop: rgb(0 0 0 / 0.6);
+    --lsp-color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :where([data-theme="system"]) {
+      --lsp-bg: #09090b;
+      --lsp-surface: #111113;
+      --lsp-fg: #fafafa;
+      --lsp-muted: #a1a1aa;
+      --lsp-subtle: #52525b;
+      --lsp-border: #26262a;
+      --lsp-accent: #fafafa;
+      --lsp-accent-fg: #09090b;
+      --lsp-range-bg: #1d1d20;
+      --lsp-ring: rgb(250 250 250 / 0.25);
+      --lsp-danger: #f87171;
+      --lsp-focus: #e4e4e7;
+      --lsp-placeholder: #a1a1aa;
+      --lsp-shadow-popover: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+      --lsp-backdrop: rgb(0 0 0 / 0.6);
+      --lsp-color-scheme: dark;
+    }
+  }
+
+  @media (pointer: coarse) {
+    :where(:root) {
+      --lsp-cell-size: 44px;
+      --lsp-wheel-item-size: 44px;
+    }
+  }
+
+  [data-lsp-part] {
+    box-sizing: border-box;
+  }
+
+  [data-lsp-part="date-field"],
+  [data-lsp-part="date-range-field"],
+  [data-lsp-part="time-field"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-block-size: 40px;
+    padding-inline: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font-variant-numeric: tabular-nums;
+    color-scheme: var(--lsp-color-scheme);
+    transition:
+      border-color var(--lsp-duration),
+      box-shadow var(--lsp-duration);
+  }
+
+  [data-lsp-part="date-range-field"] [data-lsp-part="date-field"] {
+    min-block-size: auto;
+    padding-inline: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  [data-lsp-part="date-field"]:focus-within,
+  [data-lsp-part="date-range-field"]:focus-within,
+  [data-lsp-part="time-field"]:focus-within {
+    border-color: var(--lsp-muted);
+    box-shadow: 0 0 0 3px var(--lsp-ring);
+  }
+
+  [data-lsp-part="date-range-field"] [data-lsp-part="date-field"]:focus-within {
+    box-shadow: none;
+  }
+
+  [data-lsp-part="date-field"][data-invalid],
+  [data-lsp-part="date-range-field"][data-invalid],
+  [data-lsp-part="time-field"][data-invalid] {
+    border-color: var(--lsp-danger);
+  }
+
+  [data-lsp-part="date-field"][data-disabled],
+  [data-lsp-part="date-range-field"][data-disabled],
+  [data-lsp-part="time-field"][data-disabled] {
+    opacity: 0.5;
+  }
+
+  [data-lsp-part="date-range-field"] [data-lsp-part="date-field"][data-disabled] {
+    opacity: 1;
+  }
+
+  [data-lsp-part="date-field"][data-readonly],
+  [data-lsp-part="date-range-field"][data-readonly],
+  [data-lsp-part="time-field"][data-readonly] {
+    border-style: dashed;
+  }
+
+  [data-lsp-part="date-field-segment"],
+  [data-lsp-part="time-field-segment"] {
+    padding-inline: 2px;
+    border-radius: 4px;
+    outline: none;
+    caret-color: transparent;
+    white-space: nowrap;
+  }
+
+  [data-lsp-part="date-field-segment"][data-placeholder],
+  [data-lsp-part="time-field-segment"][data-placeholder] {
+    color: var(--lsp-placeholder);
+  }
+
+  [data-lsp-part="date-field-segment"][data-invalid],
+  [data-lsp-part="time-field-segment"][data-invalid] {
+    color: var(--lsp-danger);
+  }
+
+  [data-lsp-part="date-field-segment"][data-focused],
+  [data-lsp-part="time-field-segment"][data-focused] {
+    background: var(--lsp-range-bg);
+    outline: 2px solid var(--lsp-focus);
+  }
+
+  [data-lsp-part="date-field-separator"],
+  [data-lsp-part="time-field-separator"] {
+    color: var(--lsp-muted);
+  }
+
+  [data-lsp-part="date-field-leap-toggle"] {
+    margin-inline-start: 6px;
+    padding: 2px 8px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    font-size: 0.8em;
+  }
+
+  /* 선택된 윤달 토글이 읽기 전용으로 막혀도 강조색 위 글자가 흐려지지 않도록 선택 규칙보다 앞에 둠 */
+  [data-lsp-part="date-field-leap-toggle"][data-disabled] {
+    color: var(--lsp-subtle);
+    cursor: not-allowed;
+  }
+
+  [data-lsp-part="date-field-leap-toggle"][data-selected] {
+    border-color: var(--lsp-accent);
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="popover-trigger"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-block-size: 40px;
+    padding-inline: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font: inherit;
+    cursor: pointer;
+    color-scheme: var(--lsp-color-scheme);
+    transition:
+      border-color var(--lsp-duration),
+      box-shadow var(--lsp-duration);
+  }
+
+  [data-lsp-part="popover-trigger"]:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  [data-lsp-part="popover-trigger"][data-open] {
+    border-color: var(--lsp-muted);
+    box-shadow: 0 0 0 3px var(--lsp-ring);
+  }
+
+  [data-lsp-part="popover-trigger"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* 읽기 전용 picker의 트리거는 포커스를 받는 입력 자리라 흐리지 않고, 눌러도 열리지 않음만 커서로 보임 */
+  [data-lsp-part="popover-trigger"][data-readonly] {
+    cursor: default;
+  }
+
+  /* 위치 계산이 알려 준 남은 화면 크기를 넘지 않고, 넘치는 내용은 팝오버 안에서 스크롤함 */
+  [data-lsp-part="popover"] {
+    z-index: 50;
+    max-inline-size: var(--lsp-popover-available-width, none);
+    max-block-size: var(--lsp-popover-available-height, none);
+    overflow: auto;
+    padding: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) + 4px);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    box-shadow: var(--lsp-shadow-popover);
+    color-scheme: var(--lsp-color-scheme);
+    outline: none;
+    animation: lsp-fade-in var(--lsp-duration) ease-out;
+  }
+
+  [data-lsp-part="sheet-backdrop"] {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: var(--lsp-backdrop);
+    animation: lsp-fade-in var(--lsp-duration) ease-out;
+  }
+
+  [data-lsp-part="sheet"] {
+    inline-size: 100%;
+    max-inline-size: 560px;
+    max-block-size: 85vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: Chrome 99는 dvh를 몰라 바로 위 vh 값으로 대체됨 (스펙 12장) */
+    max-block-size: 85dvh;
+    overflow: auto;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    border: 1px solid var(--lsp-border);
+    border-block-end: 0;
+    border-start-start-radius: 16px;
+    border-start-end-radius: 16px;
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    color-scheme: var(--lsp-color-scheme);
+    outline: none;
+    animation: lsp-sheet-in 180ms ease-out;
+    /* 시트는 화면 폭을 다 쓰므로 칸을 시트 폭에 맞춰 키움(기본 칸 크기 ~ 52px). 50px는 시트 좌우 여백·테두리 34px와 스크롤 막대 몫 16px(100vw에 포함됨) */
+    --lsp-sheet-cell-size: clamp(var(--lsp-cell-size), calc((min(100vw, 560px) - 50px) / 7), 52px);
+  }
+
+  /* 터치 기기는 스크롤 막대가 내용 위에 겹쳐 폭을 차지하지 않으므로 여백·테두리만 뺌 */
+  @media (pointer: coarse) {
+    [data-lsp-part="sheet"] {
+      --lsp-sheet-cell-size: clamp(var(--lsp-cell-size), calc((min(100vw, 560px) - 34px) / 7), 52px);
+    }
+  }
+
+  [data-lsp-part="sheet"] [data-lsp-part="calendar"],
+  [data-lsp-part="sheet"] [data-lsp-part="month-calendar"] {
+    --lsp-cell-size: var(--lsp-sheet-cell-size);
+  }
+
+  /* inline-flex에는 auto 여백이 먹지 않으므로 시트 안에서는 블록 수준 flex로 바꿔 가운데에 둠 */
+  [data-lsp-part="sheet"] > [data-lsp-part="calendar"],
+  [data-lsp-part="sheet"] > [data-lsp-part="month-calendar"] {
+    display: flex;
+    margin-inline: auto;
+  }
+
+  [data-lsp-part="wheel"] {
+    position: relative;
+    display: flex;
+    block-size: calc(var(--lsp-wheel-item-size) * var(--lsp-wheel-visible-count));
+    overflow: hidden;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-muted);
+    font-variant-numeric: tabular-nums;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  [data-lsp-part="wheel"][data-invalid] {
+    border-color: var(--lsp-danger);
+  }
+
+  [data-lsp-part="wheel"]::after {
+    content: "";
+    position: absolute;
+    inset-block: 2px;
+    inset-inline: 0;
+    z-index: 2;
+    background: linear-gradient(to bottom, var(--lsp-surface), transparent 30%, transparent 70%, var(--lsp-surface));
+    pointer-events: none;
+  }
+
+  [data-lsp-part="wheel-highlight"] {
+    position: absolute;
+    inset-inline: 6px;
+    inset-block-start: 50%;
+    block-size: var(--lsp-wheel-item-size);
+    transform: translateY(-50%);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: var(--lsp-range-bg);
+    pointer-events: none;
+  }
+
+  [data-lsp-part="wheel-column"] {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    overflow: hidden;
+    cursor: grab;
+    outline: none;
+    touch-action: none;
+    perspective: 600px;
+  }
+
+  [data-lsp-part="wheel-column"]:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: -2px;
+  }
+
+  [data-lsp-part="wheel-column"][data-readonly] {
+    cursor: default;
+  }
+
+  [data-lsp-part="wheel-column"][data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  [data-lsp-part="wheel-track"] {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(50% - var(--lsp-wheel-item-size) / 2);
+    transform: translateY(calc(var(--lsp-wheel-position, 0) * var(--lsp-wheel-item-size) * -1));
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  [data-lsp-part="wheel-item"] {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(var(--lsp-wheel-index) * var(--lsp-wheel-item-size));
+    display: grid;
+    place-items: center;
+    block-size: var(--lsp-wheel-item-size);
+    font-size: 15px;
+    transform: rotateX(clamp(-70deg, calc((var(--lsp-wheel-index) - var(--lsp-wheel-position, 0)) * -18deg), 70deg));
+    backface-visibility: hidden;
+  }
+
+  [data-lsp-part="wheel-item"][data-selected] {
+    color: var(--lsp-fg);
+    font-weight: 600;
+  }
+
+  [data-lsp-part="wheel-item"][data-disabled] {
+    color: var(--lsp-subtle);
+    text-decoration: line-through;
+  }
+
+  @keyframes lsp-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes lsp-sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-lsp-part="popover"],
+    [data-lsp-part="sheet"],
+    [data-lsp-part="sheet-backdrop"] {
+      animation: none;
+    }
+
+    [data-lsp-part="date-field"],
+    [data-lsp-part="date-range-field"],
+    [data-lsp-part="time-field"],
+    [data-lsp-part="popover-trigger"] {
+      transition: none;
+    }
+
+    [data-lsp-part="wheel-item"] {
+      transform: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    /* 자동 조정이 글자 뒤에 Canvas 판을 깔아 Highlight 위 글자를 가리므로 끄고 시스템 색을 직접 씀. 그러면 layer 밖 앱 색이 새어 들어오므로 !important로 막음 */
+    [data-lsp-part="date-field-segment"][data-focused],
+    [data-lsp-part="time-field-segment"][data-focused] {
+      forced-color-adjust: none;
+      /* biome-ignore-start lint/complexity/noImportantStyles: 자동 조정을 끈 강제 색상에서 layer 밖 앱 색을 이기려면 !important가 필요함 */
+      background: Highlight !important;
+      color: HighlightText !important;
+      /* biome-ignore-end lint/complexity/noImportantStyles: 범위 끝 */
+      outline: 2px solid Highlight;
+    }
+
+    [data-lsp-part="wheel-column"]:focus-visible,
+    [data-lsp-part="popover-trigger"]:focus-visible {
+      outline: 2px solid Highlight;
+    }
+
+    [data-lsp-part="wheel-highlight"] {
+      border: 1px solid CanvasText;
+    }
+
+    [data-lsp-part="wheel-item"][data-selected] {
+      color: Highlight;
+    }
+  }
+}
+
+/* 달력 부품 (M4). 같은 이름의 layer 블록은 위 블록과 하나로 합쳐짐 */
+@layer lunisolar-picker {
+  /* 부모가 grid·flex여도 늘어나지 않게 폭을 내용에 맞춤. 늘어나면 날짜 칸 사이만 벌어지고 머리줄은 그대로라 어긋나 보임 */
+  [data-lsp-part="calendar"],
+  [data-lsp-part="month-calendar"] {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 8px;
+    inline-size: fit-content;
+    padding: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font-variant-numeric: tabular-nums;
+    color-scheme: var(--lsp-color-scheme);
+  }
+
+  /* 팝오버·시트가 이미 테두리와 여백을 그리므로 안에 든 달력은 겹쳐 그리지 않음 */
+  [data-lsp-part="popover"] [data-lsp-part="calendar"],
+  [data-lsp-part="sheet"] [data-lsp-part="calendar"],
+  [data-lsp-part="popover"] [data-lsp-part="month-calendar"],
+  [data-lsp-part="sheet"] [data-lsp-part="month-calendar"] {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  [data-lsp-part="calendar"][data-invalid],
+  [data-lsp-part="month-calendar"][data-invalid] {
+    border-color: var(--lsp-danger);
+  }
+
+  /* 읽기 전용은 둘러볼 수 있어 흐리게 하지 않고 입력 칸처럼 점선 테두리로만 구분함 */
+  [data-lsp-part="calendar"][data-readonly],
+  [data-lsp-part="month-calendar"][data-readonly] {
+    border-style: dashed;
+  }
+
+  [data-lsp-part="calendar-header"],
+  [data-lsp-part="month-calendar-header"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  [data-lsp-part="calendar-view-button"],
+  [data-lsp-part="calendar-heading"] {
+    padding: 4px 6px;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  [data-lsp-part="calendar-view-button"] {
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  /* 기본 배치는 [보기 버튼 · 오늘 · 이전 · 다음]. 보기 버튼이 남는 폭을 모두 가져 달 이름 길이가 바뀌어도 이동 버튼이 제자리에 있음 */
+  /* 음력 영어 제목처럼 긴 제목은 잘라 내지 않고 두 줄로 접어 연도·역법 표시를 남김 */
+  [data-lsp-part="calendar-month"] > [data-lsp-part="calendar-header"] > [data-lsp-part="calendar-view-button"] {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    text-align: start;
+  }
+
+  /* 머리줄은 열 폭을 넓히지 않고 날짜 격자 폭에 맞춰 늘어남. 둘째 달부터의 제목과 높이를 같게 둬 나란한 격자의 줄을 맞춤 */
+  [data-lsp-part="calendar-month"] > [data-lsp-part="calendar-header"] {
+    flex-wrap: nowrap;
+    min-block-size: 28px;
+    inline-size: 0;
+    min-inline-size: 100%;
+  }
+
+  [data-lsp-part="calendar-month"] > [data-lsp-part="calendar-heading"] {
+    display: flex;
+    align-items: center;
+    min-block-size: 28px;
+  }
+
+  [data-lsp-part="calendar-nav-button"],
+  [data-lsp-part="calendar-today-button"] {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 26px;
+    block-size: 26px;
+    padding-inline: 6px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* 앱이 예전 문서의 순서(이전·보기·다음·역법·오늘)로 짠 머리줄은 달 이동 묶음과 나머지 버튼을 양쪽으로 나눔 */
+  [data-lsp-part="calendar-view-button"] + [data-lsp-part="calendar-nav-button"] {
+    margin-inline-end: auto;
+  }
+
+  [data-lsp-part="calendar-toggle"] {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 1px);
+  }
+
+  [data-lsp-part="calendar-toggle"] > button {
+    flex: 1 1 0;
+    padding: 3px 9px;
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 3px);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* 선택은 잉크색 채움. 옅은 배경만으로는 선택 상태가 배경과 3:1 대비를 못 넘음 */
+  [data-lsp-part="calendar-toggle"] > button[data-selected] {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  /* 연 보기의 보기 버튼은 더 내려갈 단계가 없어 data-disabled지만 지금 단계를 보여 주므로 흐리게 하지 않음 */
+  [data-lsp-part="calendar-view-button"][data-view="years"] {
+    cursor: default;
+  }
+
+  /* 오늘이 이미 보이면 누를 일이 없을 뿐 고장이 아니므로 테두리를 지운 조용한 글자로 둠 */
+  [data-lsp-part="calendar-today-button"][data-disabled] {
+    border-color: transparent;
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  [data-lsp-part="calendar-nav-button"][data-disabled],
+  [data-lsp-part="calendar-view-button"][data-disabled]:not([data-view="years"]),
+  [data-lsp-part="calendar"][data-disabled] [data-lsp-part="calendar-view-button"],
+  [data-lsp-part="calendar"][data-disabled] [data-lsp-part="calendar-today-button"],
+  [data-lsp-part="calendar-toggle"] > button[data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  /* 첫 달 열의 머리줄과 둘째 달부터의 제목이 같은 높이라 위쪽에 맞추면 제목과 격자가 모두 나란함 */
+  [data-lsp-part="calendar-months"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  /* 두 달이 나란히 들어가지 않는 화면에서는 세로로 쌓아 팝오버 폭을 한 달 폭으로 둠 */
+  @media (max-width: 599px) {
+    [data-lsp-part="calendar-months"] {
+      flex-direction: column;
+    }
+  }
+
+  [data-lsp-part="calendar-month"] {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  [data-lsp-part="calendar-grid"] {
+    inline-size: calc(var(--lsp-cell-size) * 7);
+    border-collapse: separate;
+    border-spacing: 0 2px;
+  }
+
+  /* 요일 줄 높이를 고정해 날짜 격자 높이가 6 × 칸 + 40px로 정해지게 함. 월·연 격자가 같은 높이를 씀 */
+  [data-lsp-part="calendar-head-cell"] {
+    block-size: 24px;
+    padding: 0;
+    padding-block-end: 6px;
+    color: var(--lsp-muted);
+    font-size: 10.5px;
+    font-weight: 400;
+    text-align: center;
+  }
+
+  [data-lsp-part="calendar-cell"] {
+    padding: 0;
+  }
+
+  [data-lsp-part="calendar-cell"][data-in-range] {
+    background: var(--lsp-range-bg);
+  }
+
+  /* 끌어서 고르는 중인 미리보기 범위는 위아래 점선으로 확정 범위와 구분함. 4px 무늬라 36·44px 칸 경계에서 이어짐 */
+  [data-lsp-part="calendar-cell"][data-preview] {
+    background:
+      linear-gradient(to right, var(--lsp-muted) 50%, transparent 0) 0 0 / 4px 1px repeat-x,
+      linear-gradient(to right, var(--lsp-muted) 50%, transparent 0) 0 100% / 4px 1px repeat-x,
+      var(--lsp-range-bg);
+  }
+
+  [data-lsp-part="calendar-cell"][data-range-start],
+  [data-lsp-part="calendar-cell"][data-in-range]:first-child {
+    border-start-start-radius: calc(var(--lsp-radius) - 2px);
+    border-end-start-radius: calc(var(--lsp-radius) - 2px);
+  }
+
+  [data-lsp-part="calendar-cell"][data-range-end],
+  [data-lsp-part="calendar-cell"][data-in-range]:last-child {
+    border-start-end-radius: calc(var(--lsp-radius) - 2px);
+    border-end-end-radius: calc(var(--lsp-radius) - 2px);
+  }
+
+  [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-in-range] {
+    box-shadow:
+      inset 0 1px 0 var(--lsp-danger),
+      inset 0 -1px 0 var(--lsp-danger);
+  }
+
+  /* 음력 보조 숫자만 대비가 낮은 --lsp-subtle을 씀. 칸 이름에 음력 날짜가 들어 있어 화면 낭독기에는 숨김 (스펙 8.3) */
+  [data-lsp-part="calendar-cell-secondary"] {
+    color: var(--lsp-subtle);
+    font-size: 8.5px;
+    font-weight: 400;
+  }
+
+  [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) [data-lsp-part="calendar-cell-secondary"] {
+    color: inherit;
+    opacity: 0.7;
+  }
+
+  /* 열 폭을 같게 나눠 글자 길이(September 등)가 간격을 흔들지 않게 함. 폭은 날짜 격자와 같음 */
+  [data-lsp-part="calendar-month-grid"],
+  [data-lsp-part="calendar-year-grid"] {
+    inline-size: calc(var(--lsp-cell-size) * 7);
+    table-layout: fixed;
+    border-spacing: 4px;
+  }
+
+  /* 보기를 바꿔도 팝오버 크기가 그대로이도록 날짜 격자와 같은 높이를 씀 */
+  [data-lsp-part="calendar"] [data-lsp-part="calendar-month-grid"],
+  [data-lsp-part="calendar"] [data-lsp-part="calendar-year-grid"] {
+    block-size: calc(var(--lsp-cell-size) * 6 + 40px);
+  }
+
+  [data-lsp-part="calendar-month-grid"] td,
+  [data-lsp-part="calendar-year-grid"] td {
+    padding: 0;
+  }
+
+  /* 날짜 칸·월·연 버튼 규칙은 우선순위가 낮은 것부터 둠. 같은 단계 안에서는 서로 다른 속성만 정하므로 순서가 결과를 바꾸지 않음 */
+  /* touch-action은 기본값으로 둬 터치로 달력 위를 스크롤할 수 있게 함. 글자 선택만 막아 마우스·펜 끌기가 날짜를 고르게 함 (스펙 10.5) */
+  [data-lsp-part="calendar-cell"] > button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    /* 공휴일 점 같은 칸 꾸밈을 absolute로 띄울 기준. 꾸밈이 흐름에 들어가면 그 칸 숫자만 밀려 올라감 */
+    position: relative;
+    inline-size: var(--lsp-cell-size);
+    block-size: var(--lsp-cell-size);
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 열 폭이 날짜 격자에 묶이므로 칸 크기를 줄인 앱에서 긴 달 이름은 넘치지 않고 하이픈을 넣어 두 줄로 접힘 */
+  [data-lsp-part="calendar-month-grid"] button,
+  [data-lsp-part="calendar-year-grid"] button {
+    inline-size: 100%;
+    padding-inline: 2px;
+    overflow-wrap: break-word;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+    block-size: 36px;
+    border: 0;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.15;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  /* 다른 달의 날은 --lsp-subtle이 아니라 --lsp-muted로 낮춰 글자 대비 4.5:1을 지킴 (스펙 8.3) */
+  [data-lsp-part="calendar-cell"][data-outside] > button {
+    color: var(--lsp-muted);
+  }
+
+  [data-lsp-part="calendar-cell"][data-disabled] > button {
+    color: var(--lsp-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  [data-lsp-part="calendar-cell"][data-today] > button {
+    box-shadow: inset 0 0 0 1px var(--lsp-muted);
+  }
+
+  /* 범위 달력은 양 끝에만 data-selected가 있음. 띠는 data-in-range가 그림 */
+  [data-lsp-part="calendar-cell"][data-selected] > button {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar-month-grid"] [data-selected] > button,
+  [data-lsp-part="calendar-year-grid"] [data-selected] > button {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar-month-grid"][data-disabled] button,
+  [data-lsp-part="calendar-year-grid"][data-disabled] button {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  [data-lsp-part="calendar"][data-readonly] [data-lsp-part="calendar-cell"] > button {
+    cursor: default;
+  }
+
+  [data-lsp-part="calendar"][data-disabled] [data-lsp-part="calendar-cell"] > button {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  [data-lsp-part="calendar-month-grid"]:not([data-disabled]) [data-disabled] > button,
+  [data-lsp-part="calendar-year-grid"]:not([data-disabled]) [data-disabled] > button {
+    color: var(--lsp-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  /* 범위 띠 위 회색 글자는 4.4:1이라 다른 달의 날도 띠 안에서는 본래 글자색을 씀 */
+  /* 두 달을 보이면 끝 날이 옆 달의 바깥 칸에도 나오므로 그 사본은 채우지 않고 띠의 한 날로만 그려 끝이 두 번 보이지 않게 함 */
+  [data-lsp-part="calendar-cell"][data-in-range][data-outside] > button {
+    background: transparent;
+    color: var(--lsp-fg);
+  }
+
+  [data-lsp-part="calendar-cell"][data-selected][data-today]:not([data-outside]) > button {
+    box-shadow:
+      inset 0 0 0 2px var(--lsp-accent),
+      inset 0 0 0 3px var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button {
+    background: var(--lsp-danger);
+  }
+
+  /* 오늘 표시의 안쪽 간격은 채움색과 같아야 빨간 칸 안에 검은 테두리가 생기지 않음 */
+  [data-lsp-part="calendar"][data-invalid]
+    [data-lsp-part="calendar-cell"][data-selected][data-today]:not([data-outside])
+    > button {
+    box-shadow:
+      inset 0 0 0 2px var(--lsp-danger),
+      inset 0 0 0 3px var(--lsp-accent-fg);
+  }
+
+  /* 월 전환은 180ms (스펙 8.3). 팝오버 토큰 --lsp-duration(140ms)과 길이가 달라 시트처럼 값을 직접 씀 */
+  /* Constraint: 이동 방향은 RTL에서 뒤집혀야 하는데 transform에는 논리 방향이 없고 [dir]은 계약 밖, :dir()은 Chrome 99 기준선 밖이라 다음·이전 모두 페이드만 씀 */
+  [data-lsp-part="calendar-grid"] > tbody[data-slide] {
+    animation: lsp-month-fade-in 180ms ease-out;
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="calendar-nav-button"]:not([data-disabled]):hover,
+    [data-lsp-part="calendar-today-button"]:not([data-disabled]):hover,
+    [data-lsp-part="calendar-view-button"]:not([data-disabled]):hover,
+    [data-lsp-part="calendar-toggle"] > button:not([data-selected], [data-disabled]):hover,
+    [data-lsp-part="calendar-month-grid"]:not([data-disabled]) td:not([data-selected], [data-disabled]) > button:hover,
+    [data-lsp-part="calendar-year-grid"]:not([data-disabled]) td:not([data-selected], [data-disabled]) > button:hover {
+      background: var(--lsp-range-bg);
+    }
+
+    [data-lsp-part="calendar"]:not([data-disabled], [data-readonly])
+      [data-lsp-part="calendar-cell"]:not([data-selected], [data-disabled])
+      > button:hover {
+      background: var(--lsp-range-bg);
+    }
+
+    /* 띠 위에서는 띠와 같은 색이 보이지 않으므로 한 단계 진한 선 색으로 칠함 */
+    [data-lsp-part="calendar"]:not([data-disabled], [data-readonly])
+      [data-lsp-part="calendar-cell"][data-in-range]:not([data-selected], [data-disabled])
+      > button:hover {
+      background: var(--lsp-border);
+    }
+  }
+
+  [data-lsp-part="calendar-nav-button"]:focus-visible,
+  [data-lsp-part="calendar-today-button"]:focus-visible,
+  [data-lsp-part="calendar-view-button"]:focus-visible,
+  [data-lsp-part="calendar-toggle"] > button:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  /* 이웃 칸이 나중에 그려져 테두리를 덮지 않도록 포커스된 칸을 위로 올림 */
+  [data-lsp-part="calendar-cell"] > button:focus-visible,
+  [data-lsp-part="calendar-month-grid"] button:focus-visible,
+  [data-lsp-part="calendar-year-grid"] button:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 1px;
+  }
+
+  @keyframes lsp-month-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-lsp-part="calendar-grid"] > tbody[data-slide] {
+      animation: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    /* 강제 색상은 글자 뒤에 Canvas 판을 깔아 Highlight 채움 위 글자를 흰 덩어리로 가림. 선택 항목만 자동 조정을 끄고 시스템 색을 직접 지정함 */
+    /* Constraint: 자동 조정을 끄면 layer 밖 앱 규칙(data-weekday 글자색 등)이 강제 색상 모드에도 새어 들어오므로 시스템 색에 !important를 붙임. layer 안 !important는 layer 밖 일반 선언을 이김 */
+    /* biome-ignore-start lint/complexity/noImportantStyles: 위 Constraint대로 강제 색상의 시스템 색은 !important여야 함 */
+    [data-lsp-part="calendar-toggle"] > button[data-selected],
+    [data-lsp-part="calendar-month-grid"] [data-selected] > button,
+    [data-lsp-part="calendar-year-grid"] [data-selected] > button {
+      forced-color-adjust: none;
+      background: Highlight !important;
+      color: HighlightText !important;
+    }
+
+    [data-lsp-part="calendar-cell"][data-in-range] {
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
+
+    /* 위험색 테두리가 CanvasText로 바뀌므로 두께로 구분함. 점선은 읽기 전용이 씀 */
+    [data-lsp-part="calendar"][data-invalid],
+    [data-lsp-part="month-calendar"][data-invalid] {
+      border-width: 2px;
+    }
+
+    [data-lsp-part="calendar"][data-invalid] [data-lsp-part="calendar-cell"][data-in-range] {
+      outline-style: dashed;
+    }
+
+    /* 끄는 중인 미리보기의 점선 무늬는 배경 그림이라 강제 색상에서 지워지므로 범위 테두리를 점선으로 바꿔 확정 범위와 구분함. 끄는 동안의 표시라 무효 범위의 파선보다 앞섬 */
+    [data-lsp-part="calendar"] [data-lsp-part="calendar-cell"][data-in-range][data-preview] {
+      outline-style: dotted;
+    }
+
+    [data-lsp-part="calendar-cell"][data-today] > button {
+      outline: 1px solid CanvasText;
+      outline-offset: -1px;
+    }
+
+    [data-lsp-part="calendar-cell"][data-disabled] > button,
+    [data-lsp-part="calendar-month-grid"] [data-disabled] > button,
+    [data-lsp-part="calendar-year-grid"] [data-disabled] > button {
+      color: GrayText;
+    }
+
+    [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button {
+      forced-color-adjust: none;
+      background: Highlight !important;
+      color: HighlightText !important;
+    }
+
+    /* 안쪽 요소도 자동 조정이 꺼지므로 앱이 칠한 배경이 Highlight 위에 덩어리로 남지 않게 비움 */
+    [data-lsp-part="calendar-cell"][data-selected]:not([data-outside]) > button * {
+      forced-color-adjust: none;
+      background: transparent !important;
+      color: HighlightText !important;
+    }
+
+    [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])[data-today] > button {
+      box-shadow:
+        inset 0 0 0 2px Highlight,
+        inset 0 0 0 3px HighlightText;
+    }
+
+    /* 일반 규칙의 위험색 채움을 같은 우선순위로 덮음. 그림자는 강제 색상에서 지워지므로 오류는 점선 테두리로 알림 */
+    [data-lsp-part="calendar"][data-invalid]
+      [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])
+      > button {
+      border: 2px dashed HighlightText !important;
+      background: Highlight !important;
+    }
+    /* biome-ignore-end lint/complexity/noImportantStyles: 범위 끝 */
+
+    [data-lsp-part="calendar"][data-invalid]
+      [data-lsp-part="calendar-cell"][data-selected]:not([data-outside])[data-today]
+      > button {
+      box-shadow:
+        inset 0 0 0 2px Highlight,
+        inset 0 0 0 3px HighlightText;
+    }
+
+    [data-lsp-part="calendar-nav-button"]:focus-visible,
+    [data-lsp-part="calendar-today-button"]:focus-visible,
+    [data-lsp-part="calendar-view-button"]:focus-visible,
+    [data-lsp-part="calendar-toggle"] > button:focus-visible,
+    [data-lsp-part="calendar-cell"] > button:focus-visible,
+    [data-lsp-part="calendar-month-grid"] button:focus-visible,
+    [data-lsp-part="calendar-year-grid"] button:focus-visible {
+      outline: 2px solid Highlight;
+    }
+  }
+}
+
+/* 월 달력·시간 목록 (M4-T7). 월 달력의 이동 버튼·연도 제목·월 격자는 위 달력 규칙을 같이 씀 */
+@layer lunisolar-picker {
+  /* 이전 해·연도·다음 해만 있으므로 연도를 가운데에 둠 */
+  [data-lsp-part="month-calendar-header"] {
+    justify-content: space-between;
+  }
+
+  /* 편성표의 5분 간격(288개)도 팝오버 안에서 끝없이 늘어나지 않게 높이를 묶고 목록만 스크롤함 (preflight 1.5) */
+  /* 포커스 테두리가 스크롤 가장자리에서 잘리지 않도록 안쪽 여백과 scroll-padding을 둠 */
+  [data-lsp-part="time-list"] {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-block-size: 240px;
+    margin: 0;
+    padding: 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 4px;
+    border: 1px solid var(--lsp-border);
+    border-radius: var(--lsp-radius);
+    background: var(--lsp-surface);
+    color: var(--lsp-fg);
+    font-variant-numeric: tabular-nums;
+    list-style: none;
+    color-scheme: var(--lsp-color-scheme);
+  }
+
+  /* 팝오버·시트가 이미 테두리와 여백을 그리므로 안에 든 목록은 겹쳐 그리지 않음 */
+  [data-lsp-part="popover"] [data-lsp-part="time-list"],
+  [data-lsp-part="sheet"] [data-lsp-part="time-list"] {
+    border: 0;
+    background: transparent;
+  }
+
+  [data-lsp-part="time-option"] {
+    display: flex;
+    flex: none;
+    align-items: center;
+    min-block-size: var(--lsp-cell-size);
+    padding-inline: 12px;
+    border-radius: calc(var(--lsp-radius) - 2px);
+    font-size: 12.5px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 선택은 달력과 같은 잉크색 채움 */
+  [data-lsp-part="time-option"][data-selected] {
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+  }
+
+  [data-lsp-part="month-calendar"][data-disabled] [data-lsp-part="calendar-heading"] {
+    opacity: 0.4;
+  }
+
+  [data-lsp-part="month-calendar"][data-readonly] [data-lsp-part="calendar-month-grid"] button {
+    cursor: default;
+  }
+
+  /* 달력의 무효 끝점처럼 위험색으로 채움. 범위 밖이라 붙은 흐린 글자색을 덮어 채움 위 글자 대비를 지킴 */
+  [data-lsp-part="month-calendar"][data-invalid] [data-lsp-part="calendar-month-grid"] [data-selected] > button {
+    background: var(--lsp-danger);
+    color: var(--lsp-accent-fg);
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="time-option"]:not([data-selected]):hover {
+      background: var(--lsp-range-bg);
+    }
+
+    /* 읽기 전용 월 달력은 고를 수 없으므로 달력 월 격자의 hover 채움을 지움 */
+    [data-lsp-part="month-calendar"][data-readonly]
+      [data-lsp-part="calendar-month-grid"]
+      td:not([data-selected])
+      > button:hover {
+      background: transparent;
+    }
+  }
+
+  /* 이웃 옵션이 나중에 그려져 테두리를 덮지 않도록 포커스된 옵션을 위로 올림 */
+  [data-lsp-part="time-option"]:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 1px;
+  }
+
+  @media (forced-colors: active) {
+    /* 달력 선택 항목과 같은 이유: 글자 뒤 Canvas 판을 끄고 시스템 색을 직접 쓰며, layer 밖 앱 색은 !important로 막음 */
+    /* biome-ignore-start lint/complexity/noImportantStyles: 자동 조정을 끈 강제 색상에서 layer 밖 앱 색을 이기려면 !important가 필요함 */
+    [data-lsp-part="time-option"][data-selected] {
+      forced-color-adjust: none;
+      background: Highlight !important;
+      color: HighlightText !important;
+    }
+
+    /* 위험색 채움이 Highlight로 바뀌므로 달력의 무효 끝점처럼 점선 테두리로 오류를 알림 */
+    [data-lsp-part="month-calendar"][data-invalid] [data-lsp-part="calendar-month-grid"] [data-selected] > button {
+      border: 2px dashed HighlightText !important;
+    }
+    /* biome-ignore-end lint/complexity/noImportantStyles: 범위 끝 */
+
+    [data-lsp-part="time-option"]:focus-visible {
+      outline: 2px solid Highlight;
+    }
+  }
+}
+
+/* 완성형 picker (M4-T8~T10). 팝오버·시트·트리거·달력·휠·시간 목록은 위 규칙을 그대로 씀 */
+@layer lunisolar-picker {
+  /* 입력 칸 옆에 달력·시계 버튼을 붙여 한 줄로 둠. 입력 칸이 없는 picker는 트리거나 휠 하나만 담음 */
+  [data-lsp-part="date-picker"],
+  [data-lsp-part="date-range-picker"],
+  [data-lsp-part="month-picker"],
+  [data-lsp-part="time-picker"],
+  [data-lsp-part="wheel-date-picker"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* 화면에 바로 둔 생년월일 휠은 세 열이 읽힐 만큼만 넓히고 좁은 화면에서는 줄어듦 */
+  [data-lsp-part="wheel-date-picker"] > [data-lsp-part="wheel"] {
+    inline-size: 288px;
+    max-inline-size: 100%;
+  }
+
+  /* 값을 보이는 트리거가 아직 placeholder를 보일 때는 입력 칸의 빈 칸과 같은 흐린 글자로 둠 */
+  [data-lsp-part="month-picker"][data-placeholder] > [data-lsp-part="popover-trigger"],
+  [data-lsp-part="wheel-date-picker"][data-placeholder] > [data-lsp-part="popover-trigger"] {
+    color: var(--lsp-placeholder);
+  }
+
+  /* 입력 칸이 없는 picker는 값을 보이는 트리거가 입력 칸 자리라 입력 칸처럼 위험색 테두리로 무효를 보임 */
+  [data-lsp-part="month-picker"][data-invalid] > [data-lsp-part="popover-trigger"],
+  [data-lsp-part="wheel-date-picker"][data-invalid] > [data-lsp-part="popover-trigger"] {
+    border-color: var(--lsp-danger);
+  }
+
+  /* 입력 칸·트리거 옆의 지우기 버튼. 보조 동작이라 테두리 없이 흐린 아이콘으로 두고, 누를 자리는 32px로 둠 */
+  [data-lsp-part="picker-clear"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 32px;
+    block-size: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--lsp-radius);
+    background: transparent;
+    color: var(--lsp-muted);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="picker-clear"]:hover {
+      background: var(--lsp-range-bg);
+      color: var(--lsp-fg);
+    }
+  }
+
+  [data-lsp-part="picker-clear"]:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  /* 월 달력·시간 목록·휠은 시트에서 footer와 형제로 놓이므로 달력 Root의 세로 간격 대신 위 여백을 줌 */
+  [data-lsp-part="sheet"] > [data-lsp-part="picker-footer"]:not(:first-child) {
+    margin-block-start: 12px;
+  }
+
+  /* 달력 Root의 세로 간격 안에 들어가므로 위쪽 선으로만 격자와 구분함 */
+  [data-lsp-part="picker-footer"] {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-block-start: 8px;
+    border-block-start: 1px solid var(--lsp-border);
+  }
+
+  /* 앱이 넣는 프리셋 버튼 줄. 푸터와 대칭으로 아래쪽 선으로만 달력 머리와 구분함 */
+  /* 프리셋 줄이 달력보다 넓으면 팝오버만 넓어지고 달력은 한쪽에 쏠리므로, 폭을 넓히지 않고 달력 폭 안에서 줄바꿈함 */
+  [data-lsp-part="picker-presets"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    inline-size: 0;
+    min-inline-size: 100%;
+    padding-block-end: 8px;
+    border-block-end: 1px solid var(--lsp-border);
+  }
+
+  /* 프리셋은 앱 버튼이지만 맨 버튼이면 푸터의 보조 버튼과 같은 모양을 줌. layer 밖 앱 스타일이 늘 이 규칙보다 앞섬 */
+  [data-lsp-part="picker-footer"] > button,
+  [data-lsp-part="picker-presets"] > button {
+    min-block-size: 32px;
+    padding-inline: 12px;
+    border: 1px solid var(--lsp-border);
+    border-radius: calc(var(--lsp-radius) - 2px);
+    background: transparent;
+    color: var(--lsp-fg);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* 확정 버튼(취소 뒤 마지막)은 선택과 같은 잉크색 채움으로 주된 동작임을 보임. 시트의 닫기 버튼만 있으면 채우지 않음 */
+  /* 굵기는 강제 색상에서도 남으므로 채움이 사라져도 주된 동작이 구분됨 */
+  [data-lsp-part="picker-footer"] > button:last-child:not(:first-child) {
+    border-color: var(--lsp-accent);
+    background: var(--lsp-accent);
+    color: var(--lsp-accent-fg);
+    font-weight: 600;
+  }
+
+  [data-lsp-part="picker-footer"] > button:disabled,
+  [data-lsp-part="picker-presets"] > button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @media (hover: hover) {
+    [data-lsp-part="picker-footer"] > button:first-child:not(:disabled):hover,
+    [data-lsp-part="picker-presets"] > button:not(:disabled):hover {
+      background: var(--lsp-range-bg);
+    }
+  }
+
+  [data-lsp-part="picker-footer"] > button:focus-visible,
+  [data-lsp-part="picker-presets"] > button:focus-visible {
+    outline: 2px solid var(--lsp-focus);
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    /* 흐림만으로는 강제 색상에서 비활성이 드러나지 않으므로 시스템 비활성 색을 씀 */
+    [data-lsp-part="picker-footer"] > button:disabled,
+    [data-lsp-part="picker-presets"] > button:disabled {
+      border-color: GrayText;
+      color: GrayText;
+    }
+
+    [data-lsp-part="picker-footer"] > button:focus-visible,
+    [data-lsp-part="picker-presets"] > button:focus-visible,
+    [data-lsp-part="picker-clear"]:focus-visible {
+      outline: 2px solid Highlight;
+    }
+
+    /* 투명 테두리·배경만으로는 강제 색상에서 버튼 경계가 보이지 않으므로 시스템 버튼 글자색으로 테두리를 그림 */
+    [data-lsp-part="picker-clear"] {
+      border-color: ButtonText;
+    }
+
+    /* 위험색 테두리가 시스템 색으로 바뀌므로 달력처럼 두께로 무효를 구분함 */
+    [data-lsp-part="month-picker"][data-invalid] > [data-lsp-part="popover-trigger"],
+    [data-lsp-part="wheel-date-picker"][data-invalid] > [data-lsp-part="popover-trigger"] {
+      border-width: 2px;
+    }
+  }
+}

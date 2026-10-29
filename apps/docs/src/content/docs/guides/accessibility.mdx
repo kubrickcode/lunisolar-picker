@@ -1,0 +1,67 @@
+---
+title: Accessibility
+description: Keyboard support, screen reader behaviour and touch targets.
+---
+
+The calendar follows the WAI-ARIA Authoring Practices date picker dialog and grid patterns. Fields and wheels use the spinbutton pattern.
+
+## Calendar grid
+
+Only one day is in the tab order at a time. Disabled days stay focusable so users can hear why they cannot pick them.
+
+| Key | Action |
+|---|---|
+| <kbd>←</kbd> <kbd>→</kbd> | Previous or next day (mirrored in right-to-left layouts) |
+| <kbd>↑</kbd> <kbd>↓</kbd> | Same day of the previous or next week |
+| <kbd>Home</kbd> <kbd>End</kbd> | First or last day of the week |
+| <kbd>PageUp</kbd> <kbd>PageDown</kbd> | Previous or next month |
+| <kbd>Shift</kbd>+<kbd>PageUp</kbd> <kbd>Shift</kbd>+<kbd>PageDown</kbd> | Previous or next year |
+| <kbd>Enter</kbd> <kbd>Space</kbd> | Select |
+| <kbd>Esc</kbd> | Close the popover or sheet |
+
+In the month grid, arrow keys move between months and <kbd>Home</kbd> and <kbd>End</kbd> jump to January and December.
+
+Each day is announced as a full date, for example "Wednesday, October 14, 2026". With lunar dates on, the lunar date follows. Add your own words, such as holiday names, with `getCellLabel`.
+
+Range selection is announced through a live region: "Start date October 13, 2026 selected. Choose an end date.", then "October 13, 2026 to October 17, 2026, 5 days". When a range breaks a limit, the reason is announced in the locale's words, for example "The selected range is too long."
+
+## Date and time fields
+
+| Key | Action |
+|---|---|
+| <kbd>0</kbd>–<kbd>9</kbd> | Type into the segment. It moves on when full. |
+| <kbd>.</kbd> <kbd>-</kbd> <kbd>/</kbd> <kbd>:</kbd> | Move to the next segment |
+| <kbd>←</kbd> <kbd>→</kbd> | Previous or next segment |
+| <kbd>↑</kbd> <kbd>↓</kbd> | Increase or decrease (minutes move by `minuteStep`) |
+| <kbd>Backspace</kbd> <kbd>Delete</kbd> | Erase |
+| <kbd>L</kbd> | Toggle the leap month (lunar mode). Works with a Korean keyboard layout too. |
+
+Phones show the numeric keypad. Read-only fields can be focused and navigated but not changed.
+
+## Wheels
+
+| Key | Action |
+|---|---|
+| <kbd>↑</kbd> <kbd>↓</kbd> | Previous or next item |
+| <kbd>PageUp</kbd> <kbd>PageDown</kbd> | Five items |
+| <kbd>Home</kbd> <kbd>End</kbd> | First or last item |
+| digits | Jump to a year (year column) |
+
+Columns announce text values such as "Leap 4" through `aria-valuetext`.
+
+## Popovers and sheets
+
+Opening moves focus to the selected day, or today. Focus stays inside until the popover closes, then returns to the trigger. Sheets are modal: they make the rest of the page `inert` and lock scrolling.
+
+Pickers whose trigger shows the value (MonthPicker, a sheet WheelDatePicker) name the trigger with the visible value followed by the action, so voice control users can say what they see.
+
+## Pointer, touch and motion
+
+- Day cells are 36 px on desktops and 44 px on touch screens.
+- Drag selection works with a mouse or pen. On touch screens, tap the start and the end so the page can still scroll.
+- `prefers-reduced-motion` turns off the month fade, popover and sheet animations, and wheel momentum animation.
+- In forced-colours mode focus, selection and ranges use system colours.
+
+## Testing
+
+Automated tests run axe and keyboard scenarios in Chromium, Firefox and WebKit. The release checklist adds manual passes with VoiceOver, NVDA and TalkBack, Windows high contrast, and Korean phone keyboards.

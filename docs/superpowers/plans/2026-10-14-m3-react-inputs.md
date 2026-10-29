@@ -152,9 +152,9 @@ install-browsers:
 
 - [ ] **Step 2: source 조건 확인**
 
-> 정합성 조정(2026-10-14): `source` 조건은 M1 Task 1(`tsconfig.base.json`의 `customConditions`, calendar `exports`)과 M2 Task 2(core `exports`)가 이미 설정했다. 이 단계에서는 확인만 한다.
+> 정합성 조정(2026-10-14): `@lunisolar-picker/source` 조건은 M1 Task 1(`tsconfig.base.json`의 `customConditions`, calendar `exports`)과 M2 Task 2(core `exports`)가 이미 설정했다. 이 단계에서는 확인만 한다.
 
-Run: `grep -c '"source"' packages/calendar/package.json packages/core/package.json && grep -c customConditions tsconfig.base.json`
+Run: `grep -c '"@lunisolar-picker/source"' packages/calendar/package.json packages/core/package.json && grep -c customConditions tsconfig.base.json`
 Expected: calendar 2, core 4, tsconfig 1. 하나라도 0이면 앞 마일스톤 계획의 해당 단계를 먼저 반영한다.
 
 - [ ] **Step 3: react 패키지 설정 파일 작성**
@@ -169,8 +169,8 @@ Expected: calendar 2, core 4, tsconfig 1. 하나라도 0이면 앞 마일스톤 
   "sideEffects": false,
   "files": ["dist", "src", "!src/**/*.test.ts", "!src/**/*.test.tsx", "!src/testing", "!src/visual"],
   "exports": {
-    ".": { "source": "./src/index.ts", "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./contract": { "source": "./src/contract.ts", "types": "./dist/contract.d.ts", "default": "./dist/contract.js" },
+    ".": { "@lunisolar-picker/source": "./src/index.ts", "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./contract": { "@lunisolar-picker/source": "./src/contract.ts", "types": "./dist/contract.d.ts", "default": "./dist/contract.js" },
     "./package.json": "./package.json"
   },
   "engines": {
@@ -250,7 +250,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  resolve: { conditions: ['source', ...defaultClientConditions] },
+  resolve: { conditions: ['@lunisolar-picker/source', ...defaultClientConditions] },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['src/**/*.visual.test.tsx'],
@@ -4918,7 +4918,6 @@ import {
   type DateFields,
   type DateString,
   type EpochDay,
-  LunisolarPickerError,
   type MonthCode,
   calendarIdOf,
   epochDayOf,
@@ -4926,8 +4925,11 @@ import {
 import {
   type DateConstraints,
   type WheelDateColumns,
+  boundsFor,
   buildWheelDateColumns,
+  clampEpochDay,
   constrainDateFields,
+  fieldsOf,
   findCalendar,
 } from '@lunisolar-picker/core';
 import { useMemo, useState } from 'react';
@@ -4974,9 +4976,11 @@ export function useWheelDate(props: UseWheelDateProps): WheelDateApi {
   );
   const context = usePickerContext(settings, { constraints: props, commitMode: 'immediate', numberOfMonths: 1 });
   const calendar = findCalendar(settings.calendars, entryCalendarId);
-  const [epochDay, setEpochDay] = useState<EpochDay>(() =>
-    clampEpochDay(initialValue ? epochDayOf(initialValue) : settings.todayEpochDay, context.constraints),
+  const bounds = useMemo(() => boundsFor(calendar, context.constraints), [calendar, context.constraints]);
+  const [rawEpochDay, setEpochDay] = useState<EpochDay>(() =>
+    clampEpochDay(initialValue ? epochDayOf(initialValue) : settings.todayEpochDay, boundsFor(calendar, context.constraints)),
   );
+  const epochDay = useMemo(() => clampEpochDay(rawEpochDay, bounds), [rawEpochDay, bounds]);
   const fields = useMemo(() => fieldsOf(calendar, epochDay), [calendar, epochDay]);
   const columns = useMemo(
     () => buildWheelDateColumns(calendar, fields, context.constraints, settings.locale),
@@ -4994,11 +4998,12 @@ export function useWheelDate(props: UseWheelDateProps): WheelDateApi {
     onValueChange: (next) => props.onValueChange?.(next, VALID_DETAILS),
   });
 
+  // 계약 변경/정합성 조정(2026-10-14, M2 리뷰): 로컬 `fieldsOf`·`clampEpochDay`(양력 min/max로 자르던 것)는 쓰지 않는다. core의 `boundsFor(calendar, constraints)`(제약 ∩ 입력 역법 지원 범위) + `clampEpochDay(epochDay, bounds)` + `fieldsOf(calendar, epochDay)`를 쓴다. `fieldsOf`는 입력 역법 범위 밖이면 던지므로 항상 `bounds`로 자른 뒤 부른다. 입력 역법을 바꾸면 `bounds`가 달라지므로 `epochDay`는 렌더마다 `bounds`로 다시 자른다.
   // Goal: 연·월을 바꿔 사라진 윤달·30일은 가장 가까운 날로 맞추고, 제약 범위 밖이면 경계로 붙임 (스펙 5.4, Review Focus 5)
   const selectFields = (nextFields: DateFields) => {
     const constrained = constrainDateFields(calendar, nextFields);
     const converted = calendar.toEpochDay(constrained);
-    if (converted.isOk) setEpochDay(clampEpochDay(converted.value, context.constraints));
+    if (converted.isOk) setEpochDay(clampEpochDay(converted.value, bounds));
   };
 
   return {
@@ -5012,21 +5017,6 @@ export function useWheelDate(props: UseWheelDateProps): WheelDateApi {
     selectDay: (day) => selectFields({ ...fields, day }),
     setEntryCalendar,
   };
-}
-
-function fieldsOf(calendar: ReturnType<typeof findCalendar>, epochDay: EpochDay): DateFields {
-  const fields = calendar.fromEpochDay(epochDay);
-  if (fields.isOk) return fields.value;
-  const boundary = epochDay < calendar.supportedRange.min ? calendar.supportedRange.min : calendar.supportedRange.max;
-  const boundaryFields = calendar.fromEpochDay(boundary);
-  if (!boundaryFields.isOk) throw new LunisolarPickerError(`calendar ${calendar.id} rejected its own supported range boundary`);
-  return boundaryFields.value;
-}
-
-function clampEpochDay(epochDay: EpochDay, constraints: { readonly minEpochDay: EpochDay; readonly maxEpochDay: EpochDay }): EpochDay {
-  if (epochDay < constraints.minEpochDay) return constraints.minEpochDay;
-  if (epochDay > constraints.maxEpochDay) return constraints.maxEpochDay;
-  return epochDay;
 }
 ```
 
@@ -5104,7 +5094,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 관성 스크롤과 키보드로 고르는 �
 }
 ```
 
-> 정합성 조정(2026-10-14): 선택자 계약 테스트는 `@lunisolar-picker/react/contract`를 경로 별칭이 아니라 워크스페이스 의존과 `source` 조건으로 읽는다(모든 패키지 공통 방식).
+> 정합성 조정(2026-10-14): 선택자 계약 테스트는 `@lunisolar-picker/react/contract`를 경로 별칭이 아니라 워크스페이스 의존과 `@lunisolar-picker/source` 조건으로 읽는다(모든 패키지 공통 방식).
 
 `packages/theme/tsconfig.json`:
 ```json
@@ -5125,8 +5115,8 @@ import { defaultClientConditions, defaultServerConditions } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  resolve: { conditions: ['source', ...defaultClientConditions] },
-  ssr: { resolve: { conditions: ['source', ...defaultServerConditions] } },
+  resolve: { conditions: ['@lunisolar-picker/source', ...defaultClientConditions] },
+  ssr: { resolve: { conditions: ['@lunisolar-picker/source', ...defaultServerConditions] } },
   test: { include: ['tests/**/*.test.ts'] },
 });
 ```
@@ -5556,7 +5546,7 @@ import { defineConfig } from 'vitest/config';
 // Constraint: 글꼴 렌더링이 OS마다 달라 기준 이미지는 Linux Docker(scripts/run-visual-tests.sh)에서만 만들고 비교함 (스펙 11장)
 export default defineConfig({
   plugins: [react()],
-  resolve: { conditions: ['source', ...defaultClientConditions] },
+  resolve: { conditions: ['@lunisolar-picker/source', ...defaultClientConditions] },
   test: {
     include: ['src/**/*.visual.test.tsx'],
     setupFiles: ['./vitest.setup.ts'],

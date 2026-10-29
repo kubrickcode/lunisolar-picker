@@ -1,0 +1,48 @@
+{
+  "name": "@lunisolar-picker/calendar",
+  "version": "0.0.0",
+  "description": "Plain-date values and calendar systems (Gregorian, Korean lunisolar dangi) for lunisolar-picker",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kubrickcode/lunisolar-picker.git",
+    "directory": "packages/calendar"
+  },
+  "homepage": "https://github.com/kubrickcode/lunisolar-picker#readme",
+  "bugs": {
+    "url": "https://github.com/kubrickcode/lunisolar-picker/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/testing"
+  ],
+  "exports": {
+    ".": {
+      "@lunisolar-picker/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./dangi": {
+      "@lunisolar-picker/source": "./src/dangi/index.ts",
+      "types": "./dist/dangi.d.ts",
+      "default": "./dist/dangi.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json",
+    "package-check": "publint --strict && attw --pack . --profile esm-only",
+    "kasi:collect": "tsx scripts/kasi/collect-kasi.ts",
+    "kasi:generate": "tsx scripts/kasi/generate-dangi-table.ts",
+    "compare:intl": "tsx scripts/compare-intl.ts"
+  }
+}

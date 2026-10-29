@@ -1,0 +1,82 @@
+---
+title: Forms
+description: Native form submission, form reset and react-hook-form.
+---
+
+## Native forms
+
+Give a picker a `name` and it renders one visually hidden input with the canonical value. Ranges use `startName` and `endName` and render two.
+
+```tsx
+<form action="/search">
+  <DateRangePicker startName="from" endName="to" />
+  <button type="submit">Search</button>
+</form>
+// submits ?from=2026-10-13&to=2026-10-17
+```
+
+- `required`, `disabled`, `readOnly` and `form` behave as on native inputs. A required picker blocks submission while empty, and the browser's message points at the first segment. For ranges, the end is required only when `isOpenEndAllowed` is off.
+- `invalid` marks the picker invalid (`aria-invalid`, `data-invalid`) when your own validation fails.
+- The hidden input is an off-screen `type="text"` input rather than `type="hidden"`, because browsers skip constraint validation on hidden inputs.
+
+## Form reset
+
+A form `reset` returns an uncontrolled picker to its `defaultValue` and calls `onValueChange` once. Reset needs the hidden input, so give the picker a `name` (`startName` and `endName` for ranges). Controlled pickers ignore reset: reset your own state instead.
+
+## react-hook-form
+
+Connect a picker with `Controller`. A cleared picker sends `null`, so `required` works without extra code.
+
+```tsx
+import { DatePicker } from '@lunisolar-picker/react/pickers';
+import { Controller, useForm } from 'react-hook-form';
+
+export function BirthDateForm() {
+  const { control, handleSubmit } = useForm<{ birthDate: string | null }>({ defaultValues: { birthDate: null } });
+  return (
+    <form noValidate onSubmit={handleSubmit((values) => console.log(values))}>
+      <Controller
+        name="birthDate"
+        control={control}
+        rules={{ required: 'Enter your birth date' }}
+        render={({ field, fieldState }) => (
+          <>
+            <DatePicker
+              ref={field.ref}
+              name={field.name}
+              value={field.value}
+              onValueChange={(value) => field.onChange(value)}
+              onBlur={field.onBlur}
+              required
+              invalid={fieldState.invalid}
+            />
+            {fieldState.error && <p role="alert">{fieldState.error.message}</p>}
+          </>
+        )}
+      />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+- `ref` focuses the first segment (or your trigger with `renderTrigger`), so react-hook-form can move focus to the first invalid field.
+- `onBlur` fires once when focus leaves the whole picker, not on every segment.
+- If you also pass `required` to the picker, put `noValidate` on the form. Otherwise the browser's own validation stops the submit before react-hook-form can show its message.
+- A controlled `DateRangePicker` or `DateRangeField` must pass every `onValueChange` value back as `value`, including a range whose end is still `null`.
+
+## Validating constraints yourself
+
+`onValueChange` reports why a value breaks the picker's constraints. You can run the same checks anywhere, for example in a zod refinement or on the server:
+
+```ts
+import { validateDate, validateRange } from '@lunisolar-picker/core';
+
+validateDate('2031-01-01', { max: '2030-12-31' });
+// { isValid: false, reasons: ['after-max'], ignoredInputs: [] }
+
+validateRange({ start: '2026-10-01', end: '2026-12-31' }, { maxDays: 60 });
+// { isValid: false, reasons: ['range-too-long'], ignoredInputs: [] }
+```
+
+`ignoredInputs` lists `min` or `max` values that could not be read, so a typo in a constraint is not silently ignored.

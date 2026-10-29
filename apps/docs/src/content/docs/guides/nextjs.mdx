@@ -1,0 +1,75 @@
+---
+title: Next.js App Router
+description: Use the pickers from server components and keep server and browser renders identical.
+---
+
+Every entry of `@lunisolar-picker/react` is marked `"use client"`. A server component can render a picker directly as long as it passes only serializable props:
+
+```tsx
+// app/page.tsx (server component)
+import { DatePicker } from '@lunisolar-picker/react/pickers';
+
+export default function Page() {
+  return <DatePicker name="installedAt" defaultValue="2026-10-14" />;
+}
+```
+
+Callbacks such as `onValueChange` are functions, so put stateful pickers in a client component.
+
+## Put the provider in a client component
+
+Locale objects contain functions, so a server component cannot pass `locale={ko}` to `LunisolarProvider`. Import the locale inside a client wrapper and render that from your layout:
+
+```tsx
+// app/providers.tsx
+'use client';
+
+import { ko } from '@lunisolar-picker/core/locales/ko';
+import { LunisolarProvider } from '@lunisolar-picker/react';
+import type { ReactNode } from 'react';
+
+export function Providers({ children, today }: { children: ReactNode; today?: string }) {
+  return (
+    <LunisolarProvider locale={ko} timeZone="Asia/Seoul" today={today}>
+      {children}
+    </LunisolarProvider>
+  );
+}
+```
+
+```tsx
+// app/layout.tsx
+import { Providers } from './providers';
+import './globals.css';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ko">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+## Keep "today" stable
+
+The server and the browser can disagree about the date near midnight or across time zones. Pass `timeZone` so both compute today in the same zone. Without a `timeZone`, the server render and the first browser render use UTC, and the picker switches to the browser's zone right after hydration.
+
+When the page must match exactly, for example in a static export, pass `today` from the server:
+
+```tsx
+<Providers today="2026-10-14">{children}</Providers>
+```
+
+A fixed `today` never changes. Without it, the picker checks the date once a minute and moves "today" when the day changes.
+
+## CSS
+
+Import the theme in `app/globals.css` with the layer order, and keep `.dark` or `data-theme` on `html` or `body` so popovers rendered in a portal follow it:
+
+```css
+@layer theme, base, lunisolar-picker, components, utilities;
+@import '@lunisolar-picker/theme/mono.css';
+```

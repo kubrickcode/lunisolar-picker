@@ -1,0 +1,104 @@
+---
+title: Theming
+description: Load the Mono theme, switch light and dark modes, and map tokens to your design system.
+---
+
+## Cascade layer
+
+`@lunisolar-picker/theme/mono.css` wraps every rule in `@layer lunisolar-picker`. Rules outside a layer, and later layers, always win, so Tailwind utilities and your own CSS can override the theme without `!important`.
+
+```css
+@layer theme, base, lunisolar-picker, components, utilities;
+@import '@lunisolar-picker/theme/mono.css';
+```
+
+## Light, dark and system
+
+| Markup | Result |
+|---|---|
+| nothing | Light |
+| `class="dark"` or `data-theme="dark"` on any ancestor | Dark |
+| `data-theme="system"` on any ancestor | Follows the operating system (`prefers-color-scheme`) |
+
+The theme never follows the operating system on its own. Apps that manage dark mode with a `.dark` class would otherwise see the picker turn dark while the page stays light. Each mode also sets `color-scheme`, so scrollbars and native controls match.
+
+Popovers and sheets render in a portal at the end of `body`. Put `.dark` or `data-theme` on `html` or `body` so portal content picks it up too.
+
+## Tokens
+
+Override any token on `:root` or on a wrapper element.
+
+| Token | Light | Dark | Used for |
+|---|---|---|---|
+| `--lsp-bg` | `#ffffff` | `#09090b` | Picker background |
+| `--lsp-surface` | `#ffffff` | `#111113` | Popover and field surface |
+| `--lsp-fg` | `#09090b` | `#fafafa` | Text |
+| `--lsp-muted` | `#71717a` | `#a1a1aa` | Weekday headers, outside days |
+| `--lsp-subtle` | `#b4b4bb` | `#52525b` | Lunar labels inside day cells |
+| `--lsp-placeholder` | `#63636b` | `#a1a1aa` | Empty field segments |
+| `--lsp-border` | `#e4e4e7` | `#26262a` | Lines |
+| `--lsp-accent` | `#09090b` | `#fafafa` | Selected day fill |
+| `--lsp-accent-fg` | `#ffffff` | `#09090b` | Text on the accent |
+| `--lsp-range-bg` | `#f4f4f5` | `#1d1d20` | Days inside a range |
+| `--lsp-ring` | `rgb(9 9 11 / 0.18)` | `rgb(250 250 250 / 0.25)` | Soft ring around focused fields |
+| `--lsp-focus` | `#52525b` | `#e4e4e7` | Keyboard focus outline |
+| `--lsp-danger` | `#b91c1c` | `#f87171` | Invalid fields and ranges |
+| `--lsp-shadow-popover` | `0 8px 24px -8px rgb(0 0 0 / 0.12)` | `0 8px 24px -8px rgb(0 0 0 / 0.6)` | Popover elevation |
+| `--lsp-backdrop` | `rgb(9 9 11 / 0.4)` | `rgb(0 0 0 / 0.6)` | Sheet backdrop |
+| `--lsp-radius` | `8px` | `8px` | Corner radius |
+| `--lsp-cell-size` | `36px` (`44px` on touch screens) | same | Day cell size |
+| `--lsp-wheel-item-size` | `36px` (`44px` on touch screens) | same | Wheel row height |
+| `--lsp-wheel-visible-count` | `5` | `5` | Rows visible in a wheel |
+| `--lsp-duration` | `140ms` | `140ms` | Popover and field transitions |
+
+```css
+:root {
+  --lsp-accent: #4c51bf;
+  --lsp-accent-fg: #ffffff;
+  --lsp-radius: 12px;
+}
+```
+
+## shadcn/ui and Tailwind tokens
+
+If your app already defines shadcn tokens (`--background`, `--primary`, `--border`, `--radius` and so on), load the bridge after the theme and the picker follows them, including dark mode:
+
+```css
+@import '@lunisolar-picker/theme/mono.css';
+@import '@lunisolar-picker/theme/bridge/shadcn.css';
+```
+
+The bridge uses the tokens as complete colours, the way shadcn/ui defines them for Tailwind 4 (`--primary: oklch(0.205 0 0)`). Tailwind 3 setups that store bare HSL channels (`--primary: 222 47% 11%`) need the tokens converted first.
+
+## Styling with state attributes
+
+Parts expose their identity in `data-lsp-part` and their state in `data-*` attributes. Target them from CSS or Tailwind arbitrary variants.
+
+| Attribute | Meaning |
+|---|---|
+| `data-selected` | Selected day, or a range end |
+| `data-today` | Today |
+| `data-disabled` | Cannot be selected or edited |
+| `data-readonly` | Read-only picker or trigger |
+| `data-outside` | Belongs to the previous or next month |
+| `data-in-range`, `data-range-start`, `data-range-end` | Range selection |
+| `data-preview` | Part of a range that follows the pointer before it is fixed |
+| `data-invalid` | Value breaks a constraint |
+| `data-focused` | Keyboard focus |
+| `data-open` | Popover trigger whose popover is open |
+| `data-placeholder` | Field segment not filled yet |
+| `data-calendar` | `gregory` or `dangi` |
+| `data-view` | `days`, `months` or `years` |
+| `data-weekday` | `0` (Sunday) to `6` (Saturday) |
+| `data-slide` | `previous` or `next` right after the month changes |
+
+Colour weekends red and blue, as many Korean products do:
+
+```css
+[data-lsp-part='calendar-cell'][data-weekday='0'] { color: #e5484d; }
+[data-lsp-part='calendar-cell'][data-weekday='6'] { color: #3b82f6; }
+```
+
+## Motion
+
+Month changes fade the new month in over 180 ms, popovers fade in over 140 ms and sheets slide up over 180 ms. All of them turn off when the user asks for reduced motion. In Windows high-contrast mode (`forced-colors`) focus and selection use system colours.

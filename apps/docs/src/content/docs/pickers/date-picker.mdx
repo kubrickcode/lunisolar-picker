@@ -1,0 +1,48 @@
+---
+title: DatePicker
+description: A segmented date field with a calendar popover, or a bottom sheet on touch screens.
+---
+
+import { DatePickerDemo } from '../../../components/demos/DatePickerDemo';
+
+<DatePickerDemo client:only="react" />
+
+```tsx
+import { DatePicker } from '@lunisolar-picker/react/pickers';
+
+<DatePicker aria-label="Due date" value={value} onValueChange={(next) => setValue(next)} min="2020-01-01" max="2030-12-31" />;
+```
+
+Type the date digit by digit (`10142026` in `en`), paste it (`2026-10-14`, `2026.10.14`), or open the calendar. The field uses the numeric keypad on phones. When the picker has a value, a clear button appears next to the field.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `string \| null` | | Controlled value, a canonical date string. |
+| `defaultValue` | `string \| null` | `null` | Initial value for uncontrolled use. |
+| `onValueChange` | `(value: DateString \| null, details: { validity }) => void` | | Called when the user changes the value. `null` means cleared. |
+| `onPick` | `(value: DateString) => void` | | Called after every accepted pick in the calendar, even of the same day. |
+| `min`, `max` | `string` | | Earliest and latest selectable dates. |
+| `isDateDisabled` | `(date: DateString) => boolean` | | Disable any other day. |
+| `commitMode` | `'immediate' \| 'confirm'` | `'immediate'` | With `'confirm'` the popover shows Confirm and Cancel, and closing without confirming discards the choice. |
+| `numberOfMonths` | `number` | `1` | Months shown side by side. The bottom sheet always shows one. |
+| `presentation` | `'auto' \| 'popover' \| 'sheet'` | `'auto'` | `'auto'` opens a bottom sheet on narrow touch screens, with a Close button. |
+| `open`, `defaultOpen`, `onOpenChange` | `boolean` | | Control the popover or sheet. |
+| `isClearable` | `boolean` | `true` | Show the clear button while there is a value. |
+| `separator` | `string` | locale | Character between segments, for example `'-'`. |
+| `renderTrigger` | `(props: TriggerRenderProps) => ReactElement` | | Replace the field with your own trigger, for example a filter chip. Spread `triggerProps` (including its `ref`) on your button. |
+| `placeholder` | `string` | | Text that `renderTrigger` receives for an empty value. |
+| `renderCell` | `(info: CellRenderInfo) => ReactNode` | | Draw the inside of each day cell. See [Calendar parts](/parts/calendar/#rendering-a-day). |
+| `footer` | `ReactNode` | | Extra content under the calendar. |
+| `displayCalendar`, `defaultDisplayCalendar`, `onDisplayCalendarChange` | `'gregory' \| 'dangi'` | value's calendar | Which calendar the grid shows when lunar dates are enabled. |
+| `getCellLabel` | `(cell) => string \| undefined` | | Extra words read by screen readers for a day. |
+| `name`, `form`, `required`, `disabled`, `readOnly`, `invalid` | | | Same meaning as on native inputs. `name` renders a hidden input with the value. |
+| `onBlur` | `() => void` | | Called once when focus leaves the whole picker. |
+| `onInvalidValue` | `(input: string, reason: ValidationReason) => void` | | Called once when a controlled `value` cannot be read, for example a typo or a calendar that is not enabled. The picker treats it as empty. Constraint violations arrive in `onValueChange` instead. |
+| `ref` | `Ref<{ focus(): void }>` | | `focus()` moves to the first segment, or to your trigger. |
+| `aria-label`, `aria-labelledby`, `aria-describedby`, `id`, `className` | | | Name and describe the field. |
+
+Locale, time zone, `today`, `weekStartsOn` and `calendars` can be set here or on `LunisolarProvider`.
+
+Callbacks report user actions only. Mounting, or the parent passing a new `value`, never calls `onValueChange`.
