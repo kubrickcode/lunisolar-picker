@@ -325,8 +325,7 @@ describe('Calendar', () => {
       await expect.element(selectedDay).toBeVisible();
 
       expect(selectedDay.element().hasAttribute('disabled')).toBe(false);
-      selectedDay.element().focus();
-      await expect.element(selectedDay).toHaveFocus();
+      await focusOnce(selectedDay);
     });
 
     it('keeps the grid named when the app gives the heading its own id', async () => {
@@ -391,8 +390,7 @@ describe('Calendar', () => {
       );
       // Constraint: 비활성 칸은 탭 정지점도 클릭 포커스도 기대할 수 없어 직접 포커스한 뒤 키를 보냄
       const day = screen.getByRole('button', { name: dayLabel('2026-10-20') });
-      day.element().focus();
-      await expect.element(day).toHaveFocus();
+      await focusOnce(day);
 
       await userEvent.keyboard('{ArrowRight}{PageDown}{Enter}');
       await settleEffects();

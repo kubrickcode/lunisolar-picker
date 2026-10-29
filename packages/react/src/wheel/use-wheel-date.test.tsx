@@ -7,6 +7,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { dispatchMousePointer } from '../testing/dispatch-mouse-pointer';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { focusOnce } from '../testing/focus-once';
 import { formElementOf } from '../testing/form-element';
 import { settleEffects } from '../testing/settle-effects';
 import * as Wheel from './parts';
@@ -376,8 +377,7 @@ describe('useWheelDate', () => {
         <WheelDateColumns readOnly defaultValue="1990-03-15" today="2026-10-14" onValueChange={onValueChange} />,
       );
       const yearColumn = screen.getByRole('spinbutton', { name: en.labels.year });
-      yearColumn.element().focus();
-      await expect.element(yearColumn).toHaveFocus();
+      await focusOnce(yearColumn);
 
       await userEvent.keyboard('{ArrowDown}');
       await waitForSnap();
@@ -396,8 +396,7 @@ describe('useWheelDate', () => {
         </>,
       );
       const yearColumn = screen.getByRole('spinbutton', { name: en.labels.year });
-      yearColumn.element().focus();
-      await expect.element(yearColumn).toHaveFocus();
+      await focusOnce(yearColumn);
       await userEvent.keyboard('{Tab}');
       await expect.element(screen.getByRole('spinbutton', { name: en.labels.month })).toHaveFocus();
       expect(onBlur).not.toHaveBeenCalled();
@@ -427,8 +426,7 @@ describe('useWheelDate', () => {
       );
       const form = formElementOf(screen.getByRole('form'));
       const dayColumn = screen.getByRole('spinbutton', { name: en.labels.day });
-      dayColumn.element().focus();
-      await expect.element(dayColumn).toHaveFocus();
+      await focusOnce(dayColumn);
       await userEvent.keyboard('{ArrowDown}');
       await expect.poll(() => new FormData(form).get('birthDate')).toBe('1990-03-16');
 

@@ -5,6 +5,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { dispatchMousePointer } from '../testing/dispatch-mouse-pointer';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
+import { focusOnce } from '../testing/focus-once';
 import { settleEffects } from '../testing/settle-effects';
 import * as Wheel from './parts';
 import { useWheel } from './use-wheel';
@@ -173,8 +174,7 @@ describe('Wheel', () => {
       const onValueChange = vi.fn();
       const screen = await render(<MonthWheel onValueChange={onValueChange} />);
       const column = screen.getByRole('spinbutton', { name: 'Month' });
-      column.element().focus();
-      await expect.element(column).toHaveFocus();
+      await focusOnce(column);
 
       await userEvent.keyboard('{ArrowDown}');
 
@@ -185,8 +185,7 @@ describe('Wheel', () => {
       const onValueChange = vi.fn();
       const screen = await render(<MonthWheel onValueChange={onValueChange} />);
       const column = screen.getByRole('spinbutton', { name: 'Month' });
-      column.element().focus();
-      await expect.element(column).toHaveFocus();
+      await focusOnce(column);
 
       await userEvent.keyboard('{End}');
 
@@ -197,8 +196,7 @@ describe('Wheel', () => {
       const onValueChange = vi.fn();
       const screen = await render(<YearWheel onValueChange={onValueChange} />);
       const column = screen.getByRole('spinbutton', { name: 'Year' });
-      column.element().focus();
-      await expect.element(column).toHaveFocus();
+      await focusOnce(column);
 
       await userEvent.keyboard('{PageDown}');
 
@@ -240,8 +238,7 @@ describe('Wheel', () => {
         const onValueChange = vi.fn();
         const screen = await render(<YearWheel onValueChange={onValueChange} />);
         const column = screen.getByRole('spinbutton', { name: 'Year' });
-        column.element().focus();
-        await expect.element(column).toHaveFocus();
+        await focusOnce(column);
 
         await userEvent.keyboard('1950');
 
@@ -303,8 +300,7 @@ describe('Wheel', () => {
         const onValueChange = vi.fn();
         const screen = await render(<MonthWheel onValueChange={onValueChange} />);
         const column = screen.getByRole('spinbutton', { name: 'Month' });
-        column.element().focus();
-        await expect.element(column).toHaveFocus();
+        await focusOnce(column);
 
         await userEvent.keyboard('x');
         await settleEffects();

@@ -4,6 +4,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
+import { focusOnce } from '../testing/focus-once';
 import * as Sheet from './parts';
 import { useSheetContext } from './sheet-context';
 
@@ -62,7 +63,7 @@ describe('Sheet', () => {
   it('closes on Escape, restores inert state, and returns focus to the opener', async () => {
     const screen = await render(<Example />);
     const opener = screen.getByRole('button', { name: 'Pick a date' });
-    opener.element().focus();
+    await focusOnce(opener);
     await userEvent.keyboard('{Enter}');
 
     await userEvent.keyboard('{Escape}');
