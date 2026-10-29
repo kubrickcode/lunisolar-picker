@@ -96,8 +96,6 @@ jobs:
         with:
           node-version: 24.14.0
           package-manager-cache: false
-      - name: Use an npm CLI that supports trusted publishing
-        run: npm install -g npm@12.2.0
       - run: pnpm install --frozen-lockfile
       - uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
