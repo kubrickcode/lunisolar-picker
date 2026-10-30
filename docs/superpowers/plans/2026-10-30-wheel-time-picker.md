@@ -104,7 +104,7 @@ export const useWheelTime: (props: UseWheelTimeProps) => WheelTimeApi;
 - `useValueBridge` 연결, 부모가 `null`을 줄 때 위치를 유지하는 것, `resetToDefault`, `focus`, `attachRoot`, `getWheelRootProps`, `getHiddenInputProps`는 `use-wheel-date.ts:167-243`를 그대로 따른다. 역법·제약·`usePickerContext` 부분은 뺀다.
 - `columns`는 `useMemo(() => buildTimeColumns({ minuteStep, isEndOfDayAllowed: false }), [minuteStep])`로 만든다.
 
-- [ ] **Step 1: 실패하는 테스트 작성** — `use-wheel-time.test.tsx`. 하네스는 `use-wheel-date.test.tsx:37-121`의 Probe 구조를 따르고, 열은 `Wheel.Root`/`Wheel.Column` 두 개로 그린다. 열 조작은 `focusDirectly(spinbutton)` → `userEvent.keyboard(...)` → `expect.element(col).toHaveAttribute('aria-valuetext', ...)` → `settleEffects()` 순서다. 모든 render는 `KoreanProvider`로 감싼다.
+- [x] **Step 1: 실패하는 테스트 작성** — `use-wheel-time.test.tsx`. 하네스는 `use-wheel-date.test.tsx:37-121`의 Probe 구조를 따르고, 열은 `Wheel.Root`/`Wheel.Column` 두 개로 그린다. 열 조작은 `focusDirectly(spinbutton)` → `userEvent.keyboard(...)` → `expect.element(col).toHaveAttribute('aria-valuetext', ...)` → `settleEffects()` 순서다. 모든 render는 `KoreanProvider`로 감싼다.
 
 ```ts
 describe('useWheelTime', () => {
@@ -137,10 +137,10 @@ describe('useWheelTime', () => {
 
 `describe` 안의 주석은 단언으로 옮겨 적는다. 값은 위에 적힌 그대로 쓴다.
 
-- [ ] **Step 2: 실패 확인** — `pnpm --filter @lunisolar-picker/react exec vitest run src/wheel/use-wheel-time.test.tsx`. 기대: FAIL(`useWheelTime` 없음).
-- [ ] **Step 3: `use-wheel-time.ts` 구현**. 위 Interfaces와 규칙대로 하고, `index.ts:45` 다음 줄에 `export type { UseWheelTimeProps, WheelTimeApi, WheelTimeFields, WheelTimeRootProps }`와 `export { useWheelTime }`를 추가한다.
-- [ ] **Step 4: 통과 확인** — 같은 명령. 기대: PASS. 이어서 `just typecheck && just lint`가 통과해야 한다.
-- [ ] **Step 5: 커밋**
+- [x] **Step 2: 실패 확인** — `pnpm --filter @lunisolar-picker/react exec vitest run src/wheel/use-wheel-time.test.tsx`. 기대: FAIL(`useWheelTime` 없음).
+- [x] **Step 3: `use-wheel-time.ts` 구현**. 위 Interfaces와 규칙대로 하고, `index.ts:45` 다음 줄에 `export type { UseWheelTimeProps, WheelTimeApi, WheelTimeFields, WheelTimeRootProps }`와 `export { useWheelTime }`를 추가한다.
+- [x] **Step 4: 통과 확인** — 같은 명령. 기대: PASS. 이어서 `just typecheck && just lint`가 통과해야 한다.
+- [x] **Step 5: 커밋**
 
 ```bash
 git add packages/react/src/wheel/use-wheel-time.ts packages/react/src/wheel/use-wheel-time.test.tsx packages/react/src/index.ts
@@ -200,8 +200,8 @@ export const WheelTimePicker: (props: WheelTimePickerProps) => ReactElement;
 
 Mono: 다섯 선택자를 각각 `:is([data-lsp-part="wheel-date-picker"], [data-lsp-part="wheel-time-picker"])` 꼴로 넓힌다. 288px 폭 규칙(1106)도 공유한다(스펙 §5).
 
-- [ ] **Step 1: helper 이동** — `time-value.ts`를 만들고 `time-picker.tsx`가 import하게 바꾼다. 확인 명령은 `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/time-picker.test.tsx`, 기대는 PASS(동작 그대로)다.
-- [ ] **Step 2: 실패하는 테스트 작성** — `wheel-time-picker.test.tsx`. import와 헬퍼는 `wheel-date-picker.test.tsx:1-32`와 같고, `TRIGGER_NAME = endsWith(ko.labels.chooseTime)`이다.
+- [x] **Step 1: helper 이동** — `time-value.ts`를 만들고 `time-picker.tsx`가 import하게 바꾼다. 확인 명령은 `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/time-picker.test.tsx`, 기대는 PASS(동작 그대로)다.
+- [x] **Step 2: 실패하는 테스트 작성** — `wheel-time-picker.test.tsx`. import와 헬퍼는 `wheel-date-picker.test.tsx:1-32`와 같고, `TRIGGER_NAME = endsWith(ko.labels.chooseTime)`이다.
 
 ```ts
 describe('WheelTimePicker', () => {
@@ -236,10 +236,10 @@ describe('WheelTimePicker', () => {
 });
 ```
 
-- [ ] **Step 3: 실패 확인** — `... vitest run src/pickers/wheel-time-picker.test.tsx`. 기대: FAIL.
-- [ ] **Step 4: 구현** — `wheel-time-picker.tsx`를 만들고, `pickers/index.ts`에 `export type { WheelTimePickerProps }`와 `export { WheelTimePicker }`를 추가한다. data-attributes에 part를 추가하고 mono.css 선택자를 넓힌다.
-- [ ] **Step 5: 통과 확인** — 위 테스트가 PASS여야 한다. 이어서 `pnpm --filter @lunisolar-picker/theme exec vitest run tests/selector-contract.test.ts`가 PASS, `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/wheel-date-picker.test.tsx`가 PASS여야 하고, `just check`도 통과해야 한다.
-- [ ] **Step 6: 커밋**
+- [x] **Step 3: 실패 확인** — `... vitest run src/pickers/wheel-time-picker.test.tsx`. 기대: FAIL.
+- [x] **Step 4: 구현** — `wheel-time-picker.tsx`를 만들고, `pickers/index.ts`에 `export type { WheelTimePickerProps }`와 `export { WheelTimePicker }`를 추가한다. data-attributes에 part를 추가하고 mono.css 선택자를 넓힌다.
+- [x] **Step 5: 통과 확인** — 위 테스트가 PASS여야 한다. 이어서 `pnpm --filter @lunisolar-picker/theme exec vitest run tests/selector-contract.test.ts`가 PASS, `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/wheel-date-picker.test.tsx`가 PASS여야 하고, `just check`도 통과해야 한다.
+- [x] **Step 6: 커밋**
 
 ```bash
 git add packages/react/src/pickers packages/react/src/contract/data-attributes.ts packages/theme/src/mono.css
@@ -266,7 +266,7 @@ ALLOW_COMMIT=1 git commit -m "feat: 날짜 휠과 같은 모양의 시각 휠 Wh
 - submit 시 `onSubmitBirthTime(new FormData(form).get('birthTime'))`를 부른다.
 - "태어난 시각", "모름"은 앱 픽스처 문자열이다. 라이브러리 로캘이 아니다.
 
-- [ ] **Step 1: 테스트 작성**
+- [x] **Step 1: 테스트 작성**
 
 ```ts
 it('birth time: an app-drawn "time unknown" checkbox toggles disabled and keeps the time', async () => {
@@ -277,10 +277,10 @@ it('birth time: an app-drawn "time unknown" checkbox toggles disabled and keeps 
 });
 ```
 
-- [ ] **Step 2: 실행** — `... vitest run src/pickers/consumer-parity.test.tsx`. 기대: PASS. Task 2가 끝났으므로 바로 통과해야 정상이다. 실패하면 Task 2 동작의 버그다.
-- [ ] **Step 3: 시각 회귀 대상 추가** — `pickers.visual.test.tsx:50` 다음 줄에 `{ name: 'wheel-time-picker', hasPopover: false, element: <WheelTimePicker defaultValue="09:30" /> }`를 추가하고, import에 `WheelTimePicker`를 더한다.
-- [ ] **Step 4: 기준 이미지 생성** — `just visual-update`(Linux Docker). 그다음 `just visual`. 기대: PASS. 새 이미지 두 장(light, dark)을 열어 날짜 휠 기준 이미지와 폭·하이라이트·글꼴이 같은지 눈으로 확인한다.
-- [ ] **Step 5: 커밋**
+- [x] **Step 2: 실행** — `... vitest run src/pickers/consumer-parity.test.tsx`. 기대: PASS. Task 2가 끝났으므로 바로 통과해야 정상이다. 실패하면 Task 2 동작의 버그다.
+- [x] **Step 3: 시각 회귀 대상 추가** — `pickers.visual.test.tsx:50` 다음 줄에 `{ name: 'wheel-time-picker', hasPopover: false, element: <WheelTimePicker defaultValue="09:30" /> }`를 추가하고, import에 `WheelTimePicker`를 더한다.
+- [x] **Step 4: 기준 이미지 생성** — `just visual-update`(Linux Docker). 그다음 `just visual`. 기대: PASS. 새 이미지 두 장(light, dark)을 열어 날짜 휠 기준 이미지와 폭·하이라이트·글꼴이 같은지 눈으로 확인한다.
+- [x] **Step 5: 커밋**
 
 ```bash
 git add packages/react/src/pickers/consumer-parity.test.tsx packages/react/src/visual
@@ -302,14 +302,14 @@ ALLOW_COMMIT=1 git commit -m "test: saju-pictures '시각 모름' 흐름과 시�
 - Consumes: `WheelTimePicker`(`@lunisolar-picker/react/pickers`)
 - Produces: 없음
 
-- [ ] **Step 1: 데모와 페이지** — 데모는 `WheelDatePickerDemo.tsx`와 같은 모양으로 `<WheelTimePicker defaultValue="09:30" minuteStep={5} />` 하나를 그린다. mdx는 `wheel-date-picker.mdx`의 구성(frontmatter, 데모, tsx 예제, 동작 설명, props 표)을 따르고 영어로 쓴다. 동작 설명에 넣을 것:
+- [x] **Step 1: 데모와 페이지** — 데모는 `WheelDatePickerDemo.tsx`와 같은 모양으로 `<WheelTimePicker defaultValue="09:30" minuteStep={5} />` 하나를 그린다. mdx는 `wheel-date-picker.mdx`의 구성(frontmatter, 데모, tsx 예제, 동작 설명, props 표)을 따르고 영어로 쓴다. 동작 설명에 넣을 것:
   - 빈 값은 12:00에서 시작한다.
   - step 밖의 분은 바로 앞 칸으로 보이고, 굴리거나 확인하기 전까지 값은 바뀌지 않는다.
   - sheet는 확인을 눌러야 반영되고 취소하면 버린다.
   - `disabled`이면 값은 남고 폼 제출에서 빠진다.
   - 24:00, 12시간제, 순환은 지원하지 않는다.
   - 키보드 한계: 시 열 타입어헤드는 `"09"`처럼 두 자리로 쳐야 한다.
-- [ ] **Step 2: 상위 스펙 표 갱신, changeset 작성** — changeset 내용:
+- [x] **Step 2: 상위 스펙 표 갱신, changeset 작성** — changeset 내용:
 
 ```md
 ---
@@ -320,8 +320,8 @@ ALLOW_COMMIT=1 git commit -m "test: saju-pictures '시각 모름' 흐름과 시�
 Add `WheelTimePicker` and the `useWheelTime` hook: hour and minute drums that match `WheelDatePicker` in props, sheet draft behaviour and the Mono theme. Values are 24-hour `HH:mm` strings, `minuteStep` defaults to 1, and an empty picker rests at 12:00.
 ```
 
-- [ ] **Step 3: 검증** — `just docs-build`가 PASS, `just test`가 PASS, `just size`가 한도 안이어야 한다. 넘으면 근거를 적고 한도를 조정한다.
-- [ ] **Step 4: 커밋**
+- [x] **Step 3: 검증** — `just docs-build`가 PASS, `just test`가 PASS, `just size`가 한도 안이어야 한다. 넘으면 근거를 적고 한도를 조정한다.
+- [x] **Step 4: 커밋**
 
 ```bash
 git add apps/docs docs/superpowers/specs/2026-10-14-lunisolar-picker-design.md .changeset/wheel-time-picker.md
