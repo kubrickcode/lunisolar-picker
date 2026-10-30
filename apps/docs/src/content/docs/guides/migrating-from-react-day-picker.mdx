@@ -59,17 +59,17 @@ Strings such as `'2026-10-14'` compare with `===` and sort as text. Convert at y
 />
 ```
 
-With `commitMode="confirm"`, show the warning inside the popover instead: see the `footer` example on [DateRangePicker](/pickers/date-range-picker/#presets).
+With `commitMode="confirm"`, show the warning inside the popover instead: see the `footer` example on [DateRangePicker](../../pickers/date-range-picker/#presets).
 
-**Recent-days presets** that disable themselves when they exceed the limit and highlight the active one: put buttons in `presets` and use `usePickerSelection`, `validateRange` and `isSameRange`. See [DateRangePicker presets](/pickers/date-range-picker/#presets).
+**Recent-days presets** that disable themselves when they exceed the limit and highlight the active one: put buttons in `presets` and use `usePickerSelection`, `validateRange` and `isSameRange`. See [DateRangePicker presets](../../pickers/date-range-picker/#presets).
 
 **Draft selection applied with a button** (the "조회" button, with Escape and outside click restoring the previous range): `commitMode="confirm"`. Your `onValueChange` runs only when the user presses Apply.
 
 **Go to today**: `Calendar.TodayButton`, included in every finished picker. Pass `timeZone` (for example the project's time zone) so "today" matches your data.
 
-**Holiday names and dots**: render them with `renderCell` and add them to `getCellLabel`. Fetching holidays stays in your app. See [Calendar parts](/parts/calendar/#rendering-a-day).
+**Holiday names and dots**: render them with `renderCell` and add them to `getCellLabel`. Fetching holidays stays in your app. See [Calendar parts](../../parts/calendar/#rendering-a-day).
 
-**Saturday blue, Sunday red**: style `[data-weekday='6']` and `[data-weekday='0']`. See [Theming](/theming/#styling-with-state-attributes).
+**Saturday blue, Sunday red**: style `[data-weekday='6']` and `[data-weekday='0']`. See [Theming](../../theming/#styling-with-state-attributes).
 
 **Open-ended schedules** ("no end date"): `isOpenEndAllowed` lets `end` stay `null`. Render your own "∞" badge with `renderTrigger`.
 

@@ -33,7 +33,7 @@ Type the date digit by digit (`10142026` in `en`), paste it (`2026-10-14`, `2026
 | `separator` | `string` | locale | Character between segments, for example `'-'`. |
 | `renderTrigger` | `(props: TriggerRenderProps) => ReactElement` | | Replace the field with your own trigger, for example a filter chip. Spread `triggerProps` (including its `ref`) on your button. |
 | `placeholder` | `string` | | Text that `renderTrigger` receives for an empty value. |
-| `renderCell` | `(info: CellRenderInfo) => ReactNode` | | Draw the inside of each day cell. See [Calendar parts](/parts/calendar/#rendering-a-day). |
+| `renderCell` | `(info: CellRenderInfo) => ReactNode` | | Draw the inside of each day cell. See [Calendar parts](../../parts/calendar/#rendering-a-day). |
 | `footer` | `ReactNode` | | Extra content under the calendar. |
 | `displayCalendar`, `defaultDisplayCalendar`, `onDisplayCalendarChange` | `'gregory' \| 'dangi'` | value's calendar | Which calendar the grid shows when lunar dates are enabled. |
 | `getCellLabel` | `(cell) => string \| undefined` | | Extra words read by screen readers for a day. |
