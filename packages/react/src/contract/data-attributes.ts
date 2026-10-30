@@ -66,6 +66,7 @@ export const PART_NAMES = [
   'month-picker',
   'time-picker',
   'wheel-date-picker',
+  'wheel-time-picker',
   'picker-clear',
 ] as const;
 

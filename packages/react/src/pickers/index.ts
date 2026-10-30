@@ -11,3 +11,5 @@ export { TimePicker } from './time-picker';
 export type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
 export type { WheelDatePickerProps } from './wheel-date-picker';
 export { WheelDatePicker } from './wheel-date-picker';
+export type { WheelTimePickerProps } from './wheel-time-picker';
+export { WheelTimePicker } from './wheel-time-picker';
