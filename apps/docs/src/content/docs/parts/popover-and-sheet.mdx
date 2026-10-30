@@ -27,7 +27,7 @@ import { Calendar, Popover } from '@lunisolar-picker/react';
 | Closing | Escape, outside click, `Close` | Escape, backdrop tap, `Close` |
 | Background | Interactive | `inert`, scroll locked |
 
-Content is rendered in a portal at the end of `body` and unmounted when closed, so a calendar inside it starts fresh each time it opens. Put `.dark` or `data-theme` and your font on `html` or `body` so portal content inherits them.
+Content is rendered in a portal at the end of `body`, or at the end of the open modal `<dialog>` (opened with `showModal()`) that contains it so it stays above the dialog and usable, and unmounted when closed, so a calendar inside it starts fresh each time it opens. Put `.dark` or `data-theme` and your font on `html` or `body` so portal content inherits them.
 
 The finished pickers pick a sheet automatically on narrow touch screens (`presentation="auto"`, which matches `(pointer: coarse) and (max-width: 640px)`). In your own compositions, `usePresentation('auto')` gives the same answer.
 
