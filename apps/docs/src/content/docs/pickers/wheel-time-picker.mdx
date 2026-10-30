@@ -13,7 +13,7 @@ import { WheelTimePicker } from '@lunisolar-picker/react/pickers';
 <WheelTimePicker aria-label="Birth time" presentation="sheet" value={birthTime} onValueChange={(next) => setBirthTime(next)} />;
 ```
 
-The columns scroll, settle and respond to the mouse wheel, drag, clicks and keys just like [WheelDatePicker](/pickers/wheel-date-picker/). Neither column wraps: the hour column stops at 00 and 23.
+The columns scroll, settle and respond to the mouse wheel, drag, clicks and keys just like [WheelDatePicker](../../pickers/wheel-date-picker/). Neither column wraps: the hour column stops at 00 and 23.
 
 An inline wheel always shows a time. While the value is empty it rests at 12:00 and reports nothing until a column turns.
 
@@ -23,7 +23,7 @@ With `presentation="sheet"` the trigger shows the value (or `placeholder`; witho
 
 While `disabled`, the value stays and comes back when the picker is enabled again, but the field is left out of form submission. This is how an app-drawn "time unknown" checkbox can switch the picker off.
 
-`24:00`, a 12-hour clock, seconds and wrapping columns are not supported. A well-formed `24:00` stays in the trigger and marks the field invalid, as on [TimePicker](/pickers/time-picker/); the reported value is `null`.
+`24:00`, a 12-hour clock, seconds and wrapping columns are not supported. A well-formed `24:00` stays in the trigger and marks the field invalid, as on [TimePicker](../../pickers/time-picker/); the reported value is `null`.
 
 Typing to jump matches the two-digit labels, so type `09` rather than `9` in the hour column, and `05` rather than `5` in the minute column.
 

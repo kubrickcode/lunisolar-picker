@@ -2,13 +2,26 @@
   "name": "@lunisolar-picker/core",
   "version": "0.2.1",
   "description": "Framework-agnostic state, constraints, month grids and gestures for lunisolar-picker",
+  "keywords": [
+    "datepicker",
+    "date-picker",
+    "calendar",
+    "headless",
+    "framework-agnostic",
+    "lunisolar",
+    "korean-lunar-calendar"
+  ],
   "license": "MIT",
+  "author": {
+    "name": "kubrickcode",
+    "url": "https://github.com/kubrickcode"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kubrickcode/lunisolar-picker.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/kubrickcode/lunisolar-picker#readme",
+  "homepage": "https://kubrickcode.github.io/lunisolar-picker/",
   "bugs": {
     "url": "https://github.com/kubrickcode/lunisolar-picker/issues"
   },

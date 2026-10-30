@@ -1,0 +1,41 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A minimal code sample or a link to a StackBlitz/CodeSandbox. Include the props and the value you passed.
+      render: tsx
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: '@lunisolar-picker/react 0.2.1'
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser, OS and framework
+      placeholder: Safari 19 on iOS 19, Next.js 16
+  - type: dropdown
+    id: input
+    attributes:
+      label: Input method
+      multiple: true
+      options:
+        - Mouse
+        - Keyboard
+        - Touch
+        - Screen reader

@@ -2,13 +2,25 @@
   "name": "@lunisolar-picker/theme",
   "version": "0.2.1",
   "description": "Mono theme for lunisolar-picker parts",
+  "keywords": [
+    "lunisolar-picker",
+    "datepicker",
+    "theme",
+    "css",
+    "dark-mode",
+    "shadcn"
+  ],
   "license": "MIT",
+  "author": {
+    "name": "kubrickcode",
+    "url": "https://github.com/kubrickcode"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kubrickcode/lunisolar-picker.git",
     "directory": "packages/theme"
   },
-  "homepage": "https://github.com/kubrickcode/lunisolar-picker#readme",
+  "homepage": "https://kubrickcode.github.io/lunisolar-picker/",
   "bugs": {
     "url": "https://github.com/kubrickcode/lunisolar-picker/issues"
   },

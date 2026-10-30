@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://kubrickcode.github.io/lunisolar-picker/
+    about: Guides and API reference for every picker and part.
+  - name: Security vulnerability
+    url: https://github.com/kubrickcode/lunisolar-picker/security/advisories/new
+    about: Report security issues privately.

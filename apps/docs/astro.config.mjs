@@ -3,11 +3,15 @@ import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
+  site: 'https://kubrickcode.github.io',
+  base: '/lunisolar-picker',
   integrations: [
     starlight({
       title: 'lunisolar-picker',
       description: 'Modern, accessible date pickers for React with optional Korean lunisolar calendar support.',
       customCss: ['./src/styles/docs.css'],
+      editLink: { baseUrl: 'https://github.com/kubrickcode/lunisolar-picker/edit/main/apps/docs/' },
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/kubrickcode/lunisolar-picker' }],
       sidebar: [
         { label: 'Start here', items: ['getting-started', 'theming'] },
         {

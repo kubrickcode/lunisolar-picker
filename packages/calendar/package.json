@@ -2,13 +2,27 @@
   "name": "@lunisolar-picker/calendar",
   "version": "0.2.1",
   "description": "Plain-date values and calendar systems (Gregorian, Korean lunisolar dangi) for lunisolar-picker",
+  "keywords": [
+    "calendar",
+    "lunar-calendar",
+    "lunisolar",
+    "korean",
+    "dangi",
+    "temporal",
+    "plain-date",
+    "date"
+  ],
   "license": "MIT",
+  "author": {
+    "name": "kubrickcode",
+    "url": "https://github.com/kubrickcode"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kubrickcode/lunisolar-picker.git",
     "directory": "packages/calendar"
   },
-  "homepage": "https://github.com/kubrickcode/lunisolar-picker#readme",
+  "homepage": "https://kubrickcode.github.io/lunisolar-picker/",
   "bugs": {
     "url": "https://github.com/kubrickcode/lunisolar-picker/issues"
   },
