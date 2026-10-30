@@ -41,7 +41,7 @@
 **Interfaces:**
 - Produces: `makeSiblingsInert(container: HTMLElement): () => void`. 시그니처는 그대로다. container가 body 직계 자식이면 결과도 지금과 같다.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `describe('makeSiblingsInert')` 안에 추가한다. 만든 요소는 `afterEach`에서 제거되게 한다.
 
@@ -67,21 +67,21 @@ it('inerts the siblings at every level up to body while leaving the container an
 });
 ```
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/sheet/inert-siblings.test.ts`
 Expected: 새 테스트 FAIL(`form.inert`가 false, `dialog.inert`가 true)
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `container`에서 시작해 `parentElement`를 따라 올라가며, 각 단계에서 부모의 자식 중 자기 자신이 아닌 `HTMLElement`를 `acquire`한다. 부모가 `document.body`인 단계까지 처리하고 멈춘다. ref-count `entries`, "이미 inert면 건너뜀", 한 번만 release되는 동작은 그대로 둔다. `// Goal:` 주석에 "중첩 컨테이너(모달 dialog 안 포털)는 조상 경로를 막지 않음"을 덧붙인다.
 
-- [ ] **Step 4: 통과 확인**
+- [x] **Step 4: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/sheet/inert-siblings.test.ts src/sheet/sheet.test.tsx`
 Expected: 모두 PASS(기존 겹친 시트·`aria-hidden` 복원 테스트 포함)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add packages/react/src/sheet/inert-siblings.ts packages/react/src/sheet/inert-siblings.test.ts
@@ -106,7 +106,7 @@ ALLOW_COMMIT=1 git commit -m "fix: 중첩된 시트 컨테이너가 조상 경�
   - `usePortalContainer(): PortalContainer`
   - `type PortalContainer = { readonly anchorRef: RefCallback<HTMLTemplateElement>; readonly container: HTMLElement | null }`
 
-- [ ] **Step 1: resolver 실패 테스트 작성** (`portal-container.test.ts`)
+- [x] **Step 1: resolver 실패 테스트 작성** (`portal-container.test.ts`)
 
 ```ts
 describe('resolvePortalContainer', () => {
@@ -125,17 +125,17 @@ describe('resolvePortalContainer', () => {
 
 각 테스트가 끝나면 dialog를 `close()`하고 제거한다.
 
-- [ ] **Step 2: 실패 확인**
+- [x] **Step 2: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/utilities/portal-container.test.ts`
 Expected: FAIL(모듈 없음)
 
-- [ ] **Step 3: `portal-container.ts` 구현**
+- [x] **Step 3: `portal-container.ts` 구현**
 
 - `resolvePortalContainer`: `CSS.supports('selector(:modal)')`이면 `'dialog:modal'`을, 아니면 `'dialog[open]'`을 선택자로 써서 `anchor.closest()`로 찾는다. 판정은 SSR 안전을 위해 함수 안에서 한다. 하한 브라우저 사유는 `// Constraint:` 주석으로 남긴다.
 - `usePortalContainer`: `useState<HTMLElement | null>`과 `useCallback`으로 한 번만 만든 ref 콜백을 쓴다. 노드가 붙으면 `resolvePortalContainer(node)`를, 떨어지면 `null`을 넣는다. 열릴 때마다 앵커가 새로 붙으므로 위치를 매번 다시 구한다.
 
-- [ ] **Step 4: Sheet·Popover 실패 테스트 작성**
+- [x] **Step 4: Sheet·Popover 실패 테스트 작성**
 
 `sheet.test.tsx`:
 
@@ -167,12 +167,12 @@ it('closes when another element inside the dialog is pressed', async () => {
 
 모든 테스트는 정리 단계에서 dialog를 `close()`한다.
 
-- [ ] **Step 5: 실패 확인**
+- [x] **Step 5: 실패 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/sheet/sheet.test.tsx src/popover/popover.test.tsx`
 Expected: dialog 관련 새 테스트 FAIL(부모가 body). 나머지는 PASS
 
-- [ ] **Step 6: Content 두 곳 연결**
+- [x] **Step 6: Content 두 곳 연결**
 
 - 두 `Content` 모두 `usePortalContainer()`를 쓴다.
 - 열려 있고 클라이언트이면 `<template ref={anchorRef} />`를 제자리에 그리고, `container`가 있으면 그 옆에 `createPortal(…, container)`을 둔다(Fragment). 닫혔거나 서버이면 지금처럼 `null`을 돌려준다.
@@ -180,12 +180,12 @@ Expected: dialog 관련 새 테스트 FAIL(부모가 body). 나머지는 PASS
   - 시트에는 트리거 부품이 없어, DOM 위치를 알려면 제자리 앵커가 필요하다.
   - `<template>`은 레이아웃에 영향이 없고 표·목록 안에서도 유효하다.
 
-- [ ] **Step 7: 통과 확인**
+- [x] **Step 7: 통과 확인**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/utilities/portal-container.test.ts src/sheet src/popover src/pickers`
 Expected: 모두 PASS(hydration·기존 picker 테스트 포함)
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 git add packages/react/src/utilities/portal-container.ts packages/react/src/utilities/portal-container.test.ts packages/react/src/sheet/parts.tsx packages/react/src/popover/parts.tsx packages/react/src/sheet/sheet.test.tsx packages/react/src/popover/popover.test.tsx
@@ -205,7 +205,7 @@ ALLOW_COMMIT=1 git commit -m "fix: 열린 모달 dialog 안에서 연 시트와 
 **Interfaces:**
 - Consumes: Task 2의 동작(공개 진입점만 import하는 parity 규칙은 그대로)
 
-- [ ] **Step 1: 픽스처와 시나리오 작성**
+- [x] **Step 1: 픽스처와 시나리오 작성**
 
 픽스처 `JoinRoomDialog`:
 - `// Goal:` 주석: "saju-pictures 방 참가 시트. `showModal()`로 띄운 네이티브 dialog 안에서 생년월일·생시 시트 휠을 씀(ModalSheet, transform 없음)"
@@ -228,7 +228,7 @@ ALLOW_COMMIT=1 git commit -m "fix: 열린 모달 dialog 안에서 연 시트와 
 5. 제출 버튼을 누른다. `onSubmitBirth.mock.calls`가 `[['1990-07-21[u-ca=dangi]', '13:00']]`인지 단정한다.
 6. 대조군: picker가 닫힌 상태에서 `{Escape}`를 누르면 `joinDialog.open === false`가 되어야 한다. 이 브라우저에서 Esc가 dialog까지 닿는다는 증명이다.
 
-- [ ] **Step 2: 세 브라우저에서 실행**
+- [x] **Step 2: 세 브라우저에서 실행**
 
 Run: `pnpm --filter @lunisolar-picker/react exec vitest run src/pickers/consumer-parity.test.tsx`
 Expected: Chromium·Firefox·WebKit 모두 PASS.
@@ -238,15 +238,15 @@ Expected: Chromium·Firefox·WebKit 모두 PASS.
 - 같은 명령을 다시 실행해 시나리오가 2단계(시트 첫 포커스 또는 `closest('dialog')`)에서 FAIL하는지 본다.
 - `git checkout HEAD -- <같은 두 파일>`로 복원하고, 결과를 커밋 본문에 한 줄로 남긴다.
 
-- [ ] **Step 3 (조건부): 4단계에서 dialog가 닫히는 브라우저가 있을 때만**
+- [x] **Step 3 (조건부): 4단계에서 dialog가 닫히는 브라우저가 있을 때만**
 
 `use-sheet.ts`·`use-popover.ts`의 Esc effect 옆에, 열려 있는 동안만 `document`에 capture 단계 `cancel` 리스너를 단다. `cancel`은 버블되지 않으므로 capture 단계여야 한다. 이 리스너는 `event.target`이 표면 요소(backdrop/content)를 품은 `HTMLDialogElement`일 때 `preventDefault()`한다. 어느 브라우저 때문에 넣었는지 `// Constraint:` 주석으로 남긴다. 모두 통과했다면 이 단계는 건너뛰고, 건너뛴 사실을 커밋 본문에 적는다.
 
-- [ ] **Step 4: 문서 갱신** (`popover-and-sheet.mdx:30`)
+- [x] **Step 4: 문서 갱신** (`popover-and-sheet.mdx:30`)
 
 첫 문장을 다음 뜻으로 바꾼다. "Content is rendered in a portal at the end of `body`, or at the end of the open modal `<dialog>` (opened with `showModal()`) that contains it so it stays above the dialog and usable, and unmounted when closed, …" 이어지는 테마 상속 문장은 유지한다. `.dark`/`data-theme`를 `html`/`body`에 두라는 안내가 dialog 안에서도 성립하기 때문이다.
 
-- [ ] **Step 5: changeset 추가** (`.changeset/dialog-portal.md`)
+- [x] **Step 5: changeset 추가** (`.changeset/dialog-portal.md`)
 
 ```md
 ---
@@ -256,12 +256,12 @@ Expected: Chromium·Firefox·WebKit 모두 PASS.
 Sheets and popovers opened from inside a modal `<dialog>` (opened with `showModal()`) now render inside that dialog, so they appear above it and respond to pointer and keyboard input. Escape closes only the picker and leaves the dialog open.
 ```
 
-- [ ] **Step 6: 전체 검증**
+- [x] **Step 6: 전체 검증**
 
 Run: `just check test docs-build size`
 Expected: typecheck·lint·deps·전체 테스트·docs 빌드·번들 크기 모두 PASS. `src/index.ts`에 새 export가 없음을 `git diff origin/main -- packages/react/src/index.ts`가 비어 있는 것으로 확인한다.
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```bash
 git add packages/react/src/pickers/consumer-parity.test.tsx apps/docs/src/content/docs/parts/popover-and-sheet.mdx .changeset/dialog-portal.md
