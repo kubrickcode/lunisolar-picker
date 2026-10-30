@@ -6,6 +6,7 @@ import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
 import { settleEffects } from '../testing/settle-effects';
+import { showModalDialog } from '../testing/show-modal-dialog';
 import * as Popover from './parts';
 
 const Example = ({ isOpenInitially = false }: { isOpenInitially?: boolean }) => (
@@ -22,6 +23,20 @@ const Example = ({ isOpenInitially = false }: { isOpenInitially?: boolean }) => 
       </Popover.Content>
     </Popover.Root>
   </>
+);
+
+const DialogExample = () => (
+  <dialog aria-label="Join room">
+    <button type="button">Other field</button>
+    <Popover.Root>
+      <Popover.Trigger>Choose date</Popover.Trigger>
+      <Popover.Content aria-label="Calendar">
+        <button type="button" data-autofocus>
+          Selected day
+        </button>
+      </Popover.Content>
+    </Popover.Root>
+  </dialog>
 );
 
 const RovingExample = () => (
@@ -258,5 +273,26 @@ describe('Popover', () => {
 
     expect(html).toContain('Choose date');
     expect(html).not.toContain('Inside');
+  });
+
+  it('renders inside the modal dialog that contains the trigger', async () => {
+    const screen = await render(<DialogExample />);
+    const dialog = showModalDialog(screen.container);
+
+    await screen.getByRole('button', { name: 'Choose date' }).click();
+
+    await expect.element(screen.getByRole('button', { name: 'Selected day' })).toHaveFocus();
+    expect(document.querySelector('[data-lsp-part="popover"]')?.parentElement).toBe(dialog);
+  });
+
+  it('closes when another element inside the modal dialog is pressed', async () => {
+    const screen = await render(<DialogExample />);
+    showModalDialog(screen.container);
+    await screen.getByRole('button', { name: 'Choose date' }).click();
+    await expect.element(screen.getByRole('dialog', { name: 'Calendar' })).toBeVisible();
+
+    await screen.getByRole('button', { name: 'Other field' }).click();
+
+    await expect.element(screen.getByRole('dialog', { name: 'Calendar' })).not.toBeInTheDocument();
   });
 });

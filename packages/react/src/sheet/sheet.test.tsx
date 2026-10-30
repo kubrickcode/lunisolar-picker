@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react';
 import { expectNoAxeViolations } from '../testing/expect-accessible';
 import { renderWithHydration } from '../testing/expect-hydration';
 import { focusOnce } from '../testing/focus-once';
+import { showModalDialog } from '../testing/show-modal-dialog';
 import * as Sheet from './parts';
 import { useSheetContext } from './sheet-context';
 
@@ -32,6 +33,19 @@ const Example = () => (
       </Sheet.Content>
     </Sheet.Root>
   </>
+);
+
+const DialogExample = () => (
+  <dialog aria-label="Join room">
+    <Sheet.Root>
+      <OpenButton />
+      <Sheet.Content aria-label="Birth date">
+        <button type="button" data-autofocus>
+          Wheel
+        </button>
+      </Sheet.Content>
+    </Sheet.Root>
+  </dialog>
 );
 
 const EscapeHandlingExample = () => (
@@ -143,6 +157,26 @@ describe('Sheet', () => {
     );
 
     expect(html).toBe('');
+  });
+
+  it('renders the sheet inside the modal dialog that contains it and keeps it interactive', async () => {
+    const screen = await render(<DialogExample />);
+    const dialog = showModalDialog(screen.container);
+
+    await screen.getByRole('button', { name: 'Pick a date' }).click();
+
+    await expect.element(screen.getByRole('button', { name: 'Wheel' })).toHaveFocus();
+    expect(document.querySelector('[data-lsp-part="sheet-backdrop"]')?.parentElement).toBe(dialog);
+    expect(dialog.inert).toBe(false);
+  });
+
+  it('keeps rendering at the end of body outside any dialog', async () => {
+    const screen = await render(<Example />);
+
+    await screen.getByRole('button', { name: 'Pick a date' }).click();
+
+    await expect.element(screen.getByRole('dialog', { name: 'Birth date' })).toBeVisible();
+    expect(document.querySelector('[data-lsp-part="sheet-backdrop"]')?.parentElement).toBe(document.body);
   });
 
   it('has no accessibility violations while open', async () => {

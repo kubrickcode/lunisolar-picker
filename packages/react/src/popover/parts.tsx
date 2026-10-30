@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactElement, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { mergeProps } from '../utilities/merge-props';
+import { usePortalContainer } from '../utilities/portal-container';
 import { type RenderProp, renderElement } from '../utilities/render-element';
 import { useIsClient } from '../utilities/use-is-client';
 import { PopoverContext, usePopoverContext } from './popover-context';
@@ -38,13 +39,21 @@ export const Close = ({ render, ...props }: CloseProps): ReactElement => {
 };
 
 // Constraint: 닫히면 DOM에서 제거함 (M4 부품이 열릴 때마다 새로 마운트된다고 가정)
+// Constraint: 시트와 같은 방식으로 제자리 앵커에서 그릴 위치(모달 dialog 안인지)를 구함. <template>은 레이아웃에 영향이 없고 표·목록 안에서도 유효함
 export const Content = ({ render, ...props }: ContentProps): ReactElement | null => {
   const popover = usePopoverContext();
   const isClient = useIsClient();
+  const { anchorRef, container } = usePortalContainer();
   if (!popover.isOpen || !isClient) return null;
-  return createPortal(
-    renderElement('div', render, mergeProps(popover.getContentProps(), props), { isOpen: popover.isOpen }),
-    document.body,
+  return (
+    <>
+      <template ref={anchorRef} />
+      {container &&
+        createPortal(
+          renderElement('div', render, mergeProps(popover.getContentProps(), props), { isOpen: popover.isOpen }),
+          container,
+        )}
+    </>
   );
 };
 
