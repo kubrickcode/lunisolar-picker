@@ -1,5 +1,13 @@
 # @lunisolar-picker/react
 
+## 0.2.1
+
+### Patch Changes
+
+- 681620e: Sheets and popovers opened from inside a modal `<dialog>` (opened with `showModal()`) now render inside that dialog, so they appear above it and respond to pointer and keyboard input. Escape closes only the picker and leaves the dialog open.
+- @lunisolar-picker/calendar@0.2.1
+  - @lunisolar-picker/core@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
