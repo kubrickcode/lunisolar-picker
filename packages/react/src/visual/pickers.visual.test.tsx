@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Calendar, RangeCalendar } from '../index';
-import { DatePicker, DateRangePicker, MonthPicker, TimePicker, WheelDatePicker } from '../pickers/index';
+import {
+  DatePicker,
+  DateRangePicker,
+  MonthPicker,
+  TimePicker,
+  WheelDatePicker,
+  WheelTimePicker,
+} from '../pickers/index';
 import { KoreanProvider } from '../testing/korean-fixture';
 
 // Constraint: vitest.visual.config.ts의 viewport를 다시 적지 않도록 처음 크기를 읽어 둠
@@ -48,6 +55,7 @@ const SUBJECTS: readonly Subject[] = [
     element: <TimePicker presentation="popover" defaultOpen minuteStep={30} defaultValue="09:30" />,
   },
   { name: 'wheel-date-picker', hasPopover: false, element: <WheelDatePicker defaultValue="1990-03-15" /> },
+  { name: 'wheel-time-picker', hasPopover: false, element: <WheelTimePicker defaultValue="09:30" /> },
 ];
 const THEMES = ['light', 'dark'] as const;
 
