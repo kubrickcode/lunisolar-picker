@@ -228,7 +228,7 @@ type ValidationReason =
 |---|---|---|
 | 훅 | `useCalendar`, `useRangeCalendar`, `useDateField`, `useDateRangeField`, `useWheel`, `useTimeField` | stable |
 | 부품 | `Calendar.*`, `RangeCalendar.Root`, `DateField.*`, `DateRangeField.*`, `Wheel.*`, `TimeField.*`, `Popover.*`, `Sheet.*` | 이름과 `data-*` 목록 stable |
-| 완성형 (`/pickers`) | `DatePicker`, `DateRangePicker`, `MonthPicker`, `WheelDatePicker`, `TimePicker` | 조합 예시. minor 버전에서 DOM이 바뀔 수 있다 |
+| 완성형 (`/pickers`) | `DatePicker`, `DateRangePicker`, `MonthPicker`, `WheelDatePicker`, `WheelTimePicker`, `TimePicker` | 조합 예시. minor 버전에서 DOM이 바뀔 수 있다 |
 
 그 밖에 calendar 타입과 store 계약(`subscribe`/`getSnapshot`/`send`)도 stable이다. `internal/` 경로는 `exports`에 넣지 않는다.
 

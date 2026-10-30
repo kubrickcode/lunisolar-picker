@@ -14,7 +14,14 @@ import { dayLabel, epochDayAt, FIXED_TODAY, KoreanProvider } from '../testing/ko
 import { endsWith, openSheet, pressWithKeyboard } from '../testing/picker-fixture';
 import { dispatchPointer } from '../testing/pointer';
 import { settleEffects } from '../testing/settle-effects';
-import { DateRangePicker, MonthPicker, TimePicker, usePickerSelection, WheelDatePicker } from './index';
+import {
+  DateRangePicker,
+  MonthPicker,
+  TimePicker,
+  usePickerSelection,
+  WheelDatePicker,
+  WheelTimePicker,
+} from './index';
 
 // Goal: 소비 앱 세 곳(back-office, web-console, saju-pictures)이 지금 쓰는 기능을 공개 진입점(`.`, `/pickers`, core·calendar)만으로 다시 만들 수 있는지 고정함 (스펙 1.1 교체 가능성)
 // Constraint: 앱 코드처럼 picker·부품은 공개 진입점에서만 import함. testing 헬퍼는 오늘 고정과 브라우저 조작용
@@ -23,6 +30,8 @@ const APPLIED_RANGE_ID = 'applied-range';
 const BIRTH_DATE_LABEL = '생년월일';
 const BIRTH_DATE_NAME = 'birthDate';
 const BIRTH_FORM_LABEL = '출생 정보';
+const BIRTH_TIME_LABEL = '태어난 시각';
+const BIRTH_TIME_NAME = 'birthTime';
 const HOLIDAYS: Readonly<Record<string, string>> = { '2026-10-09': '한글날' };
 const HOLIDAY_DOT_ID = 'holiday-dot';
 const LUNAR_TOGGLE_LABEL = '음력으로 입력';
@@ -32,12 +41,18 @@ const OUTSIDE_BUTTON_LABEL = '바깥';
 const RECENT_DAY_COUNTS = [1, 3, 7] as const;
 const RESERVATION_FORM_LABEL = '예약 조회';
 const STATS_MAX_DAYS = 3;
+const TIME_UNKNOWN_LABEL = '모름';
 const SUBMIT_LABEL = '조회';
 const VALID_DETAILS = { validity: { isValid: true, reasons: [] } };
 
 type BirthDateFormProps = {
   readonly defaultValue?: string | undefined;
   readonly onSubmitBirthDate: (birthDate: FormDataEntryValue | null) => void;
+  readonly onValueChange: (value: string | null) => void;
+};
+
+type BirthTimeFormProps = {
+  readonly onSubmitBirthTime: (birthTime: FormDataEntryValue | null) => void;
   readonly onValueChange: (value: string | null) => void;
 };
 
@@ -104,6 +119,35 @@ const BirthDateForm = ({ defaultValue, onSubmitBirthDate, onValueChange }: Birth
     <button type="submit">{SUBMIT_LABEL}</button>
   </form>
 );
+
+// Goal: saju-pictures 생시 입력. "모름"은 picker 칸이 아니라 앱이 그린 체크박스로, 켜면 시각 휠을 끄고 제출에서 뺌 (스펙 1.1)
+const BirthTimeForm = ({ onSubmitBirthTime, onValueChange }: BirthTimeFormProps): ReactElement => {
+  const [isTimeUnknown, setTimeUnknown] = useState(false);
+  return (
+    <form
+      aria-label={BIRTH_FORM_LABEL}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmitBirthTime(new FormData(event.currentTarget).get(BIRTH_TIME_NAME));
+      }}
+    >
+      <WheelTimePicker
+        presentation="sheet"
+        aria-label={BIRTH_TIME_LABEL}
+        name={BIRTH_TIME_NAME}
+        minuteStep={1}
+        required
+        disabled={isTimeUnknown}
+        onValueChange={onValueChange}
+      />
+      <label>
+        <input type="checkbox" checked={isTimeUnknown} onChange={(event) => setTimeUnknown(event.target.checked)} />
+        {TIME_UNKNOWN_LABEL}
+      </label>
+      <button type="submit">{SUBMIT_LABEL}</button>
+    </form>
+  );
+};
 
 // Goal: back-office의 react-hook-form Controller 연동. field.value·onChange·onBlur·ref를 그대로 넘기고, 제출은 폼 상태의 값을 씀
 const ControllerReservationForm = ({ onBlur, onSearch }: ControllerReservationFormProps): ReactElement => {
@@ -477,6 +521,40 @@ describe('consumer parity', () => {
       expect(form.checkValidity()).toBe(true);
       await screen.getByRole('button', { name: SUBMIT_LABEL }).click();
       expect(onSubmitBirthDate.mock.calls).toEqual([[`${FIXED_TODAY}[u-ca=dangi]`]]);
+    });
+
+    it('birth time: an app-drawn "time unknown" checkbox toggles disabled and keeps the time', async () => {
+      const onSubmitBirthTime = vi.fn();
+      const onValueChange = vi.fn();
+      const screen = await renderInApp(
+        <BirthTimeForm onSubmitBirthTime={onSubmitBirthTime} onValueChange={onValueChange} />,
+      );
+      const trigger = screen.getByRole('button', { name: endsWith(BIRTH_TIME_LABEL) });
+      const submitButton = screen.getByRole('button', { name: SUBMIT_LABEL });
+      const unknownCheckbox = screen.getByRole('checkbox', { name: TIME_UNKNOWN_LABEL });
+
+      await openSheet({ trigger, initialFocus: screen.getByRole('spinbutton', { name: ko.labels.hour }) });
+      const hourColumn = screen.getByRole('spinbutton', { name: ko.labels.hour });
+      await focusDirectly(hourColumn);
+      await userEvent.keyboard('{ArrowDown}');
+      // Constraint: 휠은 정착 애니메이션이 끝난 뒤 값을 확정하므로 보이는 글자로 기다림 (preflight 2.11)
+      await expect.element(hourColumn).toHaveAttribute('aria-valuetext', '13');
+      await settleEffects();
+      await pressWithKeyboard(screen.getByRole('button', { name: ko.labels.confirm }));
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
+      await submitButton.click();
+      expect(onSubmitBirthTime.mock.calls).toEqual([['13:00']]);
+
+      await unknownCheckbox.click();
+      await expect.element(trigger).toBeDisabled();
+      await submitButton.click();
+      expect(onSubmitBirthTime.mock.calls).toEqual([['13:00'], [null]]);
+
+      await unknownCheckbox.click();
+      await expect.element(trigger).toHaveTextContent('13:00');
+      await submitButton.click();
+      expect(onSubmitBirthTime.mock.calls).toEqual([['13:00'], [null], ['13:00']]);
+      expect(onValueChange.mock.calls).toEqual([['13:00', VALID_DETAILS]]);
     });
 
     it('switches the inline wheel to lunar from an app toggle and keeps the same birth date', async () => {

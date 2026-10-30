@@ -1,4 +1,4 @@
-import { parseTime, type TimeString, type ValidationReason } from '@lunisolar-picker/calendar';
+import type { TimeString } from '@lunisolar-picker/calendar';
 import { VALID } from '@lunisolar-picker/core';
 import { type ReactElement, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { PART_ATTRIBUTE, partAttributes } from '../contract/data-attributes';
@@ -18,22 +18,14 @@ import { ClockIcon, DefaultTrigger } from './default-trigger';
 import { PickerClearButton } from './picker-clear-button';
 import { PickerCloseFooter } from './picker-footer';
 import { PickerSurface } from './picker-surface';
+import { parseTimeValue, publicTimeOf, TIME_PARSE_KEY } from './time-value';
 import type { PickerTriggerProps, TriggerRenderProps } from './trigger-render-props';
 import { useAppTriggerProps } from './use-app-trigger-props';
 import { useFieldRemount } from './use-field-remount';
 import { useInvalidValueReport } from './use-invalid-value-report';
 
 const DEFAULT_MINUTE_STEP = 30;
-const EMPTY_TIME: ParsedTimeValue = { invalidReason: null, time: null };
-const END_OF_DAY = '24:00';
 const FIELD_SELECTOR = `[${PART_ATTRIBUTE}="time-field"]`;
-// Constraint: 시각 문자열은 역법 구성과 무관하므로 역법 목록이 바뀌어도 같은 값을 다시 알리지 않음
-const TIME_PARSE_KEY = 'well-formed-time';
-
-type ParsedTimeValue = {
-  readonly invalidReason: ValidationReason | null;
-  readonly time: TimeString | null;
-};
 
 export interface TimePickerProps extends UseTimeFieldProps, PickerOpenProps {
   readonly 'aria-describedby'?: string | undefined;
@@ -231,13 +223,3 @@ export const TimePicker = (props: TimePickerProps): ReactElement => {
     </div>
   );
 };
-
-// Constraint: 형식만 보고 24:00을 받아 둠. 허용 여부는 폼에 낼 때(publicTimeOf) 따로 봄 (TimeField와 같음)
-const parseTimeValue = (value: string | null): ParsedTimeValue => {
-  if (!value) return EMPTY_TIME;
-  const parsed = parseTime(value, { isEndOfDayAllowed: true });
-  return parsed.isOk ? { invalidReason: null, time: parsed.value.value } : { invalidReason: parsed.error, time: null };
-};
-
-const publicTimeOf = (time: TimeString | null, isEndOfDayAllowed: boolean): TimeString | null =>
-  time === END_OF_DAY && !isEndOfDayAllowed ? null : time;

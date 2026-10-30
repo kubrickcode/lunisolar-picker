@@ -43,3 +43,5 @@ export type { UseWheelProps, WheelApi } from './wheel/use-wheel';
 export { useWheel } from './wheel/use-wheel';
 export type { UseWheelDateProps, WheelDateApi, WheelDateRootProps } from './wheel/use-wheel-date';
 export { useWheelDate } from './wheel/use-wheel-date';
+export type { UseWheelTimeProps, WheelTimeApi, WheelTimeFields, WheelTimeRootProps } from './wheel/use-wheel-time';
+export { useWheelTime } from './wheel/use-wheel-time';
