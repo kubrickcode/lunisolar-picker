@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from 'vitest';
 import { makeSiblingsInert } from './inert-siblings';
 
 let page: HTMLElement;
@@ -64,5 +64,26 @@ describe('makeSiblingsInert', () => {
 
     expect(page.inert).toBe(true);
     releaseB();
+  });
+
+  it('inerts the siblings at every level up to body while leaving the container ancestors interactive', () => {
+    const dialog = createElement();
+    onTestFinished(() => dialog.remove());
+    const form = document.createElement('form');
+    const nestedSheet = document.createElement('div');
+    dialog.append(form, nestedSheet);
+
+    const release = makeSiblingsInert(nestedSheet);
+
+    expect(form.inert).toBe(true);
+    expect(form.getAttribute('aria-hidden')).toBe('true');
+    expect(page.inert).toBe(true);
+    expect(dialog.inert).toBe(false);
+    expect(nestedSheet.inert).toBe(false);
+
+    release();
+    expect(form.inert).toBe(false);
+    expect(form.hasAttribute('aria-hidden')).toBe(false);
+    expect(page.inert).toBe(false);
   });
 });
