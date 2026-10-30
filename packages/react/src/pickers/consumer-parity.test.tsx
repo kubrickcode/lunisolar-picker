@@ -1,7 +1,7 @@
 import { brandEpochDay, type DateRangeValue, formatDate, isSameRange } from '@lunisolar-picker/calendar';
 import { validateRange } from '@lunisolar-picker/core';
 import { ko } from '@lunisolar-picker/core/locales/ko';
-import { type FormEvent, type ReactElement, useRef, useState } from 'react';
+import { type FormEvent, type ReactElement, useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -34,6 +34,7 @@ const BIRTH_TIME_LABEL = '태어난 시각';
 const BIRTH_TIME_NAME = 'birthTime';
 const HOLIDAYS: Readonly<Record<string, string>> = { '2026-10-09': '한글날' };
 const HOLIDAY_DOT_ID = 'holiday-dot';
+const JOIN_ROOM_LABEL = '방 참가';
 const LUNAR_TOGGLE_LABEL = '음력으로 입력';
 const NOVEMBER_HEADING = ko.formatHeading({ year: 2026, monthCode: 'M11' }, 'gregory');
 const OCTOBER_HEADING = ko.formatHeading({ year: 2026, monthCode: 'M10' }, 'gregory');
@@ -59,6 +60,10 @@ type BirthTimeFormProps = {
 type ControllerReservationFormProps = {
   readonly onBlur: () => void;
   readonly onSearch: (period: DateRangeInput) => void;
+};
+
+type JoinRoomDialogProps = {
+  readonly onSubmitBirth: (birthDate: FormDataEntryValue | null, birthTime: FormDataEntryValue | null) => void;
 };
 
 type LunarToggleWheelProps = {
@@ -173,6 +178,36 @@ const ControllerReservationForm = ({ onBlur, onSearch }: ControllerReservationFo
       <button type="button">{OUTSIDE_BUTTON_LABEL}</button>
       <button type="submit">{SUBMIT_LABEL}</button>
     </form>
+  );
+};
+
+// Goal: saju-pictures 방 참가 시트. showModal()로 띄운 네이티브 dialog 안에서 생년월일·생시 시트 휠을 씀(ModalSheet, transform 없음)
+const JoinRoomDialog = ({ onSubmitBirth }: JoinRoomDialogProps): ReactElement => {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+  return (
+    <dialog ref={dialogRef} aria-label={JOIN_ROOM_LABEL}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          const formData = new FormData(event.currentTarget);
+          onSubmitBirth(formData.get(BIRTH_DATE_NAME), formData.get(BIRTH_TIME_NAME));
+        }}
+      >
+        <WheelDatePicker
+          presentation="sheet"
+          aria-label={BIRTH_DATE_LABEL}
+          name={BIRTH_DATE_NAME}
+          required
+          entryCalendar="dangi"
+          defaultValue="1990-06-22[u-ca=dangi]"
+        />
+        <WheelTimePicker presentation="sheet" aria-label={BIRTH_TIME_LABEL} name={BIRTH_TIME_NAME} />
+        <button type="submit">{SUBMIT_LABEL}</button>
+      </form>
+    </dialog>
   );
 };
 
@@ -555,6 +590,54 @@ describe('consumer parity', () => {
       await submitButton.click();
       expect(onSubmitBirthTime.mock.calls).toEqual([['13:00'], [null], ['13:00']]);
       expect(onValueChange.mock.calls).toEqual([['13:00', VALID_DETAILS]]);
+    });
+
+    it('join-room dialog: picks birth date and time on sheets drawn above the modal dialog, and Escape closes only the sheet', async () => {
+      const onSubmitBirth = vi.fn();
+      const screen = await renderInLunarApp(<JoinRoomDialog onSubmitBirth={onSubmitBirth} />);
+      const joinDialog = screen.getByRole('dialog', { name: JOIN_ROOM_LABEL }).element();
+      if (!(joinDialog instanceof HTMLDialogElement)) throw new Error('join room should render a dialog element');
+      const dateTrigger = screen.getByRole('button', { name: endsWith(BIRTH_DATE_LABEL) });
+      const timeTrigger = screen.getByRole('button', { name: endsWith(BIRTH_TIME_LABEL) });
+      const dateSheet = screen.getByRole('dialog', { name: BIRTH_DATE_LABEL });
+      const timeSheet = screen.getByRole('dialog', { name: BIRTH_TIME_LABEL });
+
+      await openSheet({ trigger: dateTrigger, initialFocus: screen.getByRole('spinbutton', { name: ko.labels.year }) });
+      expect(document.querySelector('[data-lsp-part="sheet"]')?.closest('dialog')).toBe(joinDialog);
+      const monthColumn = screen.getByRole('spinbutton', { name: ko.labels.month });
+      await focusDirectly(monthColumn);
+      await userEvent.keyboard('{ArrowDown}');
+      // Constraint: 휠은 정착 애니메이션이 끝난 뒤 값을 확정하므로 보이는 글자로 기다림 (preflight 2.11)
+      await expect.element(monthColumn).toHaveAttribute('aria-valuetext', '윤5월');
+      await expect
+        .element(screen.getByRole('spinbutton', { name: ko.labels.day }))
+        .toHaveAttribute('aria-valuetext', '29');
+      // Constraint: 증상이 dialog에 가로막힌 포인터 입력이므로 확인은 키보드가 아니라 포인터로 누름
+      await screen.getByRole('button', { name: ko.labels.confirm }).click();
+      await expect.element(dateSheet).not.toBeInTheDocument();
+      await expect.element(dateTrigger).toHaveFocus();
+
+      await openSheet({ trigger: timeTrigger, initialFocus: screen.getByRole('spinbutton', { name: ko.labels.hour }) });
+      const hourColumn = screen.getByRole('spinbutton', { name: ko.labels.hour });
+      await focusDirectly(hourColumn);
+      await userEvent.keyboard('{ArrowDown}');
+      await expect.element(hourColumn).toHaveAttribute('aria-valuetext', '13');
+      await settleEffects();
+      await screen.getByRole('button', { name: ko.labels.confirm }).click();
+      await expect.element(timeSheet).not.toBeInTheDocument();
+
+      await openSheet({ trigger: timeTrigger, initialFocus: screen.getByRole('spinbutton', { name: ko.labels.hour }) });
+      await userEvent.keyboard('{Escape}');
+      await expect.element(timeSheet).not.toBeInTheDocument();
+      expect(joinDialog.open).toBe(true);
+      await expect.element(timeTrigger).toHaveFocus();
+
+      await screen.getByRole('button', { name: SUBMIT_LABEL }).click();
+      expect(onSubmitBirth.mock.calls).toEqual([['1990-07-21[u-ca=dangi]', '13:00']]);
+
+      // Goal: picker가 닫힌 상태의 Esc는 바깥 dialog를 닫아야, 위 "Esc 뒤 dialog가 열려 있음"이 이 브라우저에서 의미를 가짐
+      await userEvent.keyboard('{Escape}');
+      await expect.poll(() => joinDialog.open).toBe(false);
     });
 
     it('switches the inline wheel to lunar from an app toggle and keeps the same birth date', async () => {
