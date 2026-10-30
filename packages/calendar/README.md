@@ -1,6 +1,12 @@
 # @lunisolar-picker/calendar
 
+[![npm](https://img.shields.io/npm/v/@lunisolar-picker/calendar)](https://www.npmjs.com/package/@lunisolar-picker/calendar)
+
 Plain-date values and calendar systems for lunisolar-picker. No runtime dependencies; works on servers and in browsers.
+
+```sh
+pnpm add @lunisolar-picker/calendar
+```
 
 ```ts
 import { epochDayOf, formatDate, isSameDay, parseDate } from '@lunisolar-picker/calendar';
@@ -18,3 +24,13 @@ isSameDay('2026-10-14', '2026-10-14[u-ca=dangi]'); // true
 - `gregory`: proleptic Gregorian, years 1–9999.
 - `dangi` (separate entry): Korean lunisolar calendar from KASI data, lunar 1900-01-01 to 2050-11-30 (solar 1900-01-31 to 2051-01-12).
 - Values: `DateString`, `TimeString`, `MonthString` and `DateRangeValue`, with strict parse and format functions that return a `Result` instead of throwing.
+
+## Links
+
+- [Documentation](https://kubrickcode.github.io/lunisolar-picker/)
+- [Repository](https://github.com/kubrickcode/lunisolar-picker) · [Issues](https://github.com/kubrickcode/lunisolar-picker/issues)
+- [Changelog](https://github.com/kubrickcode/lunisolar-picker/blob/main/packages/calendar/CHANGELOG.md)
+
+## License
+
+MIT
