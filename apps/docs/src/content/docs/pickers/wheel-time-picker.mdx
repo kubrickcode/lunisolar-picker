@@ -1,0 +1,38 @@
+---
+title: WheelTimePicker
+description: Hour and minute drums that match WheelDatePicker, for 24-hour HH:mm values.
+---
+
+import { WheelTimePickerDemo } from '../../../components/demos/WheelTimePickerDemo';
+
+<WheelTimePickerDemo client:only="react" />
+
+```tsx
+import { WheelTimePicker } from '@lunisolar-picker/react/pickers';
+
+<WheelTimePicker aria-label="Birth time" presentation="sheet" value={birthTime} onValueChange={(next) => setBirthTime(next)} />;
+```
+
+The columns scroll, settle and respond to the mouse wheel, drag, clicks and keys just like [WheelDatePicker](/pickers/wheel-date-picker/). Neither column wraps: the hour column stops at 00 and 23.
+
+An inline wheel always shows a time. While the value is empty it rests at 12:00 and reports nothing until a column turns.
+
+The minute column lists minutes at `minuteStep`. A value between steps, such as `09:07` with a step of 5, is shown at the step before (05) but is not changed until a column turns or the sheet is confirmed.
+
+With `presentation="sheet"` the trigger shows the value (or `placeholder`; without one it shows its label, the `aria-label` or "Choose time", unless `aria-labelledby` points at a visible label) and opens the drums in a bottom sheet. Scrolling there changes a draft; Confirm keeps the time shown and Cancel or closing discards it.
+
+While `disabled`, the value stays and comes back when the picker is enabled again, but the field is left out of form submission. This is how an app-drawn "time unknown" checkbox can switch the picker off.
+
+`24:00`, a 12-hour clock, seconds and wrapping columns are not supported. A well-formed `24:00` stays in the trigger and marks the field invalid, as on [TimePicker](/pickers/time-picker/); the reported value is `null`.
+
+Typing to jump matches the two-digit labels, so type `09` rather than `9` in the hour column, and `05` rather than `5` in the minute column.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `presentation` | `'inline' \| 'sheet'` | `'inline'` | Render in place, or in a bottom sheet with a trigger. |
+| `value`, `defaultValue` | `string \| null` | `null` | Canonical `HH:mm`, 24-hour. |
+| `onValueChange` | `(value: TimeString \| null, details) => void` | | Called when the user changes the time. |
+| `minuteStep` | `number` | `1` | Step for the minute column. Must divide 60. |
+| `open`, `defaultOpen`, `onOpenChange` | `boolean` | | Control the sheet. |
+| `isClearable`, `renderTrigger`, `placeholder`, `ref`, `onBlur`, `onInvalidValue` | | | As on DatePicker. |
+| `name`, `form`, `required`, `disabled`, `readOnly`, `invalid` | | | Same as native inputs. |

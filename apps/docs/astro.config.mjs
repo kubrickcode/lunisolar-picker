@@ -17,6 +17,7 @@ export default defineConfig({
             'pickers/date-range-picker',
             'pickers/month-picker',
             'pickers/wheel-date-picker',
+            'pickers/wheel-time-picker',
             'pickers/time-picker',
           ],
         },

@@ -20,7 +20,7 @@ const sizes = [
 
 Each column is a `role="spinbutton"` with `aria-valuetext`, so a screen reader hears the option label rather than an index. Momentum is computed in the core and the animation writes `transform` directly, so React does not re-render on every frame. The value is reported when the column settles.
 
-For dates, `useWheelDate` builds the year, month and day options (including lunar leap months) and keeps them consistent; `WheelDatePicker` is built on it.
+For dates, `useWheelDate` builds the year, month and day options (including lunar leap months) and keeps them consistent; `WheelDatePicker` is built on it. For times, `useWheelTime` builds the hour and minute options at a `minuteStep`; `WheelTimePicker` is built on it.
 
 | Part | Renders | Notes |
 |---|---|---|
@@ -28,4 +28,4 @@ For dates, `useWheelDate` builds the year, month and day options (including luna
 | `Column` | `div[role=spinbutton]` | `options` are `{ value, label, isDisabled }`, plus `value`, `onValueChange` and a required `label`. Selection is kept by value when options change. `renderItem(option, isSelected)` draws an option yourself. |
 | `Item` | `div` | One option, rendered by `Column`. Use it directly only with `useWheel`. |
 | `Highlight` | `div[aria-hidden]` | The band behind the selected row. |
-| `HiddenInput` | visually hidden `input` | Form participation for wheels you assemble yourself, with `useWheelDate().getHiddenInputProps()`. |
+| `HiddenInput` | visually hidden `input` | Form participation for wheels you assemble yourself, with `useWheelDate().getHiddenInputProps()` or `useWheelTime().getHiddenInputProps()`. |
