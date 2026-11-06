@@ -1,21 +1,24 @@
 ---
 title: lunisolar-picker
-description: Modern, accessible date pickers for React with optional Korean lunisolar calendar support.
+description: React date pickers that let users enter Korean lunar dates, leap months and 30th days included, and store them in Temporal's calendar format.
 template: splash
 hero:
-  tagline: A calm, monochrome date picker kit for React. Solar-first, with Korean lunar dates one option away.
+  tagline: Korean lunar dates, entered as lunar dates. Leap months, 30th days, and values like 2026-10-14[u-ca=dangi] that Temporal can read.
   actions:
+    - text: Try the lunar picker
+      link: guides/lunar-calendar/
+      icon: right-arrow
     - text: Get started
       link: getting-started/
-      icon: right-arrow
-    - text: Lunar calendar
-      link: guides/lunar-calendar/
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
+  <Card title="Korean lunar dates" icon="star">
+    Add `dangi` and users can enter lunar dates, leap months and 30th days. Data comes from the Korea Astronomy and Space Science Institute (KASI).
+  </Card>
   <Card title="Six pickers" icon="seti:react">
     Date, date range, month, wheel date, wheel time and time pickers that work with mouse, keyboard and touch.
   </Card>
@@ -24,8 +27,5 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   </Card>
   <Card title="Strings in, strings out" icon="document">
     Values are canonical strings such as `2026-10-14`. They compare with `===`, travel through URLs and forms, and parse with Temporal.
-  </Card>
-  <Card title="Korean lunar dates" icon="star">
-    Add `dangi` and users can enter lunar dates, leap months and 30th days. Data comes from the Korea Astronomy and Space Science Institute (KASI).
   </Card>
 </CardGrid>
