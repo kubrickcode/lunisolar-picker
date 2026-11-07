@@ -71,6 +71,11 @@ const calendars = [dangi];
 <LunisolarProvider calendars={calendars}>…</LunisolarProvider>;
 ```
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/lunisolar-lunar-desktop-dark.gif">
+  <img alt="Switching a date picker to lunar mode: 2026 has twelve months, 2025 adds leap month 6, and picking leap month 6, day 15 gives the value 2025-08-08[u-ca=dangi]" src=".github/assets/lunisolar-lunar-desktop-light.gif" width="720">
+</picture>
+
 A date entered in lunar mode keeps its solar day and records how it was entered, the format Temporal uses: `'2026-10-14[u-ca=dangi]'`.
 
 When a lunar date stops existing while the user scrolls a wheel or moves through a calendar, the picker moves it to the nearest one: a leap month that the new year lacks becomes the regular month, and day 30 becomes day 29. Typed input is never changed; the field reports `'invalid-date'` instead. In a date field, <kbd>L</kbd> toggles the leap month.
